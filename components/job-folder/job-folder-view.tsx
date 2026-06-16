@@ -1275,7 +1275,21 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           <p className="mt-4 rounded-xl tv-glass-card px-4 py-3 tv-tabular text-[18px] font-bold text-[var(--color-accent)]">
             {profile?.referral_code ?? "TVT-XXX-0000"}
           </p>
-          <TvButton className="mt-4" onClick={() => { setShowReferral(false); setShowUpgrade(true); }}>Share</TvButton>
+          <TvButton
+            className="mt-4"
+            onClick={async () => {
+              const message = `I've been using T-Vault to keep my loads organized. Here's my invite code: ${profile?.referral_code ?? ""} — try it at TVT.app`;
+              if (navigator.share) {
+                await navigator.share({ text: message });
+              } else {
+                await navigator.clipboard.writeText(message);
+              }
+              setShowReferral(false);
+              setShowUpgrade(true);
+            }}
+          >
+            Share
+          </TvButton>
           <button type="button" className="mt-4 text-[14px] text-[var(--color-text-muted)]" onClick={() => { setShowReferral(false); setShowUpgrade(true); }}>Maybe later</button>
           </div>
         </div>
@@ -1292,8 +1306,35 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           </div>
           <h3 className="tv-section-header mt-6">Keep building with T-Vault Pro</h3>
           <p className="tv-tabular mt-2 text-[36px] font-bold text-[var(--color-accent)]">$9.99/month · Cancel anytime</p>
-          <TvButton className="mt-4">Start Pro — $9.99/month</TvButton>
-          <button type="button" className="mt-4 w-full text-center text-[14px] text-[var(--color-text-muted)]" onClick={() => { setShowUpgrade(false); setShowEarnedBanner(true); triggerHaptic("strong"); }}>Maybe later — keep 1 load</button>
+          <TvButton
+            className="mt-4"
+            onClick={async () => {
+              await fetch("/api/pro-waitlist", { method: "POST" });
+              setShowUpgrade(false);
+              setShowEarnedBanner(true);
+              triggerHaptic("strong");
+            }}
+          >
+            Start Pro — $9.99/month
+          </TvButton>
+          <button
+            type="button"
+            className="mt-4 w-full text-center text-[14px] text-[var(--color-text-muted)]"
+            onClick={async () => {
+              const supabase = createClient();
+              if (user) {
+                await supabase
+                  .from("users")
+                  .update({ upgrade_dismissed_at: new Date().toISOString() })
+                  .eq("id", user.id);
+              }
+              setShowUpgrade(false);
+              setShowEarnedBanner(true);
+              triggerHaptic("strong");
+            }}
+          >
+            Maybe later — keep 1 load
+          </button>
         </div>
       ) : null}
 

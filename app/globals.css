@@ -111,6 +111,7 @@
     @apply font-sans antialiased;
     background-color: var(--color-bg);
     color: var(--color-text-primary);
+    transition: background-color 200ms ease, color 200ms ease;
   }
 
   body {
@@ -583,11 +584,83 @@
     animation: tv-slide-in-right 200ms ease-out;
   }
 
+  .tv-voice-pulse {
+    animation: tv-voice-pulse 1s ease-in-out infinite;
+  }
+
+  .tv-wallet-expiry-pulse {
+    animation: tv-wallet-expiry-pulse 3s ease-in-out infinite;
+  }
+
+  .tv-profile-expired-pulse {
+    animation: tv-profile-expired-pulse 2s ease-in-out infinite;
+  }
+
+  .tv-online-flash {
+    animation: tv-online-flash 500ms ease-out;
+  }
+
+  .tv-pressable {
+    transition: transform 150ms ease, opacity 150ms ease;
+  }
+
+  .tv-pressable:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+
+  @keyframes tv-voice-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
+
+  @keyframes tv-wallet-expiry-pulse {
+    0%,
+    100% {
+      box-shadow: inset 0 0 0 0 transparent;
+    }
+    50% {
+      box-shadow: inset 3px 0 0 0 var(--color-danger);
+    }
+  }
+
+  @keyframes tv-profile-expired-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes tv-online-flash {
+    from {
+      background-color: var(--color-success-bg);
+    }
+    to {
+      background-color: transparent;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .tv-skeleton,
     .tv-metallic-gold,
-    .tv-expense-row-enter {
+    .tv-expense-row-enter,
+    .tv-voice-pulse,
+    .tv-wallet-expiry-pulse,
+    .tv-profile-expired-pulse,
+    .tv-online-flash {
       animation: none;
+    }
+
+    html {
+      transition: none;
     }
 
     .tv-compiling-dots span {

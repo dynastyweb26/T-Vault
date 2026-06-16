@@ -17,7 +17,8 @@ export type MilestoneType =
   | "loads_50"
   | "loads_100"
   | "first_10k_month"
-  | "best_month";
+  | "best_month"
+  | "streak_30";
 
 export interface MilestoneCheck {
   type: MilestoneType;
