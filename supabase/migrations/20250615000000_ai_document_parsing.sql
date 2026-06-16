@@ -24,8 +24,3 @@ ALTER TABLE ai_usage ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own ai_usage"
   ON ai_usage FOR SELECT
   USING (auth.uid() = user_id);
-
-CREATE POLICY "Service role manages ai_usage"
-  ON ai_usage FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);

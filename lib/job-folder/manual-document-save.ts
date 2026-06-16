@@ -99,6 +99,7 @@ export async function saveManualDocumentEntry(
           .from("documents")
           .update(rowVariant)
           .eq("id", existing.id)
+          .eq("user_id", userId)
           .select("*")
           .single();
 

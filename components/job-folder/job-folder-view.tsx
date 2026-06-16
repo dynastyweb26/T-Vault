@@ -529,6 +529,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         amount_owed: calculateDetentionOwed(minutes, getDetentionRate()),
       })
       .eq("id", activeSession.id)
+      .eq("user_id", user.id)
       .select("*")
       .single();
 
@@ -552,7 +553,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     await supabase
       .from("detention_sessions")
       .update({ paid })
-      .eq("id", detentionResult.sessionId);
+      .eq("id", detentionResult.sessionId)
+      .eq("user_id", user.id);
     await updateBrokerDetentionOutcome(supabase, user.id, job.broker_name, paid);
     await updateJob({ detention_paid: paid });
     setDetentionResult(null);
@@ -595,7 +597,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     await supabase
       .from("jobs")
       .update({ status: "awaiting_payment", updated_at: new Date().toISOString() })
-      .eq("id", jobId);
+      .eq("id", jobId)
+      .eq("user_id", user.id);
     await updateStreak(supabase, user.id);
     await refreshProfile();
     setPaymentSheetOpen(true);
@@ -616,7 +619,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     await supabase
       .from("jobs")
       .update({ payment_expected_date: paymentDate })
-      .eq("id", jobId);
+      .eq("id", jobId)
+      .eq("user_id", user.id);
 
     const updatedProfile = await updateUserStatsOnComplete(
       supabase,
@@ -705,7 +709,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                     }
                     if (window.confirm("Delete permanently? This cannot be undone.")) {
                       if (!window.confirm("Are you absolutely sure?")) return;
-                      await createClient().from("jobs").delete().eq("id", jobId);
+                      if (!user) return;
+                      await createClient().from("jobs").delete().eq("id", jobId).eq("user_id", user.id);
                       router.push(APP_ROUTES.loads);
                     }
                   }},

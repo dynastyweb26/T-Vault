@@ -73,7 +73,8 @@ export async function updateJobProfitability(
       profitability_score: score,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", job.id);
+    .eq("id", job.id)
+    .eq("user_id", userId);
 
   return score;
 }

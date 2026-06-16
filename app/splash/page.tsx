@@ -18,12 +18,12 @@ export default function SplashPage() {
 
     const boot = async () => {
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
 
       if (!active) return;
 
-      if (!session?.user) {
+      if (!currentUser) {
         router.replace(APP_ROUTES.signIn);
         return;
       }
@@ -31,29 +31,34 @@ export default function SplashPage() {
       const { data: profile } = await supabase
         .from("users")
         .select("*")
-        .eq("id", session.user.id)
+        .eq("id", currentUser.id)
         .maybeSingle();
 
       if (!profile) {
         const fullName =
-          (session.user.user_metadata?.full_name as string | undefined) ||
-          session.user.email?.split("@")[0] ||
+          (currentUser.user_metadata?.full_name as string | undefined) ||
+          currentUser.email?.split("@")[0] ||
           "Driver";
 
-        await fetch("/api/auth/complete-signup", {
+        const signupResponse = await fetch("/api/auth/complete-signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             fullName,
-            referredBy: session.user.user_metadata?.referred_by,
+            referredBy: currentUser.user_metadata?.referred_by,
           }),
         });
+
+        if (!signupResponse.ok) {
+          setStatus("We could not finish setting up your account. Try again.");
+          return;
+        }
       }
 
       const { data: refreshedProfile } = await supabase
         .from("users")
         .select("*")
-        .eq("id", session.user.id)
+        .eq("id", currentUser.id)
         .maybeSingle();
 
       setStatus("Loading your command center...");

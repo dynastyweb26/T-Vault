@@ -10,8 +10,6 @@ export const TEXT_LIMITS = {
 
 export const LOAD_VALUE_MAX = 999_999;
 
-export const ONBOARDING_STORAGE_KEY = "tvault_onboarding_seen";
-
 export const APP_ROUTES = {
   splash: "/splash",
   signIn: "/sign-in",
@@ -34,6 +32,15 @@ export const PROTECTED_PREFIXES = [
   "/profile",
   "/onboarding",
   "/profile-setup",
+] as const;
+
+/** App routes that require onboarding_completed before access. */
+export const ONBOARDING_REQUIRED_PREFIXES = [
+  "/dashboard",
+  "/loads",
+  "/new-job",
+  "/expenses",
+  "/profile",
 ] as const;
 
 export const AUTH_ROUTES = [
