@@ -1,24 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  AttentionItem,
-  AwaitingPaymentItem,
-  DashboardData,
-  Expense,
-  Job,
-  Payment,
-} from "@/types/jobs";
-import type { UserProfile } from "@/types/database";
-import {
-  getMonthRange,
-  getSameMonthLastYear,
-  daysBetweenToday,
-} from "@/lib/dashboard/format";
+import type { AttentionItem, DashboardData, Expense, Job, Payment } from "@/types/jobs";
 import {
   isExpenseInMonth,
   isJobCompletedInMonth,
   toDashboardJob,
   groupDocumentsByJob,
 } from "@/lib/dashboard/job-status";
+import { buildAwaitingPayments } from "@/lib/dashboard/awaiting-payment";
+import type { UserProfile } from "@/types/database";
+import {
+  getMonthRange,
+  getSameMonthLastYear,
+  daysBetweenToday,
+} from "@/lib/dashboard/format";
 import { countRequiredDocs } from "@/lib/job-folder/documents";
 import type { JobDocument } from "@/types/jobs";
 import { APP_ROUTES } from "@/lib/constants";
@@ -77,64 +71,6 @@ function buildAttentionItems(
     });
 
   return items;
-}
-
-function buildAwaitingPayments(
-  jobs: Job[],
-  payments: Payment[]
-): AwaitingPaymentItem[] {
-  const items: AwaitingPaymentItem[] = [];
-  const jobMap = new Map(jobs.map((job) => [job.id, job]));
-
-  payments
-    .filter((payment) => payment.status === "pending" || !payment.received_date)
-    .forEach((payment) => {
-      const job = jobMap.get(payment.job_id);
-      if (!job) return;
-
-      const expectedDate = payment.expected_date || job.payment_expected_date;
-      const daysOverdue = expectedDate ? daysBetweenToday(expectedDate) : 0;
-
-      items.push({
-        id: payment.id,
-        jobId: job.id,
-        jobName: job.job_name,
-        amount: payment.amount ?? job.load_value ?? 0,
-        expectedDate,
-        daysOverdue: Math.max(daysOverdue, 0),
-        isOverdue: daysOverdue > 0,
-      });
-    });
-
-  jobs
-    .filter(
-      (job) =>
-        job.status !== "cancelled" &&
-        job.status !== "archived" &&
-        !job.payment_received &&
-        job.invoice_sent_date
-    )
-    .forEach((job) => {
-      if (items.some((item) => item.jobId === job.id)) return;
-
-      const expectedDate = job.payment_expected_date;
-      const daysOverdue = expectedDate ? daysBetweenToday(expectedDate) : 0;
-
-      items.push({
-        id: `job-payment-${job.id}`,
-        jobId: job.id,
-        jobName: job.job_name,
-        amount: job.load_value ?? 0,
-        expectedDate: expectedDate ?? null,
-        daysOverdue: Math.max(daysOverdue, 0),
-        isOverdue: daysOverdue > 0,
-      });
-    });
-
-  return items.sort((a, b) => {
-    if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
-    return b.daysOverdue - a.daysOverdue;
-  });
 }
 
 export async function fetchDashboardData(

@@ -6,6 +6,7 @@ export const TEXT_LIMITS = {
   description: 500,
   company: 100,
   fullName: 80,
+  brokerRatingNotes: 200,
 } as const;
 
 export const LOAD_VALUE_MAX = 999_999;
@@ -22,6 +23,9 @@ export const APP_ROUTES = {
   newJob: "/new-job",
   expenses: "/expenses",
   profile: "/profile",
+  costPerMile: "/cost-per-mile",
+  taxSummary: "/tax-summary",
+  brokerHistory: "/broker-history",
 } as const;
 
 export const PROTECTED_PREFIXES = [
@@ -30,6 +34,9 @@ export const PROTECTED_PREFIXES = [
   "/new-job",
   "/expenses",
   "/profile",
+  "/cost-per-mile",
+  "/tax-summary",
+  "/broker-history",
   "/onboarding",
   "/profile-setup",
 ] as const;
@@ -41,6 +48,9 @@ export const ONBOARDING_REQUIRED_PREFIXES = [
   "/new-job",
   "/expenses",
   "/profile",
+  "/cost-per-mile",
+  "/tax-summary",
+  "/broker-history",
 ] as const;
 
 export const AUTH_ROUTES = [
