@@ -1,4 +1,14 @@
-export type JobStatus = "active" | "completed" | "cancelled" | "archived";
+export type JobStatus =
+  | "active"
+  | "awaiting_payment"
+  | "paid"
+  | "complete"
+  | "completed"
+  | "cancelled"
+  | "archived";
+
+export type PaymentType = "direct" | "factoring";
+export type AiConfidence = "high" | "medium" | "low" | "unread";
 
 export interface Job {
   id: string;
@@ -19,10 +29,28 @@ export interface Job {
   payment_received_date: string | null;
   invoice_sent_date: string | null;
   invoice_number: string | null;
-  rate_confirmation_url: string | null;
-  bol_url: string | null;
-  pod_url: string | null;
+  invoice_generated: boolean | null;
+  payment_type: PaymentType | string | null;
+  factoring_company: string | null;
+  states_driven: string | null;
+  notes: string | null;
   is_template: boolean | null;
+  template_name: string | null;
+  profitability_score: number | null;
+  detention_minutes: number | null;
+  detention_paid: string | null;
+}
+
+export interface JobDocument {
+  id: string;
+  job_id: string;
+  user_id: string;
+  document_type: string;
+  file_url: string;
+  file_name: string | null;
+  upload_status: string | null;
+  ai_confidence: AiConfidence | null;
+  created_at: string | null;
 }
 
 export interface Expense {
@@ -34,6 +62,8 @@ export interface Expense {
   expense_date: string | null;
   created_at: string | null;
   description: string | null;
+  receipt_url: string | null;
+  no_receipt_reason: string | null;
 }
 
 export interface Payment {
@@ -99,3 +129,5 @@ export interface DashboardData {
   attentionItems: AttentionItem[];
   awaitingPayments: AwaitingPaymentItem[];
 }
+
+export type DocumentsByJobId = Record<string, JobDocument[]>;

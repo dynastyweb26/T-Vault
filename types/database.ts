@@ -21,6 +21,8 @@ export interface UserProfile {
   best_month_date: string | null;
   streak_days: number | null;
   last_active_date: string | null;
+  cost_per_mile?: number | null;
+  detention_rate?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
 }

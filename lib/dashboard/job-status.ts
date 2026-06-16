@@ -1,35 +1,29 @@
-import type { Job, JobBorderStatus, DashboardJobView } from "@/types/jobs";
+import type { Job, JobBorderStatus, DashboardJobView, JobDocument } from "@/types/jobs";
 import { daysBetweenToday } from "@/lib/dashboard/format";
+import {
+  countRequiredDocs,
+  isInvoiceGenerated,
+} from "@/lib/job-folder/documents";
 
-export const REQUIRED_DOC_FIELDS = [
-  "rate_confirmation_url",
-  "bol_url",
-  "pod_url",
-] as const;
-
-export function countRequiredDocs(job: Job): { complete: number; total: number } {
-  const total = REQUIRED_DOC_FIELDS.length;
-  const complete = REQUIRED_DOC_FIELDS.filter(
-    (field) => Boolean(job[field])
-  ).length;
-  return { complete, total };
-}
-
-export function getJobBorderStatus(job: Job): JobBorderStatus {
+export function getJobBorderStatus(
+  job: Job,
+  documents: JobDocument[] = []
+): JobBorderStatus {
   if (job.status === "cancelled") return "cancelled";
 
-  const { complete, total } = countRequiredDocs(job);
+  const { complete, total } = countRequiredDocs(documents);
   const docsMissing = complete < total;
+  const invoiceReady = isInvoiceGenerated(documents);
 
   const isOverdue =
-    !job.payment_received &&
+    (job.status === "awaiting_payment" || !job.payment_received) &&
     Boolean(job.payment_expected_date) &&
     daysBetweenToday(job.payment_expected_date!) > 0;
 
   if (docsMissing) return "docs_missing";
   if (isOverdue) return "payment_overdue";
-  if (!job.payment_received && job.invoice_sent_date) return "invoice_pending";
-  if (complete === total) return "docs_complete";
+  if (!invoiceReady && complete === total) return "invoice_pending";
+  if (complete === total && invoiceReady) return "docs_complete";
   return "docs_missing";
 }
 
@@ -53,6 +47,12 @@ export function getStatusBadge(job: Job, borderStatus: JobBorderStatus) {
   if (job.status === "cancelled") {
     return { label: "Cancelled", tone: "disabled" as const };
   }
+  if (job.status === "awaiting_payment") {
+    return { label: "Awaiting payment", tone: "warning" as const };
+  }
+  if (job.status === "paid") {
+    return { label: "Paid", tone: "success" as const };
+  }
   if (borderStatus === "payment_overdue") {
     return { label: "Payment overdue", tone: "danger" as const };
   }
@@ -60,14 +60,17 @@ export function getStatusBadge(job: Job, borderStatus: JobBorderStatus) {
     return { label: "Docs missing", tone: "danger" as const };
   }
   if (borderStatus === "invoice_pending") {
-    return { label: "Awaiting payment", tone: "warning" as const };
+    return { label: "Invoice pending", tone: "warning" as const };
   }
   return { label: "Docs complete", tone: "success" as const };
 }
 
-export function toDashboardJob(job: Job): DashboardJobView {
-  const borderStatus = getJobBorderStatus(job);
-  const { complete, total } = countRequiredDocs(job);
+export function toDashboardJob(
+  job: Job,
+  documents: JobDocument[] = []
+): DashboardJobView {
+  const borderStatus = getJobBorderStatus(job, documents);
+  const { complete, total } = countRequiredDocs(documents);
   const badge = getStatusBadge(job, borderStatus);
 
   return {
@@ -80,9 +83,20 @@ export function toDashboardJob(job: Job): DashboardJobView {
   };
 }
 
-export function isJobCompletedInMonth(job: Job, start: string, end: string): boolean {
-  if (job.status !== "completed") return false;
-  const completionDate = job.delivery_date || job.updated_at?.slice(0, 10) || null;
+export function isJobCompletedInMonth(
+  job: Job,
+  start: string,
+  end: string
+): boolean {
+  const completedStatuses = new Set([
+    "complete",
+    "completed",
+    "paid",
+    "awaiting_payment",
+  ]);
+  if (!completedStatuses.has(job.status)) return false;
+  const completionDate =
+    job.delivery_date || job.updated_at?.slice(0, 10) || null;
   if (!completionDate) return false;
   return completionDate >= start && completionDate <= end;
 }
@@ -96,4 +110,14 @@ export function isExpenseInMonth(
   const date = expenseDate || createdAt?.slice(0, 10) || null;
   if (!date) return false;
   return date >= start && date <= end;
+}
+
+export function groupDocumentsByJob(
+  documents: JobDocument[]
+): Record<string, JobDocument[]> {
+  return documents.reduce<Record<string, JobDocument[]>>((acc, doc) => {
+    if (!acc[doc.job_id]) acc[doc.job_id] = [];
+    acc[doc.job_id].push(doc);
+    return acc;
+  }, {});
 }

@@ -8,6 +8,7 @@ import { formatCurrency, formatShortDate } from "@/lib/dashboard/format";
 import { getBorderColor } from "@/lib/dashboard/job-status";
 import type { DashboardJobView } from "@/types/jobs";
 import { APP_ROUTES } from "@/lib/constants";
+import { saveLoadsScrollPosition } from "@/lib/job-folder/scroll";
 
 interface JobCardProps {
   job: DashboardJobView;
@@ -103,6 +104,7 @@ export function JobCard({ job, onAction }: JobCardProps) {
       >
         <Link
           href={`${APP_ROUTES.loads}/${job.id}`}
+          onClick={saveLoadsScrollPosition}
           className="block p-4 pr-12"
         >
           <div className="flex items-start justify-between gap-3">

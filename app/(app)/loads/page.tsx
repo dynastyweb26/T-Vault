@@ -1,25 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { FolderOpen } from "lucide-react";
 import { AppHeader } from "@/components/shell/app-header";
 import { TvButton } from "@/components/tv/tv-button";
 import { JobCard } from "@/components/dashboard/job-card";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
-import { toDashboardJob } from "@/lib/dashboard/job-status";
-import type { Job } from "@/types/jobs";
-import { APP_ROUTES } from "@/lib/constants";
+import { toDashboardJob, groupDocumentsByJob } from "@/lib/dashboard/job-status";
+import { restoreLoadsScrollPosition } from "@/lib/job-folder/scroll";
+import type { Job, JobDocument } from "@/types/jobs";
+import { useNewJobSheet } from "@/components/providers/new-job-provider";
 
 const PAGE_SIZE = 10;
 
 export default function LoadsPage() {
   const { user } = useAuth();
+  const { openSheet } = useNewJobSheet();
   const [jobs, setJobs] = useState<ReturnType<typeof toDashboardJob>[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    restoreLoadsScrollPosition();
+  }, []);
 
   const loadJobs = useCallback(async () => {
     if (!user) return;
@@ -33,13 +38,24 @@ export default function LoadsPage() {
       .from("jobs")
       .select("*", { count: "exact" })
       .eq("user_id", user.id)
-      .eq("status", "active")
       .neq("is_template", true)
+      .in("status", ["active", "awaiting_payment", "cancelled"])
       .order("updated_at", { ascending: false })
       .range(from, to);
 
     if (!error && data) {
-      setJobs((data as Job[]).map(toDashboardJob));
+      const jobList = data as Job[];
+      const { data: docs } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("user_id", user.id)
+        .in(
+          "job_id",
+          jobList.map((j) => j.id)
+        );
+
+      const docsByJob = groupDocumentsByJob((docs ?? []) as JobDocument[]);
+      setJobs(jobList.map((job) => toDashboardJob(job, docsByJob[job.id] ?? [])));
       setTotal(count ?? 0);
     }
     setLoading(false);
@@ -69,9 +85,9 @@ export default function LoadsPage() {
             When you add a load, it will show up here with status, docs, and pay
             tracking.
           </p>
-          <Link href={APP_ROUTES.newJob} className="mt-6 w-full">
-            <TvButton>Create your first job</TvButton>
-          </Link>
+          <TvButton className="mt-6" onClick={() => openSheet()}>
+            Create your first job
+          </TvButton>
         </section>
       ) : (
         <div className="mt-4 flex flex-col gap-3">

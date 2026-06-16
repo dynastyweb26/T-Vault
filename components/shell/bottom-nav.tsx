@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Folder,
   Home,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { APP_ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useNewJobSheet } from "@/components/providers/new-job-provider";
 
 const tabs = [
   { href: APP_ROUTES.dashboard, label: "Dashboard", icon: Home },
@@ -22,6 +23,8 @@ const tabs = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { openSheet } = useNewJobSheet();
 
   return (
     <nav
@@ -36,13 +39,20 @@ export function BottomNav() {
           if ("center" in tab && tab.center) {
             return (
               <li key={tab.href} className="flex justify-center">
-                <Link
-                  href={tab.href}
+                <button
+                  type="button"
                   aria-label="Create new job"
+                  onClick={() => {
+                    if (pathname === APP_ROUTES.newJob) {
+                      openSheet();
+                    } else {
+                      router.push(APP_ROUTES.newJob);
+                    }
+                  }}
                   className="tv-pressable -mt-5 flex size-14 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-on-accent)] transition-transform duration-150 active:scale-[0.97]"
                 >
                   <Plus className="size-7" strokeWidth={2} aria-hidden />
-                </Link>
+                </button>
               </li>
             );
           }

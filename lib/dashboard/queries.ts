@@ -17,8 +17,10 @@ import {
   isExpenseInMonth,
   isJobCompletedInMonth,
   toDashboardJob,
-  countRequiredDocs,
+  groupDocumentsByJob,
 } from "@/lib/dashboard/job-status";
+import { countRequiredDocs } from "@/lib/job-folder/documents";
+import type { JobDocument } from "@/types/jobs";
 import { APP_ROUTES } from "@/lib/constants";
 
 function sumLoadValues(jobs: Job[]): number {
@@ -36,13 +38,16 @@ function countMonthsWithEarnings(jobs: Job[]): number {
   return months.size;
 }
 
-function buildAttentionItems(jobs: Job[]): AttentionItem[] {
+function buildAttentionItems(
+  jobs: Job[],
+  docsByJob: Record<string, JobDocument[]>
+): AttentionItem[] {
   const items: AttentionItem[] = [];
 
   jobs
     .filter((job) => job.status === "active")
     .forEach((job) => {
-      const { complete, total } = countRequiredDocs(job);
+      const { complete, total } = countRequiredDocs(docsByJob[job.id] ?? []);
       if (complete < total) {
         items.push({
           id: `docs-${job.id}`,
@@ -140,20 +145,25 @@ export async function fetchDashboardData(
   const { start, end } = getMonthRange();
   const lastYear = getSameMonthLastYear();
 
-  const [jobsResult, expensesResult, paymentsResult] = await Promise.all([
-    supabase
-      .from("jobs")
-      .select("*")
-      .eq("user_id", userId)
-      .neq("is_template", true)
-      .order("updated_at", { ascending: false }),
-    supabase.from("expenses").select("*").eq("user_id", userId),
-    supabase.from("payments").select("*").eq("user_id", userId),
-  ]);
+  const [jobsResult, expensesResult, paymentsResult, documentsResult] =
+    await Promise.all([
+      supabase
+        .from("jobs")
+        .select("*")
+        .eq("user_id", userId)
+        .neq("is_template", true)
+        .order("updated_at", { ascending: false }),
+      supabase.from("expenses").select("*").eq("user_id", userId),
+      supabase.from("payments").select("*").eq("user_id", userId),
+      supabase.from("documents").select("*").eq("user_id", userId),
+    ]);
 
   const jobs = (jobsResult.data ?? []) as Job[];
   const expenses = (expensesResult.data ?? []) as Expense[];
   const payments = (paymentsResult.data ?? []) as Payment[];
+  const docsByJob = groupDocumentsByJob(
+    (documentsResult.data ?? []) as JobDocument[]
+  );
 
   const completedThisMonth = jobs.filter((job) =>
     isJobCompletedInMonth(job, start, end)
@@ -179,8 +189,12 @@ export async function fetchDashboardData(
     projectedAnnual = Math.round((totalCompleted / monthsWithData) * 12);
   }
 
-  const activeJobsRaw = jobs.filter((job) => job.status === "active");
-  const activeJobs = activeJobsRaw.slice(0, 5).map(toDashboardJob);
+  const activeJobsRaw = jobs.filter(
+    (job) => job.status === "active" || job.status === "awaiting_payment"
+  );
+  const activeJobs = activeJobsRaw
+    .slice(0, 5)
+    .map((job) => toDashboardJob(job, docsByJob[job.id] ?? []));
 
   const milesThisMonth = jobs
     .filter((job) => isJobCompletedInMonth(job, start, end))
@@ -204,7 +218,7 @@ export async function fetchDashboardData(
     expensesThisMonth,
     netSoFar: earnedThisMonth - expensesThisMonth,
     activeJobs,
-    attentionItems: buildAttentionItems(jobs),
+    attentionItems: buildAttentionItems(jobs, docsByJob),
     awaitingPayments: buildAwaitingPayments(jobs, payments),
   };
 }
