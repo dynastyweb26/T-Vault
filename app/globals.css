@@ -568,9 +568,25 @@
     }
   }
 
+  @keyframes tv-slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .tv-expense-row-enter {
+    animation: tv-slide-in-right 200ms ease-out;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .tv-skeleton,
-    .tv-metallic-gold {
+    .tv-metallic-gold,
+    .tv-expense-row-enter {
       animation: none;
     }
 
