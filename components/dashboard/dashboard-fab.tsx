@@ -18,9 +18,9 @@ export function DashboardFab() {
         if (pathname === APP_ROUTES.newJob) openSheet();
         else router.push(APP_ROUTES.newJob);
       }}
-      className="tv-pressable fixed bottom-24 right-4 z-40 flex size-16 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-on-accent)] shadow-none transition-transform duration-150 active:scale-[0.97]"
+      className="tv-brushed-gold-btn tv-pressable fixed bottom-24 right-4 z-40 flex size-16 items-center justify-center rounded-full transition-transform duration-150 active:scale-[0.97]"
     >
-      <Plus className="size-8" strokeWidth={2} aria-hidden />
+      <Plus className="size-8 text-black" strokeWidth={2.5} aria-hidden />
     </button>
   );
 }

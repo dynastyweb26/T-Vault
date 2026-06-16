@@ -7,7 +7,7 @@ export default function ExpensesPage() {
   return (
     <>
       <AppHeader title="Expenses" subtitle="Track every dollar out" />
-      <section className="mt-10 flex flex-col items-center rounded-[var(--radius-card)] bg-[var(--color-surface)] px-6 py-10 text-center">
+      <section className="tv-empty-state mx-5 mt-10">
         <Receipt
           className="size-12 text-[var(--color-accent)]"
           strokeWidth={2}

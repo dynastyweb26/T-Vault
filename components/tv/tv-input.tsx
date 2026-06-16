@@ -28,11 +28,12 @@ export function TvInput({
       <input
         id={inputId}
         className={cn(
-          "h-14 w-full rounded-[var(--radius-input)] border bg-[var(--color-surface)] px-4 text-[17px] text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]",
+          "h-14 w-full rounded-xl border bg-[#050505] px-4 text-[17px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] outline-none transition-colors focus:border-[var(--color-accent)]",
           error
-            ? "border-[var(--color-danger)]"
-            : "border-[var(--color-border)]",
-          className
+            ? "border-[var(--color-danger)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+            : "border-white/5 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]",
+          className,
+          error && "border-[var(--color-danger)]"
         )}
         aria-invalid={Boolean(error)}
         aria-describedby={

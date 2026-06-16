@@ -74,16 +74,16 @@ import type { BrokerBadgeInfo, DetentionLocation, MilestoneCheck } from "@/types
 import type { AiConfidence, JobDocument } from "@/types/jobs";
 
 const badgeToneClasses = {
-  high: "bg-[var(--color-success-bg)] text-[var(--color-success-text)]",
-  medium: "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]",
-  low: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)]",
-  unread: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)]",
+  high: "bg-[var(--color-success-bg)] text-[var(--color-success-text)] border border-[var(--color-success)]/10",
+  medium: "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)] border border-[var(--color-warning)]/10",
+  low: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)] border border-[var(--color-danger)]/10",
+  unread: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)] border border-[var(--color-danger)]/10",
 };
 
 function TrustBadge({ confidence }: { confidence: AiConfidence | null }) {
   if (!confidence || confidence === "low" || confidence === "unread") {
     return (
-      <span className={`inline-flex items-center gap-1 rounded-[var(--radius-pill)] px-2 py-0.5 text-[12px] ${badgeToneClasses.low}`}>
+      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.low}`}>
         <AlertTriangle className="size-3.5" strokeWidth={2} />
         Enter manually
       </span>
@@ -91,14 +91,14 @@ function TrustBadge({ confidence }: { confidence: AiConfidence | null }) {
   }
   if (confidence === "medium") {
     return (
-      <span className={`inline-flex items-center gap-1 rounded-[var(--radius-pill)] px-2 py-0.5 text-[12px] ${badgeToneClasses.medium}`}>
+      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.medium}`}>
         <AlertTriangle className="size-3.5" strokeWidth={2} />
         AI — please check
       </span>
     );
   }
   return (
-    <span className={`inline-flex items-center gap-1 rounded-[var(--radius-pill)] px-2 py-0.5 text-[12px] ${badgeToneClasses.high}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.high}`}>
       <Bot className="size-3.5" strokeWidth={2} />
       AI verified
     </span>
@@ -208,14 +208,20 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   }, [documents, job?.status]);
 
   if (loading) {
-    return <div className="tv-skeleton mt-6 h-96 rounded-[var(--radius-card)]" />;
+    return (
+      <div className="px-5 pt-6">
+        <div className="tv-skeleton h-96 rounded-2xl" />
+      </div>
+    );
   }
 
   if (error || !job) {
     return (
-      <p className="mt-6 text-[15px] text-[var(--color-danger-text)]">
-        {error ?? "Load not found."}
-      </p>
+      <div className="px-5 pt-6">
+        <div className="tv-error-state">
+          <p className="text-[15px]">{error ?? "Load not found."}</p>
+        </div>
+      </div>
     );
   }
 
@@ -395,7 +401,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 -mx-4 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <header className="sticky top-[4.5rem] z-40 border-b border-white/5 bg-[var(--color-bg)]/95 px-5 pb-3 pt-2 backdrop-blur-2xl">
         <div className="flex items-center gap-2">
           <Link
             href={APP_ROUTES.loads}
@@ -405,7 +411,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           >
             <ChevronLeft className="size-7" strokeWidth={2} />
           </Link>
-          <h1 className="flex-1 truncate text-[20px] font-bold">
+          <h1 className="flex-1 truncate tv-section-header">
             {truncateTitle(job.job_name)}
           </h1>
           <div className="relative">
@@ -418,7 +424,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
               <MoreVertical className="size-6" strokeWidth={2} />
             </button>
             {moreOpen ? (
-              <div className="absolute right-0 z-10 mt-1 min-w-44 rounded-[var(--radius-input)] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] py-1">
+              <div className="absolute right-0 z-10 mt-1 min-w-44 tv-glass-card rounded-xl py-1">
                 {[
                   { label: "Edit Job Name", action: () => setEditField("job_name") },
                   { label: "Save as Template", action: async () => {
@@ -466,37 +472,38 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             ) : null}
           </div>
         </div>
-        <div className={`mt-3 flex items-center justify-center gap-2 rounded-[var(--radius-card)] px-4 py-2 ${statusBanner.bg}`}>
+        <div className={`mt-3 flex items-center justify-center gap-2 rounded-2xl px-4 py-2 ${statusBanner.bg}`}>
           {StatusIcon ? <StatusIcon className="size-5 text-[var(--color-success-text)]" strokeWidth={2} /> : null}
           <span className="text-[15px] font-medium">{statusBanner.text}</span>
         </div>
       </header>
 
+      <div className="px-5">
       {showCompleteBanner ? (
-        <div className="mt-3 animate-pulse rounded-[var(--radius-card)] bg-[var(--color-success-bg)] px-4 py-3 text-center text-[15px] text-[var(--color-success-text)]">
+        <div className="mt-3 animate-pulse rounded-2xl bg-[var(--color-success-bg)] px-4 py-3 text-center text-[15px] text-[var(--color-success-text)]">
           Required documents complete!
         </div>
       ) : null}
 
       {showEarnedBanner ? (
-        <div className="mt-3 flex items-center justify-center gap-2 rounded-[var(--radius-card)] bg-[var(--color-accent)] px-4 py-3 text-[15px] font-medium text-[var(--color-on-accent)]">
+        <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl tv-brushed-gold-btn px-4 py-3 text-[15px] font-bold text-black">
           <DollarSign className="size-5" strokeWidth={2} />
           Load Complete — {formatCurrency(job.load_value ?? 0)} earned
         </div>
       ) : null}
 
       {/* Job Details */}
-      <section className="mt-4 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+      <section className="mt-4 rounded-2xl tv-glass-card border border-white/5 p-5">
         <div className="space-y-4">
           <div>
-            <p className="text-[13px] uppercase text-[var(--color-text-muted)]">Broker Name</p>
+            <p className="tv-label">Broker Name</p>
             <div className="flex items-center gap-2">
               <p className="text-[17px] font-bold">{job.broker_name || "Tap to add"}</p>
               {brokerBadge ? (
                 <button
                   type="button"
                   onClick={() => setBrokerSheetOpen(true)}
-                  className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[12px] ${
+                  className={`rounded-full px-2 py-0.5 text-[12px] ${
                     brokerBadge.tone === "success"
                       ? "bg-[var(--color-success-bg)] text-[var(--color-success-text)]"
                       : brokerBadge.tone === "warning"
@@ -510,13 +517,13 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             </div>
           </div>
           <div>
-            <p className="text-[13px] uppercase text-[var(--color-text-muted)]">Load Value</p>
-            <p className="text-[24px] font-bold text-[var(--color-accent)]">
+            <p className="tv-label">Load Value</p>
+            <p className="tv-tabular text-[24px] font-bold text-[var(--color-accent)]">
               {job.load_value ? formatCurrencyDetailed(job.load_value) : "Tap to add"}
             </p>
           </div>
           <div>
-            <p className="text-[13px] uppercase text-[var(--color-text-muted)]">Route</p>
+            <p className="tv-label">Route</p>
             <p className="text-[17px] font-bold">
               {job.pickup_location || "Pickup"} → {job.delivery_location || "Delivery"}
             </p>
@@ -550,7 +557,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             ].map(([key, label]) => (
               <div key={key} className="flex items-center justify-between">
                 <div>
-                  <p className="text-[13px] uppercase text-[var(--color-text-muted)]">{label}</p>
+                  <p className="tv-label">{label}</p>
                   <p className="text-[17px] font-bold">
                     {(job[key as keyof typeof job] as string | number | null)?.toString() || "Tap to add"}
                   </p>
@@ -566,19 +573,19 @@ export function JobFolderView({ jobId }: { jobId: string }) {
 
       {/* Documents */}
       <section className="mt-6">
-        <h2 className="text-[20px] font-medium">Documents</h2>
+        <h2 className="tv-section-header">Documents</h2>
         <p className={`mt-1 text-[14px] ${complete === total ? "text-[var(--color-success-text)]" : "text-[var(--color-text-secondary)]"}`}>
           {complete} of {total} required docs uploaded
         </p>
         <p className="text-[13px] text-[var(--color-text-muted)]">{optionalCount} optional docs added</p>
-        <div className="mt-2 h-2 overflow-hidden rounded bg-[var(--color-surface-elevated)]">
-          <div className="h-full rounded bg-[var(--color-accent)] transition-all duration-300" style={{ width: `${(complete / total) * 100}%` }} />
+        <div className="tv-progress-track mt-2">
+          <div className="tv-progress-fill" style={{ width: `${(complete / total) * 100}%` }} />
         </div>
         <div className="mt-4 space-y-2">
           {REQUIRED_DOC_TYPES.map((type) => {
             const uploaded = hasDocument(documents, type);
             return (
-              <div key={type} className="flex min-h-16 items-center gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4">
+              <div key={type} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
                 <span className={`size-3 shrink-0 rounded-full ${uploaded ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
                 <div className="flex-1">
                   <p className="font-medium">{DOC_TYPE_LABELS[type]}</p>
@@ -586,20 +593,20 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                   <TrustBadge confidence={fieldConfidence(documents, type)} />
                 </div>
                 {uploaded ? (
-                  <button type="button" className="h-11 rounded-[var(--radius-input)] border border-[var(--color-border)] px-3 text-[14px]" onClick={() => window.open(getDocument(documents, type)?.file_url, "_blank")}>View</button>
+                  <button type="button" className="tv-outline-btn" onClick={() => window.open(getDocument(documents, type)?.file_url, "_blank")}>View</button>
                 ) : (
-                  <button type="button" aria-label="Upload document" className="h-11 rounded-[var(--radius-input)] border border-[var(--color-accent)] px-3 text-[14px] text-[var(--color-accent)]" onClick={() => setUploadType(type)}>Upload</button>
+                  <button type="button" aria-label="Upload document" className="tv-accent-outline-btn" onClick={() => setUploadType(type)}>Upload</button>
                 )}
               </div>
             );
           })}
-          <div className="flex min-h-16 items-center gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4">
+          <div className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
             <span className={`size-3 shrink-0 rounded-full ${hasDocument(documents, "invoice") ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
             <p className="flex-1 font-medium">Invoice</p>
             {hasDocument(documents, "invoice") ? (
-              <button type="button" className="h-11 rounded-[var(--radius-input)] border border-[var(--color-border)] px-3 text-[14px]" onClick={() => window.open(getDocument(documents, "invoice")?.file_url, "_blank")}>Download</button>
+              <button type="button" className="tv-outline-btn" onClick={() => window.open(getDocument(documents, "invoice")?.file_url, "_blank")}>Download</button>
             ) : (
-              <button type="button" className="h-11 rounded-[var(--radius-input)] bg-[var(--color-accent)] px-3 text-[14px] text-[var(--color-on-accent)]" onClick={async () => {
+              <button type="button" className="tv-brushed-gold-btn h-11 rounded-xl px-3 text-[14px] font-bold text-black" onClick={async () => {
                 if (!user) return;
                 setUploading(true);
                 await generateAndSaveLoadInvoice(createClient(), { job, profile, userId: user.id });
@@ -609,12 +616,12 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             )}
           </div>
           {hasLumperExpense ? (
-            <div className="mt-4 border-t border-[var(--color-border)] pt-4 space-y-2">
+            <div className="tv-divider mt-4 pt-4 space-y-2">
               {(["fuel_receipt", "lumper_receipt"] as const).map((type) => (
-                <div key={type} className="flex min-h-16 items-center gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4">
+                <div key={type} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
                   <span className={`size-3 shrink-0 rounded-full ${hasDocument(documents, type) ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
                   <p className="flex-1 font-medium">{DOC_TYPE_LABELS[type]}</p>
-                  <button type="button" className="h-11 rounded-[var(--radius-input)] border border-[var(--color-accent)] px-3 text-[14px] text-[var(--color-accent)]" onClick={() => setUploadType(type)}>Upload</button>
+                  <button type="button" className="tv-accent-outline-btn" onClick={() => setUploadType(type)}>Upload</button>
                 </div>
               ))}
             </div>
@@ -624,14 +631,14 @@ export function JobFolderView({ jobId }: { jobId: string }) {
 
       {/* Detention */}
       <section className="mt-6">
-        <h2 className="text-[20px] font-medium">Detention</h2>
+        <h2 className="tv-section-header">Detention</h2>
         <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
           Brokers owe you after 2 hours of waiting. Document it — it&apos;s your money.
         </p>
         {activeSession ? (
-          <div className="mt-4 rounded-[var(--radius-card)] border border-[var(--color-success)] bg-[var(--color-success-bg)] p-5 text-center">
+          <div className="mt-4 rounded-2xl tv-glass-card border border-[var(--color-success)]/20 bg-[var(--color-success-bg)] p-5 text-center">
             <Clock className="mx-auto size-7 animate-spin text-[var(--color-success)]" style={{ animationDuration: "4s" }} strokeWidth={2} />
-            <p className="mt-3 font-mono text-[40px] font-bold">{formatTimerDisplay(timerSeconds)}</p>
+            <p className="tv-tabular mt-3 text-[40px] font-bold">{formatTimerDisplay(timerSeconds)}</p>
             <p className="text-[14px] text-[var(--color-text-secondary)]">
               At {activeSession.location_type === "pickup" ? "Pickup" : "Delivery"}
             </p>
@@ -644,10 +651,10 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => startDetention("pickup")} className="flex h-14 items-center justify-center gap-2 rounded-[var(--radius-card)] border border-[var(--color-success)] text-[15px] text-[var(--color-success-text)]">
+            <button type="button" onClick={() => startDetention("pickup")} className="tv-glass-card flex h-14 items-center justify-center gap-2 rounded-2xl border border-[var(--color-success)]/20 text-[15px] text-[var(--color-success-text)]">
               <Clock className="size-5" strokeWidth={2} /> At Pickup
             </button>
-            <button type="button" onClick={() => startDetention("delivery")} className="flex h-14 items-center justify-center gap-2 rounded-[var(--radius-card)] border border-[var(--color-success)] text-[15px] text-[var(--color-success-text)]">
+            <button type="button" onClick={() => startDetention("delivery")} className="tv-glass-card flex h-14 items-center justify-center gap-2 rounded-2xl border border-[var(--color-success)]/20 text-[15px] text-[var(--color-success-text)]">
               <MapPin className="size-5" strokeWidth={2} /> At Delivery
             </button>
           </div>
@@ -671,9 +678,9 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       {/* Expenses */}
       <section className="mt-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-[20px] font-medium">Load Expenses</h2>
+          <h2 className="tv-section-header">Load Expenses</h2>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-[var(--color-accent)]">{formatCurrencyDetailed(expenseTotal)}</span>
+            <span className="tv-tabular font-bold text-[var(--color-accent)]">{formatCurrencyDetailed(expenseTotal)}</span>
             <button type="button" aria-label="Add expense" onClick={() => setExpenseSheetOpen(true)} className="text-[var(--color-accent)]">
               <Plus className="size-6" strokeWidth={2} />
             </button>
@@ -684,13 +691,13 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         </p>
         <div className="mt-3 space-y-2">
           {expenses.map((exp) => (
-            <div key={exp.id} className="flex min-h-16 items-center gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4">
+            <div key={exp.id} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
               <Receipt className="size-6 text-[var(--color-accent)]" strokeWidth={2} />
               <div className="flex-1">
                 <p className="font-medium capitalize">{exp.category}</p>
                 <p className="text-[13px] text-[var(--color-text-muted)]">{exp.description || "—"}</p>
               </div>
-              <p className="font-bold text-[var(--color-danger-text)]">{formatCurrencyDetailed(exp.amount)}</p>
+              <p className="tv-tabular font-bold text-[var(--color-danger-text)]">{formatCurrencyDetailed(exp.amount)}</p>
               {exp.receipt_url ? <FileText className="size-5 text-[var(--color-success-text)]" strokeWidth={2} /> : <AlertCircle className="size-5 text-[var(--color-warning-text)]" strokeWidth={2} />}
             </div>
           ))}
@@ -724,10 +731,10 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       <BottomSheet open={Boolean(uploadType)} onClose={() => setUploadType(null)} ariaLabel="Upload document">
         <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" id="doc-upload" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
         <div className="space-y-2">
-          <label htmlFor="doc-upload" className="flex h-16 cursor-pointer items-center gap-3 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-4">
+          <label htmlFor="doc-upload" className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
             <AlertCircle className="size-6 text-[var(--color-accent)]" strokeWidth={2} /> Take a Photo
           </label>
-          <label className="flex h-16 cursor-pointer items-center gap-3 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-4">
+          <label className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
             <FileText className="size-6 text-[var(--color-accent)]" strokeWidth={2} /> Choose from Gallery
             <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
           </label>
@@ -767,36 +774,40 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       </BottomSheet>
 
       {milestone ? (
-        <div className="fixed inset-0 z-[80] flex flex-col items-center justify-center bg-[var(--color-overlay)] px-6 text-center">
-          <Trophy className="size-20 text-[var(--color-accent)]" strokeWidth={2} />
+        <div className="fixed inset-0 z-[80] tv-modal-overlay">
+          <div className="tv-modal-panel">
+          <Trophy className="mx-auto size-20 text-[var(--color-accent)]" strokeWidth={2} />
           <h2 className="mt-4 text-[24px] font-bold">{milestone.title}</h2>
           <p className="mt-2 text-[17px] text-[var(--color-text-secondary)]">{milestone.subtitle}</p>
           <TvButton className="mt-8" onClick={() => setMilestone(null)}>Keep going</TvButton>
+          </div>
         </div>
       ) : null}
 
       {showReferral ? (
-        <div className="fixed inset-0 z-[80] flex flex-col items-center justify-center bg-[var(--color-overlay)] px-6 text-center">
+        <div className="fixed inset-0 z-[80] tv-modal-overlay">
+          <div className="tv-modal-panel">
           <h2 className="text-[20px] font-bold">Know another driver who needs this?</h2>
-          <p className="mt-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-4 py-3 text-[18px] font-bold text-[var(--color-accent)]">
+          <p className="mt-4 rounded-xl tv-glass-card px-4 py-3 tv-tabular text-[18px] font-bold text-[var(--color-accent)]">
             {profile?.referral_code ?? "TVT-XXX-0000"}
           </p>
           <TvButton className="mt-4" onClick={() => { setShowReferral(false); setShowUpgrade(true); }}>Share</TvButton>
           <button type="button" className="mt-4 text-[14px] text-[var(--color-text-muted)]" onClick={() => { setShowReferral(false); setShowUpgrade(true); }}>Maybe later</button>
+          </div>
         </div>
       ) : null}
 
       {showUpgrade ? (
-        <div className="fixed inset-0 z-[80] overflow-y-auto bg-[var(--color-bg)] px-4 py-8">
-          <h2 className="text-[20px] font-medium">Your first load is in the books.</h2>
-          <div className="mt-4 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-            <p>Total earned: {formatCurrency(job.load_value ?? 0)}</p>
-            <p>1 load documented</p>
-            <p>1 invoice generated</p>
-            <p>Estimated time saved: ~35 minutes of paperwork</p>
+        <div className="fixed inset-0 z-[80] overflow-y-auto bg-[var(--color-bg)] px-5 py-8">
+          <h2 className="tv-section-header">Your first load is in the books.</h2>
+          <div className="mt-4 rounded-2xl tv-glass-card border border-white/5 p-5">
+            <p className="tv-tabular text-[var(--color-accent)]">Total earned: {formatCurrency(job.load_value ?? 0)}</p>
+            <p className="mt-2 text-[var(--color-text-secondary)]">1 load documented</p>
+            <p className="text-[var(--color-text-secondary)]">1 invoice generated</p>
+            <p className="text-[var(--color-text-secondary)]">Estimated time saved: ~35 minutes of paperwork</p>
           </div>
-          <h3 className="mt-6 text-[20px] font-medium">Keep building with T-Vault Pro</h3>
-          <p className="mt-2 text-[36px] font-bold text-[var(--color-accent)]">$9.99/month · Cancel anytime</p>
+          <h3 className="tv-section-header mt-6">Keep building with T-Vault Pro</h3>
+          <p className="tv-tabular mt-2 text-[36px] font-bold text-[var(--color-accent)]">$9.99/month · Cancel anytime</p>
           <TvButton className="mt-4">Start Pro — $9.99/month</TvButton>
           <button type="button" className="mt-4 w-full text-center text-[14px] text-[var(--color-text-muted)]" onClick={() => { setShowUpgrade(false); setShowEarnedBanner(true); triggerHaptic("strong"); }}>Maybe later — keep 1 load</button>
         </div>
@@ -841,12 +852,12 @@ export function JobFolderView({ jobId }: { jobId: string }) {
               <button type="button" className="mt-2 w-full text-[14px] text-[var(--color-text-muted)]" onClick={() => setDetentionResult(null)}>Discard</button>
             </>
           )}
-          <div className="mt-6 border-t border-[var(--color-border)] pt-4">
+          <div className="tv-divider mt-6 pt-4">
             <p className="text-[15px] font-medium">Did the broker pay detention?</p>
             <div className="mt-2 grid grid-cols-3 gap-2">
-              <button type="button" className="h-12 rounded-[var(--radius-input)] bg-[var(--color-success-bg)] text-[var(--color-success-text)]" onClick={() => saveDetentionOutcome("yes")}>Yes</button>
-              <button type="button" className="h-12 rounded-[var(--radius-input)] bg-[var(--color-danger-bg)] text-[var(--color-danger-text)]" onClick={() => saveDetentionOutcome("no")}>No</button>
-              <button type="button" className="h-12 rounded-[var(--radius-input)] bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]" onClick={() => saveDetentionOutcome("waiting")}>Waiting</button>
+              <button type="button" className="h-12 rounded-xl border border-[var(--color-success)]/20 bg-[var(--color-success-bg)] text-[var(--color-success-text)]" onClick={() => saveDetentionOutcome("yes")}>Yes</button>
+              <button type="button" className="h-12 rounded-xl border border-[var(--color-danger)]/20 bg-[var(--color-danger-bg)] text-[var(--color-danger-text)]" onClick={() => saveDetentionOutcome("no")}>No</button>
+              <button type="button" className="h-12 rounded-xl border border-[var(--color-warning)]/20 bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]" onClick={() => saveDetentionOutcome("waiting")}>Waiting</button>
             </div>
           </div>
         </BottomSheet>
@@ -855,7 +866,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       <BottomSheet open={expenseSheetOpen} onClose={() => setExpenseSheetOpen(false)} title="Add Expense" ariaLabel="Add expense">
         <div className="grid grid-cols-2 gap-2">
           {JOB_EXPENSE_CATEGORIES.map((cat) => (
-            <button key={cat.id} type="button" onClick={() => setExpenseForm((f) => ({ ...f, category: cat.id }))} className={`flex h-20 flex-col items-center justify-center gap-1 rounded-[var(--radius-card)] border ${expenseForm.category === cat.id ? "border-[var(--color-accent)] text-[var(--color-accent)]" : "border-[var(--color-border)]"}`}>
+            <button key={cat.id} type="button" onClick={() => setExpenseForm((f) => ({ ...f, category: cat.id }))} className={`tv-chip h-20 ${expenseForm.category === cat.id ? "tv-chip-active" : "tv-chip-inactive"}`}>
               <cat.icon className="size-6" strokeWidth={2} />
               <span className="text-[13px]">{cat.label}</span>
             </button>
@@ -887,6 +898,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           setEditField(null);
         }}>Save</TvButton>
       </BottomSheet>
+      </div>
     </>
   );
 }

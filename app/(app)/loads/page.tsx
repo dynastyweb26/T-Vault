@@ -72,9 +72,9 @@ export default function LoadsPage() {
       <AppHeader title="My Loads" subtitle="Track every load and document" />
 
       {loading ? (
-        <div className="tv-skeleton mt-6 h-40 rounded-[var(--radius-card)]" />
+        <div className="tv-skeleton mx-5 mt-6 h-40 rounded-2xl" />
       ) : jobs.length === 0 ? (
-        <section className="mt-10 flex flex-col items-center rounded-[var(--radius-card)] bg-[var(--color-surface)] px-6 py-10 text-center">
+        <section className="tv-empty-state mx-5 mt-10">
           <FolderOpen
             className="size-12 text-[var(--color-accent)]"
             strokeWidth={2}
@@ -90,7 +90,7 @@ export default function LoadsPage() {
           </TvButton>
         </section>
       ) : (
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="mx-5 mt-4 flex flex-col gap-3">
           {jobs.map((job) => (
             <JobCard key={job.id} job={job} onAction={loadJobs} />
           ))}
@@ -101,7 +101,7 @@ export default function LoadsPage() {
                 type="button"
                 disabled={page === 0}
                 onClick={() => setPage((value) => Math.max(0, value - 1))}
-                className="text-[14px] text-[var(--color-accent)] disabled:text-[var(--color-text-muted)]"
+                className="tv-link text-[14px] disabled:text-[var(--color-text-muted)]"
               >
                 Previous
               </button>
@@ -114,7 +114,7 @@ export default function LoadsPage() {
                 onClick={() =>
                   setPage((value) => Math.min(totalPages - 1, value + 1))
                 }
-                className="text-[14px] text-[var(--color-accent)] disabled:text-[var(--color-text-muted)]"
+                className="tv-link text-[14px] disabled:text-[var(--color-text-muted)]"
               >
                 Next
               </button>

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
+import { RouteGuardLoading } from "@/components/shell/route-guard-loading";
 import { APP_ROUTES } from "@/lib/constants";
 import { hasCompletedOnboarding } from "@/lib/auth-helpers";
 
@@ -33,11 +34,7 @@ export function RouteGuard({ children, mode = "auth" }: RouteGuardProps) {
   }, [loading, mode, profile, router, user]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)]">
-        <div className="tv-skeleton h-12 w-48 rounded-[var(--radius-card)]" />
-      </div>
-    );
+    return <RouteGuardLoading />;
   }
 
   if (!user) return null;

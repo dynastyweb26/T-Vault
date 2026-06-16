@@ -1,0 +1,35 @@
+"use client";
+
+import { Wallet } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
+import Link from "next/link";
+import { APP_ROUTES } from "@/lib/constants";
+
+export function VaultHeader() {
+  const { profile } = useAuth();
+
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/5 bg-[var(--color-bg)]/95 px-5 py-4 backdrop-blur-2xl">
+      <div className="mx-auto flex w-full max-w-lg items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="tv-brushed-gold-btn flex size-8 items-center justify-center rounded-lg">
+            <Wallet className="size-4 text-black" strokeWidth={2.5} aria-hidden />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--color-accent)]">
+            T-Vault
+          </h1>
+        </div>
+
+        <Link
+          href={APP_ROUTES.profile}
+          aria-label="Profile"
+          className="flex size-8 items-center justify-center overflow-hidden rounded-full border border-[var(--color-accent)]/20 p-0.5"
+        >
+          <div className="flex size-full items-center justify-center rounded-full bg-[var(--color-surface-elevated)] text-[11px] font-bold uppercase text-[var(--color-accent)]">
+            {(profile?.full_name || profile?.email || "T")[0]}
+          </div>
+        </Link>
+      </div>
+    </header>
+  );
+}

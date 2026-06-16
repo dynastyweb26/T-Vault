@@ -16,10 +16,10 @@ interface JobCardProps {
 }
 
 const toneClasses = {
-  success: "bg-[var(--color-success-bg)] text-[var(--color-success-text)]",
-  warning: "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]",
-  danger: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)]",
-  disabled: "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]",
+  success: "bg-[var(--color-success-bg)] text-[var(--color-success-text)] border border-[var(--color-success)]/10",
+  warning: "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)] border border-[var(--color-warning)]/10",
+  danger: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)] border border-[var(--color-danger)]/10",
+  disabled: "bg-white/5 text-[var(--color-text-muted)] border border-white/5",
 };
 
 export function JobCard({ job, onAction }: JobCardProps) {
@@ -62,7 +62,7 @@ export function JobCard({ job, onAction }: JobCardProps) {
   }, [menuOpen]);
 
   return (
-    <div className="relative overflow-hidden rounded-[var(--radius-card)]">
+    <div className="relative overflow-hidden rounded-2xl">
       <div className="absolute inset-y-0 right-0 flex items-stretch">
         <button
           type="button"
@@ -83,7 +83,7 @@ export function JobCard({ job, onAction }: JobCardProps) {
       </div>
 
       <div
-        className="relative bg-[var(--color-surface)] transition-transform duration-200"
+        className="tv-glass-card relative transition-transform duration-200"
         style={{
           transform: `translateX(${offsetX}px)`,
           borderLeft: `3px solid ${getBorderColor(job.borderStatus)}`,
@@ -111,7 +111,7 @@ export function JobCard({ job, onAction }: JobCardProps) {
             <h3 className="text-[18px] font-bold text-[var(--color-text-primary)]">
               {job.job_name}
             </h3>
-            <p className="shrink-0 text-[18px] font-bold text-[var(--color-accent)]">
+            <p className="tv-tabular shrink-0 text-[18px] font-bold text-[var(--color-accent)]">
               {formatCurrency(job.load_value ?? 0)}
             </p>
           </div>
@@ -126,9 +126,9 @@ export function JobCard({ job, onAction }: JobCardProps) {
           </p>
 
           <div className="mt-3 flex items-center gap-3">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-elevated)]">
+            <div className="tv-progress-track h-2 flex-1">
               <div
-                className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-300"
+                className="tv-progress-fill"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -138,7 +138,7 @@ export function JobCard({ job, onAction }: JobCardProps) {
           </div>
 
           <span
-            className={`mt-3 inline-flex rounded-[var(--radius-pill)] px-3 py-1 text-[13px] font-medium ${toneClasses[job.statusTone]}`}
+            className={`mt-3 inline-flex rounded-full px-3 py-1 text-[13px] font-medium ${toneClasses[job.statusTone]}`}
           >
             {job.statusLabel}
           </span>
@@ -159,7 +159,7 @@ export function JobCard({ job, onAction }: JobCardProps) {
           </button>
 
           {menuOpen ? (
-            <div className="absolute right-0 z-10 mt-1 min-w-36 rounded-[var(--radius-input)] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] py-1 shadow-none">
+            <div className="tv-glass-card absolute right-0 z-10 mt-1 min-w-36 rounded-xl py-1">
               <button
                 type="button"
                 onClick={archiveJob}

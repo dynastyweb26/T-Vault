@@ -13,7 +13,7 @@ export function AwaitingPayment({ items }: AwaitingPaymentProps) {
 
   return (
     <section>
-      <h2 className="mb-3 flex items-center gap-2 text-[20px] font-medium text-[var(--color-warning)]">
+      <h2 className="tv-section-header mb-3 flex items-center gap-2 text-[var(--color-warning-text)]">
         <Clock className="size-5" strokeWidth={2} aria-hidden />
         Awaiting Payment
       </h2>
@@ -22,13 +22,13 @@ export function AwaitingPayment({ items }: AwaitingPaymentProps) {
           <Link
             key={item.id}
             href={`${APP_ROUTES.loads}/${item.jobId}?section=payment`}
-            className="rounded-[var(--radius-card)] bg-[var(--color-surface)] px-4 py-3"
+            className="tv-glass-card rounded-2xl px-4 py-3"
           >
             <div className="flex items-start justify-between gap-3">
               <p className="text-[16px] font-medium text-[var(--color-text-primary)]">
                 {item.jobName}
               </p>
-              <p className="text-[16px] font-bold text-[var(--color-accent)]">
+              <p className="tv-tabular text-[16px] font-bold text-[var(--color-accent)]">
                 {formatCurrency(item.amount)}
               </p>
             </div>

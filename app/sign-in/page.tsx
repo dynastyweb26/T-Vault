@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
+import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import { getPostAuthRedirect } from "@/lib/auth-helpers";
@@ -73,7 +74,8 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-8">
+    <div className="tv-auth-page justify-center">
+      <AuthBrandHeader />
       <div className="mb-8">
         <p className="tv-caption">Welcome back</p>
         <h1 className="tv-page-title mt-1">Sign in</h1>
@@ -115,7 +117,7 @@ export default function SignInPage() {
         <div className="flex flex-col items-center gap-3 pt-2 text-center">
           <Link
             href={APP_ROUTES.forgotPassword}
-            className="text-[16px] text-[var(--color-accent)]"
+            className="tv-link text-[16px]"
           >
             Forgot password?
           </Link>
@@ -123,7 +125,7 @@ export default function SignInPage() {
             New here?{" "}
             <Link
               href={APP_ROUTES.signUp}
-              className="font-medium text-[var(--color-accent)]"
+              className="tv-link font-medium"
             >
               Create account
             </Link>

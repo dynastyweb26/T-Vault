@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
+import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
@@ -90,7 +91,8 @@ export default function ProfileSetupPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 py-8">
+    <div className="tv-auth-page">
+      <AuthBrandHeader />
       <div className="mb-8">
         <p className="tv-caption">One-time setup</p>
         <h1 className="tv-page-title mt-1">Profile setup</h1>

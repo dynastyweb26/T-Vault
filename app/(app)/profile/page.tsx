@@ -1,11 +1,17 @@
 "use client";
 
+import { Bebas_Neue } from "next/font/google";
 import { User } from "lucide-react";
 import { AppHeader } from "@/components/shell/app-header";
 import { TvButton } from "@/components/tv/tv-button";
 import { DataProtectionBanner } from "@/components/shell/session-banner";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTheme } from "@/components/providers/theme-provider";
+
+const bebasNeue = Bebas_Neue({
+  subsets: ["latin"],
+  weight: "400",
+});
 
 export default function ProfilePage() {
   const { profile, signOut } = useAuth();
@@ -14,12 +20,12 @@ export default function ProfilePage() {
   return (
     <>
       <AppHeader title="Profile" subtitle="Your account and preferences" />
-      <div className="mt-6 flex flex-col gap-4">
+      <div className="mt-6 flex flex-col gap-4 px-5">
         <DataProtectionBanner />
 
-        <section className="rounded-[var(--radius-card)] bg-[var(--color-surface)] p-5">
+        <section className="tv-glass-card rounded-2xl p-5">
           <div className="flex items-center gap-4">
-            <div className="flex size-14 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
+            <div className="flex size-14 items-center justify-center rounded-full border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/10">
               <User
                 className="size-7 text-[var(--color-accent)]"
                 strokeWidth={2}
@@ -47,16 +53,19 @@ export default function ProfilePage() {
               <span className="text-[var(--color-text-secondary)]">DOT: </span>
               {profile?.dot_number || "Not set"}
             </p>
-            <p>
-              <span className="text-[var(--color-text-secondary)]">Referral code: </span>
-              <span className="text-[20px] font-bold text-[var(--color-accent)]">
-                {profile?.referral_code || "Generating..."}
-              </span>
+          </div>
+
+          <div className="tv-brushed-gold-btn tv-gold-glow mt-5 rounded-2xl px-5 py-6 text-center">
+            <p className="tv-caption mb-4 text-[#D4A017]">Referral Code</p>
+            <p
+              className={`${bebasNeue.className} rounded-xl bg-black/10 px-4 py-3 text-[40px] leading-none tracking-wider text-black`}
+            >
+              {profile?.referral_code || "Generating..."}
             </p>
           </div>
         </section>
 
-        <section className="rounded-[var(--radius-card)] bg-[var(--color-surface)] p-5">
+        <section className="tv-glass-card rounded-2xl p-5">
           <p className="tv-label mb-3">Theme</p>
           <div className="grid grid-cols-3 gap-2">
             {(["dark", "light", "system"] as const).map((option) => (
@@ -64,10 +73,10 @@ export default function ProfilePage() {
                 key={option}
                 type="button"
                 onClick={() => setPreference(option)}
-                className={`h-12 rounded-[var(--radius-input)] border text-[15px] capitalize transition-colors ${
+                className={`h-12 rounded-xl border text-[15px] capitalize transition-colors ${
                   preference === option
-                    ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                    : "border-[var(--color-border)] text-[var(--color-text-secondary)]"
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5 text-[var(--color-accent)]"
+                    : "border-white/5 bg-[#050505] text-[var(--color-text-secondary)]"
                 }`}
               >
                 {option}

@@ -16,33 +16,32 @@ export function ActiveLoadsList({ jobs, onRefresh }: ActiveLoadsListProps) {
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-[20px] font-medium text-[var(--color-text-primary)]">
-          Active Loads
-        </h2>
+        <h2 className="tv-section-header">Active Loads</h2>
         <Link
           href={APP_ROUTES.loads}
-          className="text-[14px] text-[var(--color-accent)]"
+          className="tv-link text-[14px]"
         >
           See All
         </Link>
       </div>
 
       {jobs.length === 0 ? (
-        <div className="flex flex-col items-center rounded-[var(--radius-card)] bg-[var(--color-surface)] px-6 py-10 text-center">
-          <Truck
-            className="size-12 text-[var(--color-accent)]"
-            strokeWidth={2}
-            aria-hidden
-          />
-          <h3 className="mt-4 text-[18px] font-bold text-[var(--color-text-primary)]">
-            Ready for your next load?
+        <div className="tv-empty-state">
+          <div className="flex size-20 items-center justify-center rounded-full border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/10">
+            <Truck
+              className="size-10 text-[var(--color-accent)]"
+              strokeWidth={2}
+              aria-hidden
+            />
+          </div>
+          <h3 className="mt-4 text-xl font-bold text-[var(--color-text-primary)]">
+            No loads detected.
           </h3>
-          <p className="mt-2 max-w-xs text-[15px] text-[var(--color-text-secondary)]">
-            When you add a load, it shows up here with docs, pay status, and
-            progress.
+          <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--color-text-secondary)]/60">
+            Start tracking your journey. Every mile logged is progress verified.
           </p>
           <Link href={APP_ROUTES.newJob} className="mt-6 w-full">
-            <TvButton>Add a load</TvButton>
+            <TvButton>Start New Load</TvButton>
           </Link>
         </div>
       ) : (

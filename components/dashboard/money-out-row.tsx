@@ -1,3 +1,4 @@
+import { Receipt } from "lucide-react";
 import { formatCurrency } from "@/lib/dashboard/format";
 import type { DashboardData } from "@/types/jobs";
 
@@ -9,20 +10,46 @@ export function MoneyOutRow({ data }: MoneyOutRowProps) {
   const netPositive = data.netSoFar >= 0;
 
   return (
-    <section className="rounded-[var(--radius-card)] bg-[var(--color-surface)] px-5 py-4">
-      <p className="text-[15px] text-[var(--color-danger)]">
-        Expenses this month: {formatCurrency(data.expensesThisMonth)}
-      </p>
-      <p
-        className="mt-1 text-[15px] font-medium"
-        style={{
-          color: netPositive
-            ? "var(--color-success)"
-            : "var(--color-danger)",
-        }}
-      >
-        Net so far: {formatCurrency(data.netSoFar)}
-      </p>
+    <section id="ledger-insight" className="tv-feed-card px-5">
+      <div className="tv-glass-card overflow-hidden rounded-2xl">
+        <div className="flex items-center gap-3 border-b border-white/5 p-4">
+          <div className="flex size-8 items-center justify-center rounded-full bg-[var(--color-accent)]/10">
+            <Receipt className="size-4 text-[var(--color-accent)]" strokeWidth={2} aria-hidden />
+          </div>
+          <span className="text-sm font-bold">Ledger Insight</span>
+          <span className="ml-auto text-xs opacity-40">Vault Data</span>
+        </div>
+
+        <div className="flex flex-col gap-4 p-6">
+          <h3 className="text-center text-xl font-semibold italic text-[var(--color-text-primary)]">
+            {netPositive
+              ? "Your profit margin is looking steady."
+              : "Expenses are outpacing revenue this month."}
+          </h3>
+
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="flex items-center justify-between rounded-lg border border-[var(--color-danger)]/10 bg-[var(--color-danger-bg)] p-3">
+              <span className="text-sm opacity-80">Gross Expenses</span>
+              <span className="tv-tabular font-bold text-[var(--color-danger-text)]">
+                {formatCurrency(data.expensesThisMonth)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-[var(--color-success)]/10 bg-[var(--color-success-bg)] p-3">
+              <span className="text-sm opacity-80">Net Profit</span>
+              <span
+                className="tv-tabular font-bold"
+                style={{
+                  color: netPositive
+                    ? "var(--color-success-text)"
+                    : "var(--color-danger-text)",
+                }}
+              >
+                {formatCurrency(data.netSoFar)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

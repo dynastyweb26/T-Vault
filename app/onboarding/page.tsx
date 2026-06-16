@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DollarSign, Shield, Smartphone } from "lucide-react";
 import { TvButton } from "@/components/tv/tv-button";
+import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
@@ -82,9 +83,10 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 py-8">
+    <div className="tv-auth-page">
+      <AuthBrandHeader />
       <div className="flex flex-1 flex-col justify-center">
-        <div className="mb-8 flex size-20 items-center justify-center rounded-[var(--radius-card)] bg-[var(--color-surface)]">
+        <div className="mb-8 flex size-20 items-center justify-center rounded-2xl tv-glass-card">
           <Icon
             className="size-10 text-[var(--color-accent)]"
             strokeWidth={2}

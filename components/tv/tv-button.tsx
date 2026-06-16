@@ -11,14 +11,13 @@ interface TvButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<TvButtonVariant, string> = {
-  primary:
-    "bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-press)]",
+  primary: "tv-brushed-gold-btn text-black font-bold hover:opacity-95",
   secondary:
-    "bg-transparent border-[1.5px] border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-surface)]",
+    "bg-transparent border border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5",
   destructive:
-    "bg-[var(--color-danger)] text-[var(--color-text-primary)] hover:opacity-90",
+    "bg-[var(--color-danger-bg)] border border-[var(--color-danger)]/20 text-[var(--color-danger-text)] hover:opacity-90",
   ghost:
-    "bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]",
+    "bg-transparent text-[var(--color-text-secondary)] hover:bg-white/5",
 };
 
 export function TvButton({
@@ -34,7 +33,7 @@ export function TvButton({
       type="button"
       disabled={disabled || loading}
       className={cn(
-        "tv-pressable inline-flex h-14 w-full items-center justify-center gap-2 rounded-[var(--radius-card)] px-4 text-[17px] font-medium transition-[transform,opacity] duration-150 active:scale-[0.97] active:opacity-90 disabled:cursor-not-allowed disabled:bg-[var(--color-disabled)] disabled:text-[var(--color-text-muted)] disabled:opacity-100",
+        "tv-pressable inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl px-4 text-[15px] transition-[transform,opacity] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50",
         variantClasses[variant],
         className
       )}
@@ -42,7 +41,7 @@ export function TvButton({
     >
       {loading ? (
         <>
-          <Loader2 className="size-6 animate-spin" strokeWidth={2} aria-hidden />
+          <Loader2 className="size-5 animate-spin" strokeWidth={2} aria-hidden />
           <span>Working...</span>
         </>
       ) : (

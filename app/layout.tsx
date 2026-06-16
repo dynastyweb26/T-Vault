@@ -1,14 +1,20 @@
 export const dynamic = "force-dynamic";
 
-import { Inter } from "next/font/google";
+import { Syne, DM_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import "./globals.css";
 
-const inter = Inter({
+const syne = Syne({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-syne",
+});
+
+const dmMono = DM_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-dm-mono",
 });
 
 export const metadata = {
@@ -28,7 +34,7 @@ export const viewport = {
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#1c1c1e" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
   ],
 };
 
@@ -38,7 +44,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable} h-full`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`dark ${syne.variable} ${dmMono.variable} h-full`}
+      suppressHydrationWarning
+    >
       <body className="min-h-full font-sans">
         <AuthProvider>
           <ThemeProvider>{children}</ThemeProvider>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
+import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import { FIELD_LIMITS } from "@/lib/validation";
@@ -127,7 +128,8 @@ export default function SignUpPage() {
 
   if (confirmationSent) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-8">
+      <div className="tv-auth-page justify-center">
+        <AuthBrandHeader />
         <h1 className="tv-page-title">Check your email</h1>
         <p className="mt-3 text-[17px] text-[var(--color-text-secondary)]">
           We sent a confirmation link to {email}. Open it on this phone to
@@ -135,7 +137,7 @@ export default function SignUpPage() {
         </p>
         <Link
           href={APP_ROUTES.signIn}
-          className="mt-8 text-[16px] font-medium text-[var(--color-accent)]"
+          className="tv-link mt-8 text-[16px] font-medium"
         >
           Back to sign in
         </Link>
@@ -144,7 +146,8 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-8">
+    <div className="tv-auth-page justify-center">
+      <AuthBrandHeader />
       <div className="mb-8">
         <p className="tv-caption">Start protecting your money</p>
         <h1 className="tv-page-title mt-1">Create account</h1>
@@ -215,7 +218,7 @@ export default function SignUpPage() {
           Already have an account?{" "}
           <Link
             href={APP_ROUTES.signIn}
-            className="font-medium text-[var(--color-accent)]"
+            className="tv-link font-medium"
           >
             Sign in
           </Link>

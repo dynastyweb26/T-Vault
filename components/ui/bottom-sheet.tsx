@@ -11,6 +11,7 @@ interface BottomSheetProps {
   ariaLabel: string;
   children: React.ReactNode;
   className?: string;
+  surface?: "glass" | "solid";
 }
 
 export function BottomSheet({
@@ -20,6 +21,7 @@ export function BottomSheet({
   ariaLabel,
   children,
   className,
+  surface = "glass",
 }: BottomSheetProps) {
   useEffect(() => {
     if (!open) return;
@@ -32,16 +34,19 @@ export function BottomSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end bg-[var(--color-overlay)]">
+    <div className="fixed inset-0 z-[70] flex items-end bg-[var(--color-overlay)] backdrop-blur-sm">
       <div
         role="dialog"
         aria-label={ariaLabel}
         className={cn(
-          "w-full max-h-[92dvh] overflow-y-auto rounded-t-[var(--radius-sheet)] bg-[var(--color-surface-elevated)] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3",
+          "w-full max-h-[92dvh] overflow-y-auto rounded-t-[var(--radius-sheet)] border-b-0 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3",
+          surface === "solid"
+            ? "border-t border-white/5 bg-[#221F19]"
+            : "tv-glass-card",
           className
         )}
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--color-border)]" />
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/10" />
         <div className="mb-4 flex items-center justify-between gap-3">
           {title ? (
             <h2 className="text-[20px] font-bold text-[var(--color-text-primary)]">

@@ -74,16 +74,14 @@ export function QuickExpenseSheet({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end bg-[var(--color-overlay)]">
+    <div className="fixed inset-0 z-[60] flex items-end bg-[var(--color-overlay)] backdrop-blur-sm">
       <div
         role="dialog"
         aria-label="Quick add expense"
-        className="w-full rounded-t-[var(--radius-sheet)] bg-[var(--color-bg)] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4"
+        className="tv-glass-card w-full rounded-t-[var(--radius-sheet)] border-b-0 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[20px] font-medium text-[var(--color-text-primary)]">
-            Quick add expense
-          </h2>
+          <h2 className="tv-section-header">Quick add expense</h2>
           <button
             type="button"
             aria-label="Close expense sheet"
@@ -103,10 +101,10 @@ export function QuickExpenseSheet({
                   key={option}
                   type="button"
                   onClick={() => setCategory(option)}
-                  className={`h-12 rounded-[var(--radius-input)] border text-[15px] ${
+                  className={`h-12 rounded-xl border text-[15px] ${
                     category === option
-                      ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                      : "border-[var(--color-border)] text-[var(--color-text-secondary)]"
+                      ? "tv-chip-active border-[var(--color-accent)]/35 bg-[var(--color-accent)]/5"
+                      : "tv-chip-inactive border-white/5 bg-[#050505]"
                   }`}
                 >
                   {option}
@@ -145,14 +143,14 @@ export function QuickExpenseRow({ onOpen }: QuickExpenseRowProps) {
     <button
       type="button"
       onClick={onOpen}
-      className="tv-pressable flex w-full items-center gap-2 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-4 py-3 text-left transition-opacity duration-150 active:opacity-90"
+      className="tv-glass-card tv-pressable flex w-full items-center gap-2 rounded-2xl px-4 py-3 text-left transition-opacity duration-150 active:opacity-90"
     >
       <Plus
         className="size-5 text-[var(--color-accent)]"
         strokeWidth={2}
         aria-hidden
       />
-      <span className="text-[14px] text-[var(--color-accent)]">
+      <span className="tv-link text-[14px]">
         Quick add expense
       </span>
     </button>

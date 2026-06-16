@@ -11,7 +11,7 @@ export function NeedsAttention({ items }: NeedsAttentionProps) {
 
   return (
     <section>
-      <h2 className="mb-3 flex items-center gap-2 text-[20px] font-medium text-[var(--color-danger)]">
+      <h2 className="tv-section-header mb-3 flex items-center gap-2 text-[var(--color-danger-text)]">
         <AlertCircle className="size-5" strokeWidth={2} aria-hidden />
         Needs Attention
       </h2>
@@ -20,7 +20,7 @@ export function NeedsAttention({ items }: NeedsAttentionProps) {
           <Link
             key={item.id}
             href={item.href}
-            className="rounded-[var(--radius-card)] border border-[var(--color-danger)] bg-[var(--color-danger-bg)] px-4 py-3"
+            className="tv-glass-card rounded-2xl border border-[var(--color-danger)]/20 px-4 py-3"
           >
             <p className="text-[16px] font-medium text-[var(--color-text-primary)]">
               {item.jobName}

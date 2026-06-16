@@ -10,22 +10,22 @@ export function StatCards({ data }: StatCardsProps) {
 
   return (
     <section className="grid grid-cols-3 gap-3">
-      <article className="rounded-[var(--radius-card)] bg-[var(--color-surface)] p-4">
-        <p className="text-[13px] text-[var(--color-text-muted)]">Active Loads</p>
-        <p className="mt-2 text-[28px] font-bold leading-none text-[var(--color-text-primary)]">
+      <article className="tv-glass-card rounded-2xl p-4">
+        <p className="tv-caption opacity-80">Active Loads</p>
+        <p className="tv-tabular mt-2 text-[28px] font-bold leading-none text-[var(--color-text-primary)]">
           {data.activeLoadsCount}
         </p>
       </article>
 
-      <article className="rounded-[var(--radius-card)] bg-[var(--color-surface)] p-4">
-        <p className="text-[13px] text-[var(--color-text-muted)]">Total Miles</p>
-        <p className="mt-2 text-[28px] font-bold leading-none text-[var(--color-text-primary)]">
+      <article className="tv-glass-card rounded-2xl p-4">
+        <p className="tv-caption opacity-80">Total Miles</p>
+        <p className="tv-tabular mt-2 text-[28px] font-bold leading-none text-[var(--color-text-primary)]">
           {data.totalMilesThisMonth.toLocaleString()}
         </p>
       </article>
 
-      <article className="rounded-[var(--radius-card)] bg-[var(--color-surface)] p-4">
-        <p className="flex items-center gap-1 text-[13px] text-[var(--color-text-muted)]">
+      <article className="tv-glass-card rounded-2xl p-4">
+        <p className="tv-caption flex items-center gap-1 opacity-80">
           Streak
           {streakHot ? (
             <Flame
@@ -36,7 +36,7 @@ export function StatCards({ data }: StatCardsProps) {
           ) : null}
         </p>
         <p
-          className="mt-2 text-[28px] font-bold leading-none"
+          className="tv-tabular mt-2 text-[28px] font-bold leading-none"
           style={{
             color: streakHot
               ? "var(--color-accent)"

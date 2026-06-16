@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Truck } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import { getPostAuthRedirect } from "@/lib/auth-helpers";
@@ -69,18 +69,21 @@ export default function SplashPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-6 text-center">
-      <div className="mb-8 flex size-24 items-center justify-center rounded-[var(--radius-card)] bg-[var(--color-surface)]">
-        <Truck
-          className="size-12 text-[var(--color-accent)]"
+      <div className="tv-brushed-gold-btn tv-gold-glow mb-8 flex size-24 items-center justify-center rounded-2xl">
+        <Wallet
+          className="size-12 text-black"
           strokeWidth={2}
           aria-hidden
         />
       </div>
-      <h1 className="tv-page-title">T-Vault</h1>
+      <h1 className="text-3xl font-bold tracking-tight text-[var(--color-accent)]">
+        T-Vault
+      </h1>
       <p className="mt-3 max-w-sm text-[17px] text-[var(--color-text-secondary)]">
         Your business command center for the road.
       </p>
       <p className="tv-caption mt-8">{status}</p>
+      <div className="tv-skeleton mt-6 h-2 w-24 rounded-full" />
     </div>
   );
 }

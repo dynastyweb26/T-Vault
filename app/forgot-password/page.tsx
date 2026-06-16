@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
+import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import { validateEmail } from "@/lib/validation";
@@ -40,7 +41,8 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-8">
+      <div className="tv-auth-page justify-center">
+        <AuthBrandHeader />
         <h1 className="tv-page-title">Reset link sent</h1>
         <p className="mt-3 text-[17px] text-[var(--color-text-secondary)]">
           Check {email} for a password reset link. Open it on this phone to get
@@ -48,7 +50,7 @@ export default function ForgotPasswordPage() {
         </p>
         <Link
           href={APP_ROUTES.signIn}
-          className="mt-8 text-[16px] font-medium text-[var(--color-accent)]"
+          className="tv-link mt-8 text-[16px] font-medium"
         >
           Back to sign in
         </Link>
@@ -57,7 +59,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-8">
+    <div className="tv-auth-page justify-center">
+      <AuthBrandHeader />
       <div className="mb-8">
         <p className="tv-caption">Account recovery</p>
         <h1 className="tv-page-title mt-1">Forgot password</h1>
@@ -86,7 +89,7 @@ export default function ForgotPasswordPage() {
 
         <Link
           href={APP_ROUTES.signIn}
-          className="text-center text-[16px] text-[var(--color-accent)]"
+          className="tv-link text-center text-[16px]"
         >
           Back to sign in
         </Link>
