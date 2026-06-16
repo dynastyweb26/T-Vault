@@ -47,18 +47,16 @@ export function DocumentPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex flex-col bg-[#0a0a0a]"
+      className="fixed inset-0 z-[90] flex flex-col bg-[var(--color-bg)]"
       role="dialog"
       aria-modal="true"
       aria-label={`Preview ${title}`}
     >
-      <header className="flex shrink-0 items-center justify-between border-b border-white/5 px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
+      <header className="flex shrink-0 items-center justify-between border-b border-[var(--color-shell-border)] px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="min-w-0 flex-1 pr-4">
-          <p className="truncate text-[17px] font-semibold text-[#E9E1D7]">
-            {title}
-          </p>
+          <p className="tv-body truncate font-semibold">{title}</p>
           {document.file_name ? (
-            <p className="truncate text-[13px] text-[#99907E]">
+            <p className="tv-caption mt-0.5 truncate normal-case tracking-normal">
               {document.file_name}
             </p>
           ) : null}
@@ -68,7 +66,7 @@ export function DocumentPreviewModal({
             type="button"
             onClick={handleDownload}
             aria-label="Download document"
-            className="flex size-11 items-center justify-center rounded-xl border border-[#D4A017]/40 text-[#D4A017]"
+            className="tv-accent-outline-btn tv-icon-btn rounded-xl"
           >
             <Download className="size-5" strokeWidth={2} />
           </button>
@@ -76,7 +74,7 @@ export function DocumentPreviewModal({
             type="button"
             onClick={onClose}
             aria-label="Close preview"
-            className="flex size-11 items-center justify-center rounded-xl border border-white/10 text-[#E9E1D7]"
+            className="tv-outline-btn tv-icon-btn rounded-xl"
           >
             <X className="size-6" strokeWidth={2} />
           </button>
@@ -88,7 +86,7 @@ export function DocumentPreviewModal({
           <iframe
             src={document.file_url}
             title={title}
-            className="h-full w-full flex-1 rounded-2xl border border-white/5 bg-[#050505]"
+            className="h-full w-full flex-1 rounded-2xl border border-[var(--color-shell-border)] bg-[var(--color-input-bg)]"
           />
         ) : (
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">

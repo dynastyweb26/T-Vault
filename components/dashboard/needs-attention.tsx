@@ -22,10 +22,8 @@ export function NeedsAttention({ items }: NeedsAttentionProps) {
             href={item.href}
             className="tv-glass-card rounded-2xl border border-[var(--color-danger)]/20 px-4 py-3"
           >
-            <p className="text-[16px] font-medium text-[var(--color-text-primary)]">
-              {item.jobName}
-            </p>
-            <p className="mt-1 text-[14px] text-[var(--color-danger-text)]">
+            <p className="tv-body font-medium">{item.jobName}</p>
+            <p className="tv-body mt-1 text-[14px] text-[var(--color-danger-text)]">
               {item.message}
             </p>
           </Link>

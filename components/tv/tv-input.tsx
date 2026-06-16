@@ -32,7 +32,7 @@ export function TvInput({
           htmlFor={inputId}
           className={
             labelVariant === "readable"
-              ? "font-sans text-[15px] font-semibold leading-snug text-[#E9E1D7]"
+              ? "tv-body font-semibold text-[var(--color-text-primary)]"
               : "tv-label"
           }
         >
@@ -42,12 +42,8 @@ export function TvInput({
       <input
         id={inputId}
         className={cn(
-          "h-14 w-full rounded-xl border bg-[#050505] px-4 text-[17px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] outline-none transition-colors",
-          borderVariant === "gold"
-            ? "border-[#D4A017] text-[#E9E1D7] placeholder:text-[#99907E] focus:border-[var(--gold-light)]"
-            : error
-              ? "border-[var(--color-danger)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
-              : "border-white/5 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]",
+          "tv-input-field",
+          borderVariant === "gold" && "tv-input-field-gold",
           error && "border-[var(--color-danger)]"
         )}
         aria-invalid={Boolean(error)}
@@ -68,7 +64,7 @@ export function TvInput({
           ) : helper ? (
             <p
               id={`${inputId}-helper`}
-              className="text-[14px] text-[var(--color-text-secondary)]"
+              className="tv-body text-[14px] text-[var(--color-text-secondary)]"
             >
               {helper}
             </p>

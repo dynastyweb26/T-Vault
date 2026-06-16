@@ -29,19 +29,10 @@ export default function ExpensesPage() {
           aria-hidden
         />
         <h2 className="tv-card-title mt-4">No expenses yet</h2>
-        <p className="mt-2 max-w-xs text-[16px] text-[var(--color-text-secondary)]">
+        <p className="tv-body mt-2 max-w-xs text-[var(--color-text-secondary)]">
           Add fuel, tolls, maintenance, and other truck costs here.
         </p>
       </section>
-
-      <button
-        type="button"
-        aria-label="Add expense"
-        onClick={openAddExpense}
-        className="tv-brushed-gold-btn tv-pressable fixed bottom-24 right-4 z-40 flex size-16 items-center justify-center rounded-full transition-transform duration-150 active:scale-[0.97]"
-      >
-        <Plus className="size-8 text-white" strokeWidth={2.5} aria-hidden />
-      </button>
 
       <QuickExpenseSheet
         open={sheetOpen}

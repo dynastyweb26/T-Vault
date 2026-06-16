@@ -38,6 +38,8 @@ export const viewport = {
   ],
 };
 
+const themeInitScript = `(function(){try{var t=localStorage.getItem("tvault_theme");var dark=t==="dark"||(t!=="light"&&(!t||t==="system")&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.add(dark?"dark":"light");}catch(e){document.documentElement.classList.add("dark");}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -46,9 +48,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${syne.variable} ${dmMono.variable} h-full`}
+      className={`${syne.variable} ${dmMono.variable} h-full`}
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full font-sans">
         <AuthProvider>
           <ThemeProvider>{children}</ThemeProvider>

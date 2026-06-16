@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { TvButton } from "@/components/tv/tv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -48,9 +48,6 @@ const emptyForm: NewJobForm = {
   miles: "",
   notes: "",
 };
-
-const newLoadInputClassName =
-  "border-[#4D4637] text-[#E9E1D7] placeholder:text-[#99907E] focus:border-[#4D4637]";
 
 export function NewJobSheet() {
   const { open, closeSheet } = useNewJobSheet();
@@ -216,16 +213,14 @@ export function NewJobSheet() {
     >
       {templates.length > 0 ? (
         <div className="mb-5">
-          <p className="mb-2 text-[12px] font-medium uppercase tracking-[0.05em] text-[#99907E]">
-            Your Templates
-          </p>
+          <p className="tv-label mb-2">Your Templates</p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {templates.map((template) => (
               <button
                 key={template.id}
                 type="button"
                 onClick={() => applyTemplate(template)}
-                className="h-11 shrink-0 rounded-full border border-[#4D4637] bg-[#050505] px-4 text-[14px] text-[#99907E]"
+                className="tv-chip tv-chip-inactive h-11 shrink-0 rounded-full px-4 text-[14px]"
               >
                 {template.template_name || template.job_name}
               </button>
@@ -234,9 +229,11 @@ export function NewJobSheet() {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-4 [&_.tv-label]:text-[#99907E]">
+      <div className="flex flex-col gap-4">
         <TvInput
           label="Job Name"
+          borderVariant="gold"
+          labelVariant="readable"
           placeholder="e.g. Dallas → Memphis · 12 Jun"
           helper="Name your load so you can find it easily"
           maxLength={TEXT_LIMITS.jobName}
@@ -244,11 +241,12 @@ export function NewJobSheet() {
           value={form.jobName}
           onChange={(e) => setForm((f) => ({ ...f, jobName: e.target.value }))}
           error={errors.jobName}
-          className={newLoadInputClassName}
         />
 
         <TvInput
           label="Load Value"
+          borderVariant="gold"
+          labelVariant="readable"
           inputMode="decimal"
           placeholder="0"
           value={form.loadValue}
@@ -259,13 +257,10 @@ export function NewJobSheet() {
             }))
           }
           error={errors.loadValue}
-          className={newLoadInputClassName}
         />
 
         <div>
-          <p className="mb-2 text-[12px] font-medium uppercase tracking-[0.05em] text-[#99907E]">
-            Payment Structure
-          </p>
+          <p className="tv-label mb-2">Payment Structure</p>
           <div className="tv-payment-segment grid grid-cols-2 gap-1">
             {(["direct", "factoring"] as PaymentType[]).map((type) => (
               <button
@@ -294,26 +289,27 @@ export function NewJobSheet() {
           <div className="overflow-hidden">
             <TvInput
               label="Factoring Company"
+              borderVariant="gold"
+              labelVariant="readable"
               maxLength={TEXT_LIMITS.broker}
               value={form.factoringCompany}
               onChange={(e) =>
                 setForm((f) => ({ ...f, factoringCompany: e.target.value }))
               }
-              className={newLoadInputClassName}
             />
           </div>
         </div>
 
-        <label className="flex items-center gap-3">
+        <label className="flex min-h-11 items-center gap-3">
           <input
             type="checkbox"
             checked={form.saveAsTemplate}
             onChange={(e) =>
               setForm((f) => ({ ...f, saveAsTemplate: e.target.checked }))
             }
-            className="size-5 rounded border border-[#4D4637] bg-[#050505] accent-[#4D4637]"
+            className="size-5 rounded border border-[var(--color-shell-border)] bg-[var(--color-input-bg)] accent-[var(--color-accent)]"
           />
-          <span className="text-[15px] text-[#99907E]">
+          <span className="tv-body text-[var(--color-text-secondary)]">
             Save as Load Template
           </span>
         </label>
@@ -321,22 +317,21 @@ export function NewJobSheet() {
         {form.saveAsTemplate ? (
           <TvInput
             label="Template Name"
+            borderVariant="gold"
+            labelVariant="readable"
             maxLength={TEXT_LIMITS.jobName}
             value={form.templateName}
             onChange={(e) =>
               setForm((f) => ({ ...f, templateName: e.target.value }))
             }
-            className={newLoadInputClassName}
           />
         ) : null}
 
         {showProfitPreview ? (
-          <div className="rounded-2xl border border-[#4D4637] bg-[#050505] p-4">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-[#99907E]">
-              Profitability estimate
-            </p>
+          <div className="tv-glass-card rounded-2xl p-4">
+            <p className="tv-caption">Profitability estimate</p>
             {profitabilityEstimate ? (
-              <p className="mt-2 text-[15px] text-[var(--color-text-primary)]">
+              <p className="tv-body mt-2">
                 Based on your{" "}
                 <span className="tv-tabular">
                   {formatCurrencyDetailed(profitabilityEstimate.costPerMile)}
@@ -353,37 +348,27 @@ export function NewJobSheet() {
                 /mile profit
               </p>
             ) : (
-              <p className="mt-2 text-[15px] text-[var(--color-text-secondary)]">
+              <p className="tv-body mt-2 text-[var(--color-text-secondary)]">
                 Add your load value and we&apos;ll track your net after expenses.
               </p>
             )}
-            <p className="mt-2 text-[13px] text-[var(--color-text-muted)]">
+            <p className="tv-caption mt-2 normal-case tracking-normal text-[var(--color-text-muted)]">
               Estimate only — updates with actual expenses
             </p>
           </div>
         ) : null}
 
         <div className="pt-1">
-          <button
-            type="button"
-            disabled={loading}
-            onClick={createLoad}
-            className="tv-glow-gold-outline-btn tv-pressable flex h-14 w-full items-center justify-center gap-2 rounded-full text-[15px] transition-opacity active:scale-[0.98] disabled:cursor-not-allowed"
-          >
+          <TvButton loading={loading} onClick={createLoad}>
             Create Load
-            <ArrowRight
-              className="tv-glow-gold-icon size-5"
-              strokeWidth={2}
-              aria-hidden
-            />
-          </button>
+          </TvButton>
 
           {loading ? (
-            <p className="tv-compiling-dots mt-4 flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[#99907E]">
+            <p className="tv-compiling-dots tv-caption mt-4 flex items-center justify-center gap-2 normal-case tracking-[0.14em]">
               <span className="flex items-center gap-1">
-                <span className="size-1.5 rounded-full bg-[#D4A017]" />
-                <span className="size-1.5 rounded-full bg-[#D4A017]" />
-                <span className="size-1.5 rounded-full bg-[#D4A017]" />
+                <span className="size-1.5 rounded-full bg-[var(--color-accent)]" />
+                <span className="size-1.5 rounded-full bg-[var(--color-accent)]" />
+                <span className="size-1.5 rounded-full bg-[var(--color-accent)]" />
               </span>
               Compiling assets...
             </p>

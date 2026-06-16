@@ -93,14 +93,16 @@ export default function OnboardingPage() {
           Step {step + 1} of {steps.length}
         </p>
         <h1 className="tv-page-title mt-2">{current.title}</h1>
-        <p className="mt-4 text-[17px] leading-7 text-[var(--color-text-secondary)]">
+        <p className="tv-body mt-4 leading-7 text-[var(--color-text-secondary)]">
           {current.body}
         </p>
       </div>
 
       <div className="flex flex-col gap-3 pb-4">
         {error ? (
-          <p className="text-[14px] text-[var(--color-warning-text)]">{error}</p>
+          <div className="tv-error-state px-4 py-3">
+            <p className="text-[14px]">{error}</p>
+          </div>
         ) : null}
 
         {!isLast ? (

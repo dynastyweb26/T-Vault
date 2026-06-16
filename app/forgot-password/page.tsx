@@ -80,7 +80,9 @@ export default function ForgotPasswordPage() {
         />
 
         {formError ? (
-          <p className="text-[14px] text-[var(--color-danger-text)]">{formError}</p>
+          <div className="tv-error-state px-4 py-3">
+            <p className="text-[14px]">{formError}</p>
+          </div>
         ) : null}
 
         <TvButton loading={loading} onClick={handleReset}>

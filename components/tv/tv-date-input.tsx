@@ -19,10 +19,7 @@ export function TvDateInput({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <label
-        htmlFor={inputId}
-        className="font-sans text-[15px] font-semibold leading-snug text-[#E9E1D7]"
-      >
+      <label htmlFor={inputId} className="tv-body font-semibold text-[var(--color-text-primary)]">
         {label}
       </label>
       <input

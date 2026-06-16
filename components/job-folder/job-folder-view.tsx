@@ -118,7 +118,7 @@ function TrustBadge({
 }) {
   if (confidence === "manual") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-white/5 bg-[#16130d] px-2 py-0.5 text-[12px] text-[#99907E]">
+      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-shell-border)] bg-[var(--color-surface)] px-2 py-0.5 tv-caption normal-case tracking-normal text-[var(--color-text-muted)]">
         <PenLine className="size-3.5" strokeWidth={2} aria-hidden />
         Added Manually
       </span>
@@ -658,7 +658,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
 
   return (
     <>
-      <header className="sticky top-[4.5rem] z-40 border-b border-white/5 bg-[var(--color-bg)]/95 px-5 pb-3 pt-2 backdrop-blur-2xl">
+      <header className="sticky top-[4.5rem] z-40 border-b border-[var(--color-shell-border)] bg-[var(--color-bg)]/95 px-5 pb-3 pt-2 backdrop-blur-2xl">
         <div className="flex items-center gap-2">
           <Link
             href={APP_ROUTES.loads}
@@ -789,14 +789,14 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       ) : null}
 
       {showEarnedBanner ? (
-        <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl tv-brushed-gold-btn px-4 py-3 text-[15px] font-bold text-black">
+        <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl tv-brushed-gold-btn px-4 py-3 text-[15px] font-bold text-[var(--color-on-accent)]">
           <DollarSign className="size-5" strokeWidth={2} />
           Load Complete — {formatCurrency(job.load_value ?? 0)} earned
         </div>
       ) : null}
 
       {/* Job Details */}
-      <section className="mt-4 rounded-2xl tv-glass-card border border-white/5 p-5">
+      <section className="mt-4 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] p-5">
         <div className="space-y-4">
           <div>
             <div className="flex items-start justify-between gap-2">
@@ -916,7 +916,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             const hasFile = hasDocumentFile(documents, type);
             const parsing = isDocumentParsing(doc);
             return (
-              <div key={type} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
+              <div key={type} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] px-4">
                 <span className={`size-3 shrink-0 rounded-full ${checklistComplete ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -961,7 +961,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
               </div>
             );
           })}
-          <div className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
+          <div className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] px-4">
             <span className={`size-3 shrink-0 rounded-full ${hasInvoice ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
             <p className="flex-1 font-medium">Invoice</p>
             {hasInvoice ? (
@@ -978,7 +978,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                 </button>
                 <button
                   type="button"
-                  className="tv-brushed-gold-btn h-11 rounded-xl px-3 text-[14px] font-bold text-black"
+                  className="tv-brushed-gold-btn h-11 rounded-xl px-3 text-[14px] font-bold text-[var(--color-on-accent)]"
                   disabled={uploading}
                   onClick={() => setRegenerateConfirmOpen(true)}
                 >
@@ -988,7 +988,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             ) : (
               <button
                 type="button"
-                className="tv-brushed-gold-btn h-11 rounded-xl px-3 text-[14px] font-bold text-black"
+                className="tv-brushed-gold-btn h-11 rounded-xl px-3 text-[14px] font-bold text-[var(--color-on-accent)]"
                 disabled={uploading}
                 onClick={() => runInvoiceGeneration(false)}
               >
@@ -997,7 +997,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             )}
           </div>
           {hasInvoice || job.status === "awaiting_payment" || isPaid ? (
-            <div className="rounded-2xl tv-glass-card border border-white/5 px-4 py-3">
+            <div className="rounded-2xl tv-glass-card border border-[var(--color-shell-border)] px-4 py-3">
               {isPaid ? (
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-[var(--color-success-text)]">
@@ -1023,7 +1023,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           {hasLumperExpense ? (
             <div className="tv-divider mt-4 pt-4 space-y-2">
               {(["fuel_receipt", "lumper_receipt"] as const).map((type) => (
-                <div key={type} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
+                <div key={type} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] px-4">
                   <span className={`size-3 shrink-0 rounded-full ${hasDocument(documents, type) ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
                   <p className="flex-1 font-medium">{DOC_TYPE_LABELS[type]}</p>
                   <button type="button" className="tv-accent-outline-btn" onClick={() => setUploadType(type)}>Upload</button>
@@ -1096,7 +1096,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         </p>
         <div className="mt-3 space-y-2">
           {expenses.map((exp) => (
-            <div key={exp.id} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
+            <div key={exp.id} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] px-4">
               <Receipt className="size-6 text-[var(--color-accent)]" strokeWidth={2} />
               <div className="flex-1">
                 <p className="font-medium capitalize">{exp.category}</p>
@@ -1277,7 +1277,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       {showUpgrade ? (
         <div className="fixed inset-0 z-[80] overflow-y-auto bg-[var(--color-bg)] px-5 py-8">
           <h2 className="tv-section-header">Your first load is in the books.</h2>
-          <div className="mt-4 rounded-2xl tv-glass-card border border-white/5 p-5">
+          <div className="mt-4 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] p-5">
             <p className="tv-tabular text-[var(--color-accent)]">Total earned: {formatCurrency(job.load_value ?? 0)}</p>
             <p className="mt-2 text-[var(--color-text-secondary)]">1 load documented</p>
             <p className="text-[var(--color-text-secondary)]">1 invoice generated</p>

@@ -29,7 +29,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-white/5 bg-[var(--color-bg)]/95 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-3xl"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-shell-border)] bg-[var(--color-bg)]/95 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-3xl"
     >
       <ul className="mx-auto grid max-w-lg grid-cols-5 items-end px-2">
         {tabs.map((tab) => {
@@ -49,9 +49,13 @@ export function BottomNav() {
                       router.push(APP_ROUTES.newJob);
                     }
                   }}
-                  className="tv-brushed-gold-btn tv-pressable mx-1 flex h-10 w-12 items-center justify-center rounded-lg transition-transform duration-150 active:scale-90"
+                  className="tv-brushed-gold-btn tv-pressable tv-icon-btn mx-1 rounded-xl transition-transform duration-150 active:scale-90"
                 >
-                  <Plus className="size-5 font-bold text-black" strokeWidth={2.5} aria-hidden />
+                  <Plus
+                    className="size-5 font-bold text-[var(--color-on-accent)]"
+                    strokeWidth={2.5}
+                    aria-hidden
+                  />
                 </button>
               </li>
             );
@@ -63,7 +67,7 @@ export function BottomNav() {
                 href={tab.href}
                 aria-label={tab.label}
                 className={cn(
-                  "tv-pressable flex flex-col items-center justify-center gap-1 py-1 text-[10px] transition-colors duration-150",
+                  "tv-pressable flex min-h-11 flex-col items-center justify-center gap-1 py-2 text-[10px] transition-colors duration-150",
                   isActive
                     ? "tv-active-glow font-bold text-[var(--color-accent)]"
                     : "text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"

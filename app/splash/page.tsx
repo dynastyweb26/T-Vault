@@ -73,18 +73,16 @@ export default function SplashPage() {
   }, [router, supabase]);
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-5 text-center">
       <div className="tv-brushed-gold-btn tv-gold-glow mb-8 flex size-24 items-center justify-center rounded-2xl">
         <Wallet
-          className="size-12 text-black"
+          className="size-12 text-[var(--color-on-accent)]"
           strokeWidth={2}
           aria-hidden
         />
       </div>
-      <h1 className="text-3xl font-bold tracking-tight text-[var(--color-accent)]">
-        T-Vault
-      </h1>
-      <p className="mt-3 max-w-sm text-[17px] text-[var(--color-text-secondary)]">
+      <h1 className="tv-page-title text-[var(--color-accent)]">T-Vault</h1>
+      <p className="tv-body mt-3 max-w-sm text-[var(--color-text-secondary)]">
         Your business command center for the road.
       </p>
       <p className="tv-caption mt-8">{status}</p>

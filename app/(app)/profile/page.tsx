@@ -34,13 +34,13 @@ export default function ProfilePage() {
             </div>
             <div>
               <p className="tv-card-title">{profile?.full_name || "Driver"}</p>
-              <p className="text-[15px] text-[var(--color-text-secondary)]">
+              <p className="tv-body text-[15px] text-[var(--color-text-secondary)]">
                 {profile?.email}
               </p>
             </div>
           </div>
 
-          <div className="mt-5 space-y-3 text-[16px]">
+          <div className="tv-body mt-5 space-y-3">
             <p>
               <span className="text-[var(--color-text-secondary)]">Company: </span>
               {profile?.company_name || "Not set"}
@@ -56,9 +56,9 @@ export default function ProfilePage() {
           </div>
 
           <div className="tv-brushed-gold-btn tv-gold-glow mt-5 rounded-2xl px-5 py-6 text-center">
-            <p className="tv-caption mb-4 text-[#D4A017]">Referral Code</p>
+            <p className="tv-caption mb-4 text-[var(--color-accent)]">Referral Code</p>
             <p
-              className={`${bebasNeue.className} rounded-xl bg-black/10 px-4 py-3 text-[40px] leading-none tracking-wider text-black`}
+              className={`${bebasNeue.className} rounded-xl bg-[var(--color-hero-scrim)] px-4 py-3 text-[40px] leading-none tracking-wider text-[var(--color-on-accent)]`}
             >
               {profile?.referral_code || "Generating..."}
             </p>
@@ -73,10 +73,10 @@ export default function ProfilePage() {
                 key={option}
                 type="button"
                 onClick={() => setPreference(option)}
-                className={`h-12 rounded-xl border text-[15px] capitalize transition-colors ${
+                className={`h-12 min-h-11 rounded-xl border text-[15px] capitalize transition-colors ${
                   preference === option
                     ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5 text-[var(--color-accent)]"
-                    : "border-white/5 bg-[#050505] text-[var(--color-text-secondary)]"
+                    : "border-[var(--color-shell-border)] bg-[var(--color-input-bg)] text-[var(--color-text-secondary)]"
                 }`}
               >
                 {option}

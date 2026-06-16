@@ -25,10 +25,7 @@ export function TvMilesInput({
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>
       {showLabel ? (
-        <label
-          htmlFor={inputId}
-          className="font-sans text-[15px] font-semibold leading-snug text-[#E9E1D7]"
-        >
+        <label htmlFor={inputId} className="tv-body font-semibold text-[var(--color-text-primary)]">
           {label}
         </label>
       ) : null}
@@ -45,12 +42,12 @@ export function TvMilesInput({
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={Boolean(error)}
           className={cn(
-            "tv-tabular h-14 w-full rounded-xl border bg-[#050505] py-0 pl-4 pr-12 text-[17px] font-medium text-[#E9E1D7] shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] outline-none transition-colors placeholder:text-[#99907E] focus:border-[var(--gold-light)]",
-            error ? "border-[var(--color-danger)]" : "border-[#D4A017]"
+            "tv-input-field tv-input-field-gold tv-tabular pr-12 font-medium",
+            error && "border-[var(--color-danger)]"
           )}
         />
         <span
-          className="tv-tabular pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[14px] text-[#99907E]"
+          className="tv-tabular pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[14px] text-[var(--color-text-muted)]"
           aria-hidden
         >
           mi
