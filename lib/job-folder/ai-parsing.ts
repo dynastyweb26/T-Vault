@@ -22,6 +22,7 @@ export type ParseResult =
 async function saveParsedDocument(
   supabase: SupabaseClient,
   documentId: string,
+  userId: string,
   parsedData: ParsedDocumentData,
   status: "complete" | "skipped" | "failed",
   aiConfidence: JobDocument["ai_confidence"],
@@ -35,7 +36,8 @@ async function saveParsedDocument(
       ai_confidence: aiConfidence,
       parse_error: parseError ?? null,
     })
-    .eq("id", documentId);
+    .eq("id", documentId)
+    .eq("user_id", userId);
 }
 
 async function refreshDocumentsAndCrossValidate(
@@ -60,7 +62,8 @@ async function refreshDocumentsAndCrossValidate(
         conflicts.length > 0 ? conflicts : null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", jobId);
+    .eq("id", jobId)
+    .eq("user_id", userId);
 
   return docs;
 }
@@ -70,12 +73,14 @@ export async function applyLayer1PoorQuality(
   params: {
     documentId: string;
     documentType: ParseableDocType;
+    userId: string;
   }
 ): Promise<void> {
   const parsedData = buildLowConfidenceParsedData(params.documentType);
   await saveParsedDocument(
     supabase,
     params.documentId,
+    params.userId,
     parsedData,
     "skipped",
     "low",
@@ -135,6 +140,7 @@ export async function processParsedResult(
   await saveParsedDocument(
     supabase,
     params.documentId,
+    params.userId,
     parsedData,
     "complete",
     aiConfidence
@@ -169,12 +175,14 @@ export async function triggerDocumentParsing(
   await supabase
     .from("documents")
     .update({ parsing_status: "parsing", parse_error: null })
-    .eq("id", params.documentId);
+    .eq("id", params.documentId)
+    .eq("user_id", params.userId);
 
   if (params.poorQuality) {
     await applyLayer1PoorQuality(supabase, {
       documentId: params.documentId,
       documentType: docType,
+      userId: params.userId,
     });
     return { status: "skipped", reason: "poor_quality" };
   }
@@ -190,7 +198,8 @@ export async function triggerDocumentParsing(
           parse_error: "rate_limited",
           ai_confidence: "unread",
         })
-        .eq("id", params.documentId);
+        .eq("id", params.documentId)
+        .eq("user_id", params.userId);
       return { status: "rate_limited" };
     }
 
@@ -201,7 +210,8 @@ export async function triggerDocumentParsing(
         parse_error: result.error ?? "parse_failed",
         ai_confidence: "unread",
       })
-      .eq("id", params.documentId);
+      .eq("id", params.documentId)
+      .eq("user_id", params.userId);
 
     return {
       status: "failed",
@@ -280,7 +290,7 @@ export async function confirmAiFields(
     ...params.fieldValues,
   };
 
-  await supabase.from("jobs").update(updates).eq("id", params.jobId);
+  await supabase.from("jobs").update(updates).eq("id", params.jobId).eq("user_id", params.userId);
 
   const mergedJob = { ...params.job, ...updates };
   if (mergedJob.miles && mergedJob.miles > 0) {

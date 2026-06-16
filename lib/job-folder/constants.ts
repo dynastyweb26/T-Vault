@@ -9,6 +9,9 @@ import {
 
 export const STORAGE_BUCKET = "game1-documents";
 
+/** Max signed URL lifetime: 24 hours (see SECURITY.md). */
+export const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24;
+
 export const SCROLL_STORAGE_KEY = "tvault-loads-scroll";
 
 export const ACCEPTED_MIME_TYPES = new Set([

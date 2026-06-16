@@ -10,17 +10,35 @@ import {
 
 const RATE_LIMIT = 10;
 const WINDOW_MS = 60 * 60 * 1000;
+const STORAGE_BUCKET = "game1-documents";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+function resolveCorsOrigin(req: Request): string {
+  const configured = Deno.env.get("ALLOWED_ORIGIN");
+  const origin = req.headers.get("Origin");
+  if (configured) return configured;
+  if (
+    origin &&
+    (origin.includes("localhost") || origin.includes("127.0.0.1"))
+  ) {
+    return origin;
+  }
+  return "";
+}
 
-function jsonResponse(body: unknown, status = 200) {
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = resolveCorsOrigin(req);
+  return {
+    "Access-Control-Allow-Origin": origin || "null",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    Vary: "Origin",
+  };
+}
+
+function jsonResponse(req: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -45,6 +63,28 @@ function extractJson(text: string): Record<string, unknown> | null {
     } catch {
       return null;
     }
+  }
+}
+
+function extractStoragePath(fileUrl: string): string | null {
+  try {
+    const url = new URL(fileUrl);
+    const patterns = [
+      /\/storage\/v1\/object\/sign\/[^/]+\/(.+)/,
+      /\/storage\/v1\/object\/public\/[^/]+\/(.+)/,
+      /\/storage\/v1\/object\/authenticated\/[^/]+\/(.+)/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.pathname.match(pattern);
+      if (match?.[1]) {
+        return decodeURIComponent(match[1].split("?")[0]);
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
   }
 }
 
@@ -87,7 +127,8 @@ async function callClaude(
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`claude_error:${response.status}:${errText.slice(0, 200)}`);
+    console.error("claude_error:", response.status, errText.slice(0, 500));
+    throw new Error("claude_error");
   }
 
   const result = await response.json();
@@ -110,35 +151,43 @@ function resolveMediaType(fileName: string, fileUrl: string): string {
 }
 
 Deno.serve(async (req) => {
+  const headers = corsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers });
   }
 
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return jsonResponse({ error: "unauthorized" }, 401);
+      return jsonResponse(req, { error: "unauthorized" }, 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
 
     if (!anthropicKey) {
-      return jsonResponse({ error: "ai_not_configured" }, 503);
+      return jsonResponse(req, { error: "ai_not_configured" }, 503);
+    }
+
+    if (!serviceRoleKey) {
+      return jsonResponse(req, { error: "server_misconfigured" }, 503);
     }
 
     let model: string;
     try {
       model = resolveAnthropicModel();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "invalid_model";
-      return jsonResponse({ error: message }, 500);
+    } catch {
+      return jsonResponse(req, { error: "invalid_model" }, 500);
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+
+    const admin = createClient(supabaseUrl, serviceRoleKey);
 
     const {
       data: { user },
@@ -146,27 +195,28 @@ Deno.serve(async (req) => {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return jsonResponse({ error: "unauthorized" }, 401);
+      return jsonResponse(req, { error: "unauthorized" }, 401);
     }
 
     const { documentId } = await req.json();
     if (!documentId) {
-      return jsonResponse({ error: "missing_document_id" }, 400);
+      return jsonResponse(req, { error: "missing_document_id" }, 400);
     }
 
     const windowStart = new Date(Date.now() - WINDOW_MS).toISOString();
-    const { count, error: countError } = await supabase
+    const { count, error: countError } = await admin
       .from("ai_usage")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
       .gte("created_at", windowStart);
 
     if (countError) {
-      return jsonResponse({ error: "rate_check_failed" }, 500);
+      console.error("rate_check_failed:", countError.message);
+      return jsonResponse(req, { error: "rate_check_failed" }, 500);
     }
 
     if ((count ?? 0) >= RATE_LIMIT) {
-      return jsonResponse({ rateLimited: true }, 429);
+      return jsonResponse(req, { rateLimited: true }, 429);
     }
 
     const { data: document, error: docError } = await supabase
@@ -177,12 +227,12 @@ Deno.serve(async (req) => {
       .single();
 
     if (docError || !document) {
-      return jsonResponse({ error: "document_not_found" }, 404);
+      return jsonResponse(req, { error: "document_not_found" }, 404);
     }
 
     const docType = document.document_type as string;
     if (!isParseableDocType(docType)) {
-      return jsonResponse({ error: "unsupported_document_type" }, 400);
+      return jsonResponse(req, { error: "unsupported_document_type" }, 400);
     }
 
     if (
@@ -190,15 +240,24 @@ Deno.serve(async (req) => {
       !document.file_url ||
       document.file_url.startsWith("manual://")
     ) {
-      return jsonResponse({ error: "missing_file" }, 400);
+      return jsonResponse(req, { error: "missing_file" }, 400);
     }
 
-    const fileResponse = await fetch(document.file_url);
-    if (!fileResponse.ok) {
-      return jsonResponse({ error: "file_fetch_failed" }, 502);
+    const storagePath = extractStoragePath(document.file_url);
+    if (!storagePath || !storagePath.startsWith(`${user.id}/`)) {
+      return jsonResponse(req, { error: "invalid_file_url" }, 400);
     }
 
-    const buffer = await fileResponse.arrayBuffer();
+    const { data: fileBlob, error: downloadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .download(storagePath);
+
+    if (downloadError || !fileBlob) {
+      console.error("file_download_failed:", downloadError?.message);
+      return jsonResponse(req, { error: "file_fetch_failed" }, 502);
+    }
+
+    const buffer = await fileBlob.arrayBuffer();
     const fileName = document.file_name ?? "";
     const mediaType = resolveMediaType(fileName, document.file_url);
     const base64 = arrayBufferToBase64(buffer);
@@ -223,20 +282,27 @@ Deno.serve(async (req) => {
         ai_confidence: aiConfidence,
         parse_error: null,
       })
-      .eq("id", documentId);
+      .eq("id", documentId)
+      .eq("user_id", user.id);
 
     if (saveError) {
-      return jsonResponse({ error: saveError.message }, 500);
+      console.error("document_save_failed:", saveError.message);
+      return jsonResponse(req, { error: "save_failed" }, 500);
     }
 
-    await supabase.from("ai_usage").insert({
+    const { error: usageError } = await admin.from("ai_usage").insert({
       user_id: user.id,
       document_id: documentId,
     });
 
-    return jsonResponse({ parsed, documentType: docType, saved: true });
+    if (usageError) {
+      console.error("ai_usage_insert_failed:", usageError.message);
+    }
+
+    return jsonResponse(req, { parsed, documentType: docType, saved: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown_error";
-    return jsonResponse({ error: message }, 500);
+    console.error("parse-document error:", message);
+    return jsonResponse(req, { error: "parse_failed" }, 500);
   }
 });

@@ -92,7 +92,7 @@ export default function SignUpPage() {
     }
 
     if (data.user) {
-      await fetch("/api/auth/complete-signup", {
+      const signupResponse = await fetch("/api/auth/complete-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -100,6 +100,13 @@ export default function SignUpPage() {
           referredBy: cleanedReferral,
         }),
       });
+
+      if (!signupResponse.ok) {
+        setFormError(
+          "Your account was created but profile setup failed. Sign in and try again."
+        );
+        return;
+      }
 
       if (!data.session) {
         setConfirmationSent(true);

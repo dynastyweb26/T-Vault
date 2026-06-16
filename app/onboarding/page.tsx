@@ -8,10 +8,7 @@ import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
-import {
-  hasCompletedOnboarding,
-  markOnboardingComplete,
-} from "@/lib/auth-helpers";
+import { hasCompletedOnboarding } from "@/lib/auth-helpers";
 
 const steps = [
   {
@@ -49,7 +46,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    if (hasCompletedOnboarding(profile, user.id)) {
+    if (hasCompletedOnboarding(profile)) {
       router.replace(APP_ROUTES.dashboard);
     }
   }, [profile, router, user]);
@@ -68,17 +65,16 @@ export default function OnboardingPage() {
       .update({ onboarding_completed: true })
       .eq("id", user.id);
 
-    markOnboardingComplete(user.id);
-    patchProfile({ onboarding_completed: true });
-
-    setLoading(false);
-
     if (updateError) {
+      setLoading(false);
       setError(
-        "We saved your progress on this device, but could not sync to the cloud yet."
+        "We could not save your progress. Check your connection and try again."
       );
+      return;
     }
 
+    patchProfile({ onboarding_completed: true });
+    setLoading(false);
     router.push(APP_ROUTES.dashboard);
   };
 

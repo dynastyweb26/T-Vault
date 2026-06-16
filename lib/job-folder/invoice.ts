@@ -446,7 +446,8 @@ export async function generateAndSaveLoadInvoice(
           : new Date().toISOString().slice(0, 10),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", job.id);
+    .eq("id", job.id)
+    .eq("user_id", userId);
 
   if (!regenerate && !hasExistingInvoice) {
     await supabase

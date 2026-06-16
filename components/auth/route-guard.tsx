@@ -24,12 +24,15 @@ export function RouteGuard({ children, mode = "auth" }: RouteGuardProps) {
       return;
     }
 
-    if (
-      mode === "app" &&
-      profile &&
-      !hasCompletedOnboarding(profile, user.id)
-    ) {
-      router.replace(APP_ROUTES.onboarding);
+    if (mode === "app") {
+      if (!profile) {
+        router.replace(APP_ROUTES.splash);
+        return;
+      }
+
+      if (!hasCompletedOnboarding(profile)) {
+        router.replace(APP_ROUTES.onboarding);
+      }
     }
   }, [loading, mode, profile, router, user]);
 
@@ -39,12 +42,10 @@ export function RouteGuard({ children, mode = "auth" }: RouteGuardProps) {
 
   if (!user) return null;
 
-  if (
-    mode === "app" &&
-    profile &&
-    !hasCompletedOnboarding(profile, user.id)
-  ) {
-    return null;
+  if (mode === "app") {
+    if (!profile || !hasCompletedOnboarding(profile)) {
+      return null;
+    }
   }
 
   return <>{children}</>;

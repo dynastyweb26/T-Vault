@@ -103,7 +103,8 @@ export async function updateBrokerRatingOnPayment(
           ? existing.late_count
           : existing.late_count + 1,
       })
-      .eq("id", existing.id);
+      .eq("id", existing.id)
+      .eq("user_id", userId);
     return;
   }
 
@@ -147,6 +148,7 @@ export async function updateBrokerDetentionOutcome(
         detention_unpaid_count: existing.detention_unpaid_count + 1,
         problem_count: existing.problem_count + 1,
       })
-      .eq("id", existing.id);
+      .eq("id", existing.id)
+      .eq("user_id", userId);
   }
 }

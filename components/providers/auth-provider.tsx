@@ -84,9 +84,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const loadSession = async () => {
       const {
-        data: { session: currentSession },
+        data: { user: currentUser },
         error,
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.getUser();
 
       if (!mounted) return;
 
@@ -94,8 +94,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSessionWarning(true);
       }
 
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      if (currentUser) {
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession();
+        setSession(currentSession);
+        setUser(currentUser);
+      } else {
+        setSession(null);
+        setUser(null);
+      }
+
       setLoading(false);
     };
 

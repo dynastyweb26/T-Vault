@@ -74,6 +74,7 @@ export function useJobFolder(jobId: string) {
         .from("jobs")
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("id", jobId)
+        .eq("user_id", user.id)
         .select("*")
         .single();
       if (data) setJob(data as Job);

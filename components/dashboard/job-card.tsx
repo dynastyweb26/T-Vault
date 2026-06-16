@@ -34,10 +34,13 @@ export function JobCard({ job, onAction }: JobCardProps) {
 
   const archiveJob = async () => {
     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     await supabase
       .from("jobs")
       .update({ status: "archived", updated_at: new Date().toISOString() })
-      .eq("id", job.id);
+      .eq("id", job.id)
+      .eq("user_id", user.id);
     setMenuOpen(false);
     onAction();
   };
@@ -49,7 +52,9 @@ export function JobCard({ job, onAction }: JobCardProps) {
     if (!confirmed) return;
 
     const supabase = createClient();
-    await supabase.from("jobs").delete().eq("id", job.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("jobs").delete().eq("id", job.id).eq("user_id", user.id);
     setMenuOpen(false);
     onAction();
   };

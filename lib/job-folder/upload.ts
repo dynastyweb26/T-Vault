@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { STORAGE_BUCKET } from "@/lib/job-folder/constants";
+import { STORAGE_BUCKET, SIGNED_URL_TTL_SECONDS } from "@/lib/job-folder/constants";
 import { checkImageQuality, compressImage } from "@/lib/job-folder/image-quality";
 import { triggerHaptic } from "@/lib/haptics";
 import type { DocumentType } from "@/types/job-folder";
@@ -38,6 +38,7 @@ async function upsertDocumentRow(
     .from("documents")
     .select("id")
     .eq("job_id", row.job_id)
+    .eq("user_id", row.user_id)
     .eq("document_type", row.document_type)
     .maybeSingle();
 
@@ -55,7 +56,8 @@ async function upsertDocumentRow(
     const { error } = await supabase
       .from("documents")
       .update(updatePayload)
-      .eq("id", existing.id);
+      .eq("id", existing.id)
+      .eq("user_id", row.user_id);
     if (error) throw new Error("upload_failed");
     return existing.id;
   }
@@ -89,7 +91,7 @@ export async function uploadToStorage(
 
   const { data: signed, error: signError } = await supabase.storage
     .from(STORAGE_BUCKET)
-    .createSignedUrl(path, 60 * 60 * 24 * 365);
+    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
 
   if (signError || !signed?.signedUrl) throw new Error("upload_failed");
   return signed.signedUrl;
@@ -141,7 +143,8 @@ export async function uploadJobDocument(
   await supabase
     .from("jobs")
     .update({ updated_at: new Date().toISOString() })
-    .eq("id", jobId);
+    .eq("id", jobId)
+    .eq("user_id", userId);
 
   triggerHaptic("medium");
   return { url, path, documentId };
