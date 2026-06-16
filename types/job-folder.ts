@@ -39,6 +39,8 @@ export interface DetentionSession {
   created_at: string | null;
 }
 
+export type BrokerRatingOutcome = "on_time" | "late" | "problem";
+
 export interface BrokerRating {
   id: string;
   user_id: string;
@@ -48,6 +50,8 @@ export interface BrokerRating {
   late_count: number;
   problem_count: number;
   detention_unpaid_count: number;
+  avg_days_to_pay: number | null;
+  last_worked_at: string | null;
 }
 
 export interface MilestoneRecord {

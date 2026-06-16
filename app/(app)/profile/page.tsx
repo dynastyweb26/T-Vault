@@ -1,12 +1,14 @@
 "use client";
 
 import { Bebas_Neue } from "next/font/google";
-import { User } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, FileSpreadsheet, History, User } from "lucide-react";
 import { AppHeader } from "@/components/shell/app-header";
 import { TvButton } from "@/components/tv/tv-button";
 import { DataProtectionBanner } from "@/components/shell/session-banner";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTheme } from "@/components/providers/theme-provider";
+import { APP_ROUTES } from "@/lib/constants";
 
 const bebasNeue = Bebas_Neue({
   subsets: ["latin"],
@@ -63,6 +65,41 @@ export default function ProfilePage() {
               {profile?.referral_code || "Generating..."}
             </p>
           </div>
+        </section>
+
+        <section className="tv-glass-card rounded-2xl p-2">
+          <Link
+            href={APP_ROUTES.taxSummary}
+            className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-3"
+          >
+            <FileSpreadsheet
+              className="size-5 text-[var(--color-accent)]"
+              strokeWidth={2}
+              aria-hidden
+            />
+            <span className="tv-body flex-1 font-medium">Tax Summary</span>
+            <ChevronRight
+              className="size-5 text-[var(--color-text-muted)]"
+              strokeWidth={2}
+              aria-hidden
+            />
+          </Link>
+          <Link
+            href={APP_ROUTES.brokerHistory}
+            className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-3"
+          >
+            <History
+              className="size-5 text-[var(--color-accent)]"
+              strokeWidth={2}
+              aria-hidden
+            />
+            <span className="tv-body flex-1 font-medium">Broker History</span>
+            <ChevronRight
+              className="size-5 text-[var(--color-text-muted)]"
+              strokeWidth={2}
+              aria-hidden
+            />
+          </Link>
         </section>
 
         <section className="tv-glass-card rounded-2xl p-5">

@@ -67,6 +67,8 @@ import { AiReviewSheet } from "@/components/job-folder/ai-review-sheet";
 import { CrossValidationBanner } from "@/components/job-folder/cross-validation-banner";
 import { DocumentManualEntrySheet } from "@/components/job-folder/document-manual-entry-sheet";
 import { DocumentPreviewModal } from "@/components/job-folder/document-preview-modal";
+import { BrokerRatingPrompt } from "@/components/broker-history/broker-rating-prompt";
+import { markJobAsPaid as markJobPaidInDb } from "@/lib/loads/mark-paid";
 import { JobFolderFieldInput } from "@/components/job-folder/job-folder-field-input";
 import { saveManualDocumentEntryAndVerify } from "@/lib/job-folder/manual-document-save";
 import {
@@ -238,6 +240,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
   const [paymentStatusSheetOpen, setPaymentStatusSheetOpen] = useState(false);
   const [undoPaidConfirmOpen, setUndoPaidConfirmOpen] = useState(false);
+  const [ratingPromptOpen, setRatingPromptOpen] = useState(false);
+  const [ratingPromptJob, setRatingPromptJob] = useState<typeof job>(null);
 
   const openEditField = (key: string, rawValue: unknown) => {
     setEditField(key);
@@ -435,14 +439,17 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   };
 
   const markJobAsPaid = async () => {
-    await updateJob({
-      status: "paid",
-      payment_received: true,
-      payment_received_date: new Date().toISOString().slice(0, 10),
-    });
+    if (!user || !job) return;
+    const supabase = createClient();
+    const updated = await markJobPaidInDb(supabase, user.id, job.id);
     triggerHaptic("medium");
     setPaymentStatusSheetOpen(false);
     await refresh();
+
+    if (updated && updated.broker_name?.trim() && !updated.broker_rating) {
+      setRatingPromptJob(updated);
+      setRatingPromptOpen(true);
+    }
   };
 
   const markJobAsUnpaid = async () => {
@@ -1436,6 +1443,16 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           setJob(savedJob);
           setDocuments(savedDocuments);
         }}
+      />
+
+      <BrokerRatingPrompt
+        job={ratingPromptJob}
+        open={ratingPromptOpen}
+        onClose={() => {
+          setRatingPromptOpen(false);
+          setRatingPromptJob(null);
+        }}
+        onSaved={refresh}
       />
       </div>
     </>
