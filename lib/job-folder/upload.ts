@@ -1,104 +1,39 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { STORAGE_BUCKET, SIGNED_URL_TTL_SECONDS } from "@/lib/job-folder/constants";
-import { checkImageQuality, compressImage } from "@/lib/job-folder/image-quality";
+import { checkImageQuality } from "@/lib/job-folder/image-quality";
 import { triggerHaptic } from "@/lib/haptics";
 import type { DocumentType } from "@/types/job-folder";
-import { ACCEPTED_MIME_TYPES } from "@/lib/job-folder/constants";
+import {
+  ALLOWED_UPLOAD_TYPES,
+  MAX_UPLOAD_BYTES,
+} from "@/lib/job-folder/file-validation";
+
+const GENERIC_UPLOAD_ERROR = "upload_failed";
 
 export function validateFileType(file: File): boolean {
-  return ACCEPTED_MIME_TYPES.has(file.type);
+  if (file.size > MAX_UPLOAD_BYTES) return false;
+  return (ALLOWED_UPLOAD_TYPES as readonly string[]).includes(file.type);
 }
 
-export function buildStoragePath(
-  userId: string,
-  jobId: string,
-  documentType: string,
-  file: File
-): string {
-  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  return `${userId}/${jobId}/${documentType}_${Date.now()}.${ext}`;
-}
+async function postDocumentUpload(formData: FormData): Promise<{
+  url: string;
+  path: string;
+  documentId: string;
+  fileName: string;
+}> {
+  const response = await fetch("/api/documents/upload", {
+    method: "POST",
+    body: formData,
+  });
 
-type DocumentRowInsert = {
-  job_id: string;
-  user_id: string;
-  document_type: string;
-  file_url: string;
-  file_name: string;
-  upload_status: string;
-  ai_confidence: string;
-  created_at: string;
-};
-
-async function upsertDocumentRow(
-  supabase: SupabaseClient,
-  row: Omit<DocumentRowInsert, "created_at"> & { created_at?: string }
-): Promise<string> {
-  const { data: existing } = await supabase
-    .from("documents")
-    .select("id")
-    .eq("job_id", row.job_id)
-    .eq("user_id", row.user_id)
-    .eq("document_type", row.document_type)
-    .maybeSingle();
-
-  const updatePayload = {
-    job_id: row.job_id,
-    user_id: row.user_id,
-    document_type: row.document_type,
-    file_url: row.file_url,
-    file_name: row.file_name,
-    upload_status: row.upload_status,
-    ai_confidence: row.ai_confidence,
-  };
-
-  if (existing?.id) {
-    const { error } = await supabase
-      .from("documents")
-      .update(updatePayload)
-      .eq("id", existing.id)
-      .eq("user_id", row.user_id);
-    if (error) throw new Error("upload_failed");
-    return existing.id;
+  if (!response.ok) {
+    throw new Error(GENERIC_UPLOAD_ERROR);
   }
 
-  const insertPayload: DocumentRowInsert = {
-    ...updatePayload,
-    created_at: row.created_at ?? new Date().toISOString(),
-  };
-
-  const { data: inserted, error } = await supabase
-    .from("documents")
-    .insert(insertPayload)
-    .select("id")
-    .single();
-
-  if (error || !inserted?.id) throw new Error("upload_failed");
-  return inserted.id;
-}
-
-export async function uploadToStorage(
-  supabase: SupabaseClient,
-  path: string,
-  blob: Blob,
-  contentType: string
-): Promise<string> {
-  const { error: uploadError } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(path, blob, { upsert: true, contentType });
-
-  if (uploadError) throw new Error("upload_failed");
-
-  const { data: signed, error: signError } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
-
-  if (signError || !signed?.signedUrl) throw new Error("upload_failed");
-  return signed.signedUrl;
+  return response.json();
 }
 
 export async function uploadJobDocument(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   params: {
     userId: string;
     jobId: string;
@@ -107,51 +42,27 @@ export async function uploadJobDocument(
     skipQualityCheck?: boolean;
   }
 ): Promise<{ url: string; path: string; documentId: string }> {
-  const { userId, jobId, documentType, file, skipQualityCheck } = params;
+  const { jobId, documentType, file, skipQualityCheck } = params;
 
   if (!validateFileType(file)) throw new Error("unsupported_type");
 
-  let uploadBlob: Blob = file;
-  let uploadName = file.name;
-  const isPdf = file.type === "application/pdf";
-
-  if (!isPdf && !skipQualityCheck) {
+  if (file.type !== "application/pdf" && !skipQualityCheck) {
     const quality = await checkImageQuality(file);
     if (!quality.acceptable) throw new Error("poor_quality");
-    uploadBlob = await compressImage(file);
-    uploadName = file.name.replace(/\.[^.]+$/, ".jpg");
   }
 
-  const path = buildStoragePath(userId, jobId, documentType, file);
-  const url = await uploadToStorage(
-    supabase,
-    path,
-    uploadBlob,
-    isPdf ? "application/pdf" : "image/jpeg"
-  );
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("jobId", jobId);
+  formData.append("documentType", documentType);
 
-  const documentId = await upsertDocumentRow(supabase, {
-    job_id: jobId,
-    user_id: userId,
-    document_type: documentType,
-    file_url: url,
-    file_name: uploadName,
-    upload_status: "uploaded",
-    ai_confidence: "unread",
-  });
-
-  await supabase
-    .from("jobs")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", jobId)
-    .eq("user_id", userId);
-
+  const result = await postDocumentUpload(formData);
   triggerHaptic("medium");
-  return { url, path, documentId };
+  return result;
 }
 
 export async function saveInvoiceDocument(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   params: {
     userId: string;
     jobId: string;
@@ -159,25 +70,21 @@ export async function saveInvoiceDocument(
     blob: Blob;
   }
 ): Promise<string> {
-  const { userId, jobId, invoiceNumber, blob } = params;
-  const path = `${userId}/${jobId}/${invoiceNumber}.pdf`;
-  const url = await uploadToStorage(supabase, path, blob, "application/pdf");
+  const { jobId, invoiceNumber, blob } = params;
 
-  await upsertDocumentRow(supabase, {
-    job_id: jobId,
-    user_id: userId,
-    document_type: "invoice",
-    file_url: url,
-    file_name: `${invoiceNumber}.pdf`,
-    upload_status: "uploaded",
-    ai_confidence: "high",
-  });
+  const formData = new FormData();
+  formData.append("file", blob, "invoice.pdf");
+  formData.append("jobId", jobId);
+  formData.append("documentType", "invoice");
+  formData.append("displayFileName", `${invoiceNumber}.pdf`);
+  formData.append("aiConfidence", "high");
 
-  return url;
+  const result = await postDocumentUpload(formData);
+  return result.url;
 }
 
 export async function saveDocumentFromBlob(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   params: {
     userId: string;
     jobId: string;
@@ -186,19 +93,14 @@ export async function saveDocumentFromBlob(
     fileName: string;
   }
 ): Promise<string> {
-  const { userId, jobId, documentType, blob, fileName } = params;
-  const path = `${userId}/${jobId}/${documentType}_${Date.now()}.pdf`;
-  const url = await uploadToStorage(supabase, path, blob, "application/pdf");
+  const { jobId, documentType, blob } = params;
 
-  await upsertDocumentRow(supabase, {
-    job_id: jobId,
-    user_id: userId,
-    document_type: documentType,
-    file_url: url,
-    file_name: fileName,
-    upload_status: "uploaded",
-    ai_confidence: "high",
-  });
+  const formData = new FormData();
+  formData.append("file", blob, "document.pdf");
+  formData.append("jobId", jobId);
+  formData.append("documentType", documentType);
+  formData.append("aiConfidence", "high");
 
-  return url;
+  const result = await postDocumentUpload(formData);
+  return result.url;
 }
