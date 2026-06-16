@@ -8,26 +8,27 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "tv-brushed-gold-btn font-bold text-black",
+        default:
+          "tv-brushed-gold-btn min-h-11 font-bold text-[var(--color-on-accent)]",
         outline:
-          "border-white/10 bg-transparent text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5",
+          "border-[var(--color-shell-border)] bg-transparent text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5",
         secondary:
-          "border-white/10 bg-[#050505] text-[var(--color-text-secondary)] hover:bg-white/5",
+          "border-[var(--color-shell-border)] bg-[var(--color-input-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)]",
         ghost:
-          "bg-transparent text-[var(--color-text-secondary)] hover:bg-white/5",
+          "bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)]",
         destructive:
           "border-[var(--color-danger)]/20 bg-[var(--color-danger-bg)] text-[var(--color-danger-text)] hover:opacity-90",
         link: "text-[var(--color-accent)] underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 gap-1.5 px-3",
-        xs: "h-7 gap-1 rounded-lg px-2 text-xs [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1 rounded-lg px-2.5 text-[0.8rem] [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-12 gap-1.5 px-4 text-base",
-        icon: "size-10",
-        "icon-xs": "size-7 rounded-lg [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8 rounded-lg",
-        "icon-lg": "size-12",
+        default: "h-11 gap-1.5 px-3",
+        xs: "h-11 min-h-11 gap-1 rounded-lg px-2 text-xs [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-11 gap-1 rounded-lg px-2.5 text-[0.8rem] [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-14 gap-1.5 px-4 text-base",
+        icon: "size-11",
+        "icon-xs": "size-11 rounded-lg [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-11 rounded-lg",
+        "icon-lg": "size-14",
       },
     },
     defaultVariants: {

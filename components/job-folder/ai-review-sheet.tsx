@@ -170,7 +170,7 @@ export function AiReviewSheet({
         {fields.map((field, index) => (
           <div
             key={String(field.key)}
-            className="rounded-2xl tv-glass-card border border-white/5 p-4"
+            className="rounded-2xl tv-glass-card border border-[var(--color-shell-border)] p-4"
           >
             <div className="flex items-center justify-between gap-2">
               <p className="tv-label">{field.label}</p>

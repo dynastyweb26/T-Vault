@@ -19,7 +19,7 @@ const toneClasses = {
   success: "bg-[var(--color-success-bg)] text-[var(--color-success-text)] border border-[var(--color-success)]/10",
   warning: "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)] border border-[var(--color-warning)]/10",
   danger: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)] border border-[var(--color-danger)]/10",
-  disabled: "bg-white/5 text-[var(--color-text-muted)] border border-white/5",
+  disabled: "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-shell-border)]",
 };
 
 export function JobCard({ job, onAction }: JobCardProps) {
@@ -113,20 +113,18 @@ export function JobCard({ job, onAction }: JobCardProps) {
           className="block p-4 pr-12"
         >
           <div className="flex items-start justify-between gap-3">
-            <h3 className="text-[18px] font-bold text-[var(--color-text-primary)]">
-              {job.job_name}
-            </h3>
-            <p className="tv-tabular shrink-0 text-[18px] font-bold text-[var(--color-accent)]">
+            <h3 className="tv-card-title">{job.job_name}</h3>
+            <p className="tv-tabular tv-key-number shrink-0 text-[18px]">
               {formatCurrency(job.load_value ?? 0)}
             </p>
           </div>
 
-          <p className="mt-1 text-[15px] text-[var(--color-text-secondary)]">
+          <p className="tv-body mt-1 text-[15px] text-[var(--color-text-secondary)]">
             {job.broker_name || "No broker"} · {job.pickup_location || "Pickup"} →{" "}
             {job.delivery_location || "Delivery"}
           </p>
 
-          <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
+          <p className="tv-caption mt-1 normal-case tracking-normal">
             {formatShortDate(job.pickup_date)} → {formatShortDate(job.delivery_date)}
           </p>
 
@@ -137,13 +135,13 @@ export function JobCard({ job, onAction }: JobCardProps) {
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="shrink-0 text-[13px] text-[var(--color-text-muted)]">
+            <span className="tv-caption shrink-0 normal-case tracking-normal">
               {job.docsComplete} of {job.docsTotal} required docs
             </span>
           </div>
 
           <span
-            className={`mt-3 inline-flex rounded-full px-3 py-1 text-[13px] font-medium ${toneClasses[job.statusTone]}`}
+            className={`mt-3 inline-flex rounded-full px-3 py-1 tv-caption normal-case tracking-normal font-medium ${toneClasses[job.statusTone]}`}
           >
             {job.statusLabel}
           </span>

@@ -47,6 +47,11 @@
   --color-bg: #ffffff;
   --color-surface: #fafafa;
   --color-surface-elevated: #f0f0f0;
+  --color-input-bg: #fafafa;
+  --color-panel-solid: #ffffff;
+  --color-shell-border: #e8e8e8;
+  --color-inset-shadow: rgba(0, 0, 0, 0.06);
+  --color-hero-scrim: rgba(0, 0, 0, 0.35);
   --color-text-primary: #1a1a1a;
   --color-text-secondary: #555555;
   --color-text-muted: #aaaaaa;
@@ -71,6 +76,11 @@
   --color-bg: #0a0a0a;
   --color-surface: #16130d;
   --color-surface-elevated: #221f19;
+  --color-input-bg: #050505;
+  --color-panel-solid: #221f19;
+  --color-shell-border: rgba(255, 255, 255, 0.05);
+  --color-inset-shadow: rgba(0, 0, 0, 0.4);
+  --color-hero-scrim: rgba(0, 0, 0, 0.55);
   --color-text-primary: #e9e1d7;
   --color-text-secondary: #d0c5b2;
   --color-text-muted: #99907e;
@@ -175,9 +185,9 @@
   }
 
   .tv-glass-card {
-    background: rgba(22, 19, 13, 0.6);
+    background: color-mix(in srgb, var(--color-surface) 88%, transparent);
     backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--color-shell-border);
   }
 
   .tv-brushed-gold-btn {
@@ -185,13 +195,13 @@
     box-shadow:
       0 0 15px rgba(var(--gold-rgb), 0.35),
       inset 0 1px 1px rgba(255, 255, 255, 0.5);
-    color: #000000;
+    color: var(--color-on-accent);
   }
 
   .tv-glow-gold-outline-btn {
-    background: #221f19;
-    border: 1px solid #4d4637;
-    color: #d4a017;
+    background: var(--color-panel-solid);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-shell-border));
+    color: var(--color-accent);
     font-weight: 600;
     border-radius: 9999px;
     text-shadow: 0 0 12px rgba(212, 160, 23, 0.55);
@@ -212,21 +222,21 @@
 
   .tv-payment-segment {
     border-radius: 0.75rem;
-    background: #050505;
-    border: 1px solid #4d4637;
+    background: var(--color-input-bg);
+    border: 1px solid var(--color-shell-border);
     padding: 4px;
   }
 
   .tv-payment-selected {
-    background: #2d2200;
-    color: #d4a017;
+    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-input-bg));
+    color: var(--color-accent);
     text-shadow: 0 0 12px rgba(212, 160, 23, 0.55);
     box-shadow: inset 0 0 16px rgba(212, 160, 23, 0.12);
   }
 
   .tv-payment-unselected {
     background: transparent;
-    color: #99907e;
+    color: var(--color-text-muted);
   }
 
   .tv-compiling-dots span {
@@ -308,8 +318,8 @@
   .tv-outline-btn {
     height: 2.75rem;
     border-radius: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(22, 19, 13, 0.6);
+    border: 1px solid var(--color-shell-border);
+    background: color-mix(in srgb, var(--color-surface) 88%, transparent);
     padding-inline: 0.75rem;
     font-size: 14px;
     color: var(--color-text-secondary);
@@ -317,7 +327,7 @@
   }
 
   .tv-outline-btn:hover {
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: color-mix(in srgb, var(--color-accent) 25%, var(--color-shell-border));
     color: var(--color-text-primary);
   }
 
@@ -338,8 +348,8 @@
     justify-content: center;
     gap: 0.25rem;
     border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: #050505;
+    border: 1px solid var(--color-shell-border);
+    background: var(--color-input-bg);
     transition: border-color 150ms, color 150ms, background-color 150ms;
   }
 
@@ -354,14 +364,14 @@
   }
 
   .tv-divider {
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid var(--color-shell-border);
   }
 
   .tv-progress-track {
     height: 0.5rem;
     overflow: hidden;
     border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--color-shell-border);
   }
 
   .tv-progress-fill {
@@ -389,8 +399,8 @@
     width: 100%;
     max-width: 24rem;
     border-radius: 1rem;
-    background: rgba(22, 19, 13, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: color-mix(in srgb, var(--color-panel-solid) 95%, transparent);
+    border: 1px solid var(--color-shell-border);
     padding: 1.5rem;
     box-shadow: 0px 24px 48px rgba(0, 0, 0, 0.5);
   }
@@ -400,9 +410,9 @@
     flex-direction: column;
     align-items: center;
     border-radius: 1rem;
-    background: rgba(22, 19, 13, 0.6);
+    background: color-mix(in srgb, var(--color-surface) 88%, transparent);
     backdrop-filter: blur(24px);
-    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border: 1px dashed var(--color-shell-border);
     padding: 2.5rem 1.5rem;
     text-align: center;
   }
@@ -429,23 +439,23 @@
     height: 56px;
     width: 100%;
     border-radius: 12px;
-    border: 1px solid #d4a017;
-    background: #050505;
+    border: 1px solid var(--color-accent);
+    background: var(--color-input-bg);
     padding: 0 1rem;
     font-family: var(--font-dm-mono), ui-monospace, monospace;
     font-size: 17px;
     font-variant-numeric: tabular-nums;
-    color: #e9e1d7;
-    color-scheme: dark;
+    color: var(--color-text-primary);
+    color-scheme: light dark;
     outline: none;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 2px 4px var(--color-inset-shadow);
     transition: border-color 150ms, box-shadow 150ms;
   }
 
   .tv-date-input:focus {
     border-color: var(--gold-light);
     box-shadow:
-      inset 0 2px 4px rgba(0, 0, 0, 0.4),
+      inset 0 2px 4px var(--color-inset-shadow),
       0 0 0 1px rgba(212, 160, 23, 0.25);
   }
 
@@ -456,14 +466,14 @@
   .tv-date-input::-webkit-datetime-edit-day-field,
   .tv-date-input::-webkit-datetime-edit-year-field {
     font-family: var(--font-dm-mono), ui-monospace, monospace;
-    color: #e9e1d7;
+    color: var(--color-text-primary);
   }
 
   .tv-date-input::-webkit-datetime-edit-month-field:focus,
   .tv-date-input::-webkit-datetime-edit-day-field:focus,
   .tv-date-input::-webkit-datetime-edit-year-field:focus {
     background: rgba(212, 160, 23, 0.15);
-    color: #f0c040;
+    color: var(--gold-light);
     outline: none;
   }
 
@@ -479,11 +489,50 @@
   }
 
   .tv-date-input:invalid::-webkit-datetime-edit {
-    color: #99907e;
+    color: var(--color-text-muted);
   }
 
   .tv-date-input::placeholder {
-    color: #99907e;
+    color: var(--color-text-muted);
+  }
+
+  .tv-input-field {
+    height: 3.5rem;
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-shell-border);
+    background: var(--color-input-bg);
+    padding-inline: 1rem;
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    box-shadow: inset 0 2px 4px var(--color-inset-shadow);
+    outline: none;
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+
+  .tv-input-field::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .tv-input-field:focus {
+    border-color: var(--color-accent);
+  }
+
+  .tv-input-field-gold {
+    border-color: var(--color-accent);
+  }
+
+  .tv-input-field-gold:focus {
+    border-color: var(--gold-light);
+  }
+
+  .tv-icon-btn {
+    display: inline-flex;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    align-items: center;
+    justify-content: center;
   }
 
   .tv-auth-page {

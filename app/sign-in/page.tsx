@@ -79,7 +79,7 @@ export default function SignInPage() {
       <div className="mb-8">
         <p className="tv-caption">Welcome back</p>
         <h1 className="tv-page-title mt-1">Sign in</h1>
-        <p className="mt-2 text-[17px] text-[var(--color-text-secondary)]">
+        <p className="tv-body mt-2 text-[var(--color-text-secondary)]">
           Get back to your loads, invoices, and money.
         </p>
       </div>
@@ -103,7 +103,9 @@ export default function SignInPage() {
         />
 
         {formError ? (
-          <p className="text-[14px] text-[var(--color-danger-text)]">{formError}</p>
+          <div className="tv-error-state px-4 py-3">
+            <p className="text-[14px]">{formError}</p>
+          </div>
         ) : null}
 
         <TvButton loading={loading} onClick={handleSignIn}>

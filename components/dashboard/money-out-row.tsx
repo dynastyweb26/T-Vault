@@ -12,30 +12,32 @@ export function MoneyOutRow({ data }: MoneyOutRowProps) {
   return (
     <section id="ledger-insight" className="tv-feed-card px-5">
       <div className="tv-glass-card overflow-hidden rounded-2xl">
-        <div className="flex items-center gap-3 border-b border-white/5 p-4">
+        <div className="flex items-center gap-3 border-b border-[var(--color-shell-border)] p-4">
           <div className="flex size-8 items-center justify-center rounded-full bg-[var(--color-accent)]/10">
             <Receipt className="size-4 text-[var(--color-accent)]" strokeWidth={2} aria-hidden />
           </div>
-          <span className="text-sm font-bold">Ledger Insight</span>
-          <span className="ml-auto text-xs opacity-40">Vault Data</span>
+          <span className="tv-body text-sm font-bold">Ledger Insight</span>
+          <span className="tv-caption ml-auto normal-case tracking-normal opacity-60">
+            Vault Data
+          </span>
         </div>
 
-        <div className="flex flex-col gap-4 p-6">
-          <h3 className="text-center text-xl font-semibold italic text-[var(--color-text-primary)]">
+        <div className="flex flex-col gap-4 p-5">
+          <h3 className="tv-section-header text-center italic">
             {netPositive
               ? "Your profit margin is looking steady."
               : "Expenses are outpacing revenue this month."}
           </h3>
 
           <div className="mt-2 flex flex-col gap-2">
-            <div className="flex items-center justify-between rounded-lg border border-[var(--color-danger)]/10 bg-[var(--color-danger-bg)] p-3">
-              <span className="text-sm opacity-80">Gross Expenses</span>
+            <div className="tv-glass-card flex items-center justify-between rounded-2xl border border-[var(--color-danger)]/10 bg-[var(--color-danger-bg)] p-3">
+              <span className="tv-body text-sm opacity-80">Gross Expenses</span>
               <span className="tv-tabular font-bold text-[var(--color-danger-text)]">
                 {formatCurrency(data.expensesThisMonth)}
               </span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-[var(--color-success)]/10 bg-[var(--color-success-bg)] p-3">
-              <span className="text-sm opacity-80">Net Profit</span>
+            <div className="tv-glass-card flex items-center justify-between rounded-2xl border border-[var(--color-success)]/10 bg-[var(--color-success-bg)] p-3">
+              <span className="tv-body text-sm opacity-80">Net Profit</span>
               <span
                 className="tv-tabular font-bold"
                 style={{

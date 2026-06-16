@@ -22,10 +22,7 @@ export function TvTextarea({
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>
       {showLabel ? (
-        <label
-          htmlFor={inputId}
-          className="font-sans text-[15px] font-semibold leading-snug text-[#E9E1D7]"
-        >
+        <label htmlFor={inputId} className="tv-body font-semibold text-[var(--color-text-primary)]">
           {label}
         </label>
       ) : null}
@@ -33,8 +30,8 @@ export function TvTextarea({
         id={inputId}
         rows={rows}
         className={cn(
-          "min-h-[88px] w-full resize-y rounded-xl border bg-[#050505] px-4 py-3 text-[17px] leading-relaxed text-[#E9E1D7] shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] outline-none transition-colors placeholder:text-[#99907E] focus:border-[var(--gold-light)]",
-          error ? "border-[var(--color-danger)]" : "border-[#D4A017]"
+          "tv-input-field tv-input-field-gold min-h-[88px] resize-y py-3 leading-relaxed",
+          error && "border-[var(--color-danger)]"
         )}
         aria-invalid={Boolean(error)}
         {...props}

@@ -81,7 +81,7 @@ export default function LoadsPage() {
             aria-hidden
           />
           <h2 className="tv-card-title mt-4">No loads yet</h2>
-          <p className="mt-2 max-w-xs text-[16px] text-[var(--color-text-secondary)]">
+          <p className="tv-body mt-2 max-w-xs text-[var(--color-text-secondary)]">
             When you add a load, it will show up here with status, docs, and pay
             tracking.
           </p>
@@ -101,11 +101,11 @@ export default function LoadsPage() {
                 type="button"
                 disabled={page === 0}
                 onClick={() => setPage((value) => Math.max(0, value - 1))}
-                className="tv-link text-[14px] disabled:text-[var(--color-text-muted)]"
+                className="tv-link tv-icon-btn min-w-20 text-[14px] disabled:text-[var(--color-text-muted)]"
               >
                 Previous
               </button>
-              <span className="text-[13px] text-[var(--color-text-muted)]">
+              <span className="tv-caption normal-case tracking-normal">
                 Page {page + 1} of {totalPages}
               </span>
               <button
@@ -114,7 +114,7 @@ export default function LoadsPage() {
                 onClick={() =>
                   setPage((value) => Math.min(totalPages - 1, value + 1))
                 }
-                className="tv-link text-[14px] disabled:text-[var(--color-text-muted)]"
+                className="tv-link tv-icon-btn min-w-20 text-[14px] disabled:text-[var(--color-text-muted)]"
               >
                 Next
               </button>

@@ -48,7 +48,9 @@ export function DashboardView() {
         {loading ? (
           <DashboardSkeleton />
         ) : error ? (
-          <p className="px-5 text-[15px] text-[var(--color-danger-text)]">{error}</p>
+          <div className="tv-error-state mx-5">
+            <p className="tv-body text-[15px]">{error}</p>
+          </div>
         ) : data ? (
           <>
             <EarningsHero data={data} />

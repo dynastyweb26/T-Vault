@@ -25,15 +25,13 @@ export function AwaitingPayment({ items }: AwaitingPaymentProps) {
             className="tv-glass-card rounded-2xl px-4 py-3"
           >
             <div className="flex items-start justify-between gap-3">
-              <p className="text-[16px] font-medium text-[var(--color-text-primary)]">
-                {item.jobName}
-              </p>
-              <p className="tv-tabular text-[16px] font-bold text-[var(--color-accent)]">
+              <p className="tv-body font-medium">{item.jobName}</p>
+              <p className="tv-tabular tv-body font-bold text-[var(--color-accent)]">
                 {formatCurrency(item.amount)}
               </p>
             </div>
             <p
-              className="mt-1 text-[14px]"
+              className="tv-body mt-1 text-[14px]"
               style={{
                 color: item.isOverdue
                   ? "var(--color-danger-text)"

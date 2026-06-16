@@ -39,19 +39,17 @@ export function BottomSheet({
         role="dialog"
         aria-label={ariaLabel}
         className={cn(
-          "w-full max-h-[92dvh] overflow-y-auto rounded-t-[var(--radius-sheet)] border-b-0 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3",
+          "w-full max-h-[92dvh] overflow-y-auto rounded-t-[var(--radius-sheet)] border-b-0 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3",
           surface === "solid"
-            ? "border-t border-white/5 bg-[#221F19]"
+            ? "border-t border-[var(--color-shell-border)] bg-[var(--color-panel-solid)]"
             : "tv-glass-card",
           className
         )}
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/10" />
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--color-shell-border)]" />
         <div className="mb-4 flex items-center justify-between gap-3">
           {title ? (
-            <h2 className="text-[20px] font-bold text-[var(--color-text-primary)]">
-              {title}
-            </h2>
+            <h2 className="tv-section-header">{title}</h2>
           ) : (
             <span />
           )}
@@ -59,7 +57,7 @@ export function BottomSheet({
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="flex size-11 items-center justify-center text-[var(--color-text-secondary)]"
+            className="tv-icon-btn text-[var(--color-text-secondary)]"
           >
             <X className="size-6" strokeWidth={2} />
           </button>

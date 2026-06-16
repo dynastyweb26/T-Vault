@@ -19,7 +19,7 @@ export function ActiveLoadsList({ jobs, onRefresh }: ActiveLoadsListProps) {
         <h2 className="tv-section-header">Active Loads</h2>
         <Link
           href={APP_ROUTES.loads}
-          className="tv-link text-[14px]"
+          className="tv-link tv-body min-h-11 inline-flex items-center text-[14px]"
         >
           See All
         </Link>
@@ -34,10 +34,8 @@ export function ActiveLoadsList({ jobs, onRefresh }: ActiveLoadsListProps) {
               aria-hidden
             />
           </div>
-          <h3 className="mt-4 text-xl font-bold text-[var(--color-text-primary)]">
-            No loads detected.
-          </h3>
-          <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--color-text-secondary)]/60">
+          <h3 className="tv-card-title mt-4">No loads detected.</h3>
+          <p className="tv-body mt-2 max-w-xs text-[var(--color-text-secondary)]">
             Start tracking your journey. Every mile logged is progress verified.
           </p>
           <Link href={APP_ROUTES.newJob} className="mt-6 w-full">
