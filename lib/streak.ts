@@ -13,7 +13,7 @@ function daysBetween(a: string, b: string): number {
 export async function updateStreak(
   supabase: SupabaseClient,
   userId: string
-): Promise<void> {
+): Promise<number> {
   const today = toDateString(new Date());
 
   const { data: profile, error } = await supabase
@@ -22,7 +22,7 @@ export async function updateStreak(
     .eq("id", userId)
     .single();
 
-  if (error || !profile) return;
+  if (error || !profile) return 0;
 
   const lastActive = profile.last_active_date as string | null;
   const currentStreak = profile.streak_days ?? 0;
@@ -34,7 +34,7 @@ export async function updateStreak(
     nextStreak = currentStreak || 1;
   } else if (daysBetween(lastActive, today) === 1) {
     nextStreak = currentStreak + 1;
-  } else {
+  } else if (daysBetween(lastActive, today) > 1) {
     nextStreak = 1;
   }
 
@@ -45,4 +45,23 @@ export async function updateStreak(
       streak_days: nextStreak,
     })
     .eq("id", userId);
+
+  if (nextStreak === 30) {
+    const { data: existing } = await supabase
+      .from("milestones")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("milestone_type", "streak_30")
+      .maybeSingle();
+
+    if (!existing) {
+      await supabase.from("milestones").insert({
+        user_id: userId,
+        milestone_type: "streak_30",
+        achieved_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  return nextStreak;
 }

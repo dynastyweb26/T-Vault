@@ -26,6 +26,17 @@ export const APP_ROUTES = {
   costPerMile: "/cost-per-mile",
   taxSummary: "/tax-summary",
   brokerHistory: "/broker-history",
+  voiceNote: "/voice-note",
+  voiceNotes: "/voice-notes",
+  documents: "/documents",
+  referral: "/referral",
+  editProfile: "/profile/edit",
+  notificationPrefs: "/profile/notifications",
+  deleteAccount: "/profile/delete-account",
+  help: "/profile/help",
+  privacy: "/profile/privacy",
+  terms: "/profile/terms",
+  changePassword: "/profile/change-password",
 } as const;
 
 export const PROTECTED_PREFIXES = [
@@ -37,6 +48,10 @@ export const PROTECTED_PREFIXES = [
   "/cost-per-mile",
   "/tax-summary",
   "/broker-history",
+  "/voice-note",
+  "/voice-notes",
+  "/documents",
+  "/referral",
   "/onboarding",
   "/profile-setup",
 ] as const;
@@ -51,6 +66,10 @@ export const ONBOARDING_REQUIRED_PREFIXES = [
   "/cost-per-mile",
   "/tax-summary",
   "/broker-history",
+  "/voice-note",
+  "/voice-notes",
+  "/documents",
+  "/referral",
 ] as const;
 
 export const AUTH_ROUTES = [

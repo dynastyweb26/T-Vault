@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, Receipt } from "lucide-react";
 import { TvButton } from "@/components/tv/tv-button";
 import { ExpenseSummaryCard } from "@/components/expenses/expense-summary-card";
@@ -35,11 +36,23 @@ function ExpenseListSkeleton() {
 
 export function ExpensesView() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const { data, loading, refreshing, error, refresh } = useExpenses();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<ExpenseFilterId>("all");
   const [previewExpense, setPreviewExpense] = useState<Expense | null>(null);
   const [recentExpenseId, setRecentExpenseId] = useState<string | null>(null);
+
+  const prefillAmount = searchParams.get("amount") ?? "";
+  const prefillCategory = (searchParams.get("category") ??
+    "fuel") as import("@/lib/expenses/constants").TruckExpenseCategoryId;
+  const prefillDescription = searchParams.get("description") ?? "";
+
+  useEffect(() => {
+    if (prefillAmount || prefillDescription) {
+      setSheetOpen(true);
+    }
+  }, [prefillAmount, prefillDescription]);
 
   const { containerRef, pullDistance, handlers } = usePullToRefresh(async () => {
     await refresh();
@@ -136,6 +149,9 @@ export function ExpensesView() {
       <AddTruckExpenseSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
+        initialAmount={prefillAmount}
+        initialCategory={prefillCategory}
+        initialDescription={prefillDescription}
         onSaved={(expenseId) => {
           setRecentExpenseId(expenseId);
           void refresh();

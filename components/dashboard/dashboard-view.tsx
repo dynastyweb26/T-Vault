@@ -11,6 +11,8 @@ import {
   QuickExpenseRow,
   QuickExpenseSheet,
 } from "@/components/dashboard/quick-expense-sheet";
+import { StreakCard } from "@/components/dashboard/streak-card";
+import { VoiceNoteShortcut } from "@/components/voice-note/voice-note-shortcut";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { SuccessBanner } from "@/components/dashboard/success-banner";
@@ -55,6 +57,9 @@ export function DashboardView() {
         ) : data ? (
           <>
             <EarningsHero data={data} />
+            <div className="px-5">
+              <StreakCard streakDays={data.streakDays} />
+            </div>
             <MoneyOutRow data={data} />
             <div className="px-5">
               <CostPerMileDashboardCard
@@ -71,6 +76,7 @@ export function DashboardView() {
               <AwaitingPayment items={data.awaitingPayments} />
               <ActiveLoadsList jobs={data.activeJobs} onRefresh={refresh} />
               <QuickExpenseRow onOpen={() => setExpenseOpen(true)} />
+              <VoiceNoteShortcut />
             </div>
           </>
         ) : null}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 import { TvButton } from "@/components/tv/tv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -18,6 +19,7 @@ import {
   getTextCounter,
 } from "@/lib/validation";
 import { TEXT_LIMITS, APP_ROUTES } from "@/lib/constants";
+import { canCreateJob, countUserJobs } from "@/lib/pro-tier";
 import type { LoadTemplate } from "@/types/job-folder";
 import type { PaymentType } from "@/types/jobs";
 
@@ -57,6 +59,8 @@ export function NewJobSheet() {
   const [templates, setTemplates] = useState<LoadTemplate[]>([]);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(false);
+  const [jobCount, setJobCount] = useState(0);
+  const [showUpgradeLock, setShowUpgradeLock] = useState(false);
 
   const loadTemplates = useCallback(async () => {
     if (!user) return;
@@ -71,6 +75,8 @@ export function NewJobSheet() {
       .order("updated_at", { ascending: false });
 
     setTemplates((data as LoadTemplate[]) ?? []);
+    const count = await countUserJobs(supabase, user.id);
+    setJobCount(count);
   }, [user]);
 
   useEffect(() => {
@@ -124,6 +130,11 @@ export function NewJobSheet() {
 
   const createLoad = async () => {
     if (!user) return;
+
+    if (!canCreateJob(profile, jobCount)) {
+      setShowUpgradeLock(true);
+      return;
+    }
 
     const jobNameError = validateTextLength(
       form.jobName,
@@ -375,6 +386,29 @@ export function NewJobSheet() {
           ) : null}
         </div>
       </div>
+
+      {showUpgradeLock ? (
+        <div className="mt-4 rounded-2xl border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/5 p-4 text-center">
+          <Lock
+            className="mx-auto size-8 text-[var(--color-accent)]"
+            strokeWidth={2}
+            aria-hidden
+          />
+          <p className="tv-card-title mt-3">Upgrade to create more loads</p>
+          <p className="mt-2 text-[16px] text-[var(--color-text-secondary)]">
+            Free tier includes 1 load. Join T-Vault Pro to keep building.
+          </p>
+          <TvButton
+            className="mt-4"
+            onClick={async () => {
+              await fetch("/api/pro-waitlist", { method: "POST" });
+              setShowUpgradeLock(false);
+            }}
+          >
+            Start Pro
+          </TvButton>
+        </div>
+      ) : null}
     </BottomSheet>
   );
 }

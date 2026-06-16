@@ -28,6 +28,9 @@ interface AddTruckExpenseSheetProps {
   open: boolean;
   onClose: () => void;
   onSaved?: (expenseId: string) => void;
+  initialAmount?: string;
+  initialCategory?: TruckExpenseCategoryId;
+  initialDescription?: string;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -36,6 +39,9 @@ export function AddTruckExpenseSheet({
   open,
   onClose,
   onSaved,
+  initialAmount = "",
+  initialCategory = "fuel",
+  initialDescription = "",
 }: AddTruckExpenseSheetProps) {
   const { user } = useAuth();
   const [category, setCategory] = useState<TruckExpenseCategoryId>("fuel");
@@ -54,10 +60,10 @@ export function AddTruckExpenseSheet({
 
   useEffect(() => {
     if (!open) return;
-    setCategory("fuel");
-    setAmount("");
+    setCategory(initialCategory);
+    setAmount(initialAmount);
     setExpenseDate(today());
-    setDescription("");
+    setDescription(initialDescription);
     setReceiptMode("receipt");
     setNoReceiptReason("");
     setReceiptFile(null);
@@ -66,7 +72,7 @@ export function AddTruckExpenseSheet({
     setDescriptionError(null);
     setNoReceiptError(null);
     setFormError(null);
-  }, [open]);
+  }, [open, initialAmount, initialCategory, initialDescription]);
 
   const saveExpense = async () => {
     const nextAmountError = validateLoadValue(amount);

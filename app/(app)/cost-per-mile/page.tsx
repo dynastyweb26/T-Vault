@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { TrendingUp } from "lucide-react";
 import { AppHeader } from "@/components/shell/app-header";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -39,8 +40,21 @@ export default function CostPerMilePage() {
         subtitle="Your profitability by the mile"
       />
 
-      {loading || !data ? (
+      {loading ? (
         <div className="tv-skeleton mx-5 mt-6 h-64 rounded-2xl" />
+      ) : !data || data.loadComparison.length < 3 ? (
+        <div className="mt-6 px-5">
+          <div className="tv-empty-state">
+            <TrendingUp
+              className="size-12 text-[var(--color-accent)]"
+              strokeWidth={2}
+              aria-hidden
+            />
+            <p className="tv-card-title mt-4">
+              Complete 3+ loads to see your metrics
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="flex flex-col gap-4 px-5">
           <CostPerMileWeekCard data={data.thisWeek} />
