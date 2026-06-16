@@ -20,6 +20,7 @@ interface AuthContextValue {
   loading: boolean;
   sessionWarning: boolean;
   refreshProfile: () => Promise<void>;
+  patchProfile: (updates: Partial<UserProfile>) => void;
   recordActivity: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -56,6 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(data as UserProfile);
     }
   }, [supabase, user]);
+
+  const patchProfile = useCallback((updates: Partial<UserProfile>) => {
+    setProfile((current) => (current ? { ...current, ...updates } : current));
+  }, []);
 
   const recordActivity = useCallback(async () => {
     if (!user || !supabase) return;
@@ -141,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       sessionWarning,
       refreshProfile,
+      patchProfile,
       recordActivity,
       signOut,
     }),
@@ -151,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       sessionWarning,
       refreshProfile,
+      patchProfile,
       recordActivity,
       signOut,
     ]

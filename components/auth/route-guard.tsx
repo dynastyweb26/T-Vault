@@ -2,11 +2,9 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FolderOpen } from "lucide-react";
-import { AppHeader } from "@/components/shell/app-header";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
-import { getPostAuthRedirect } from "@/lib/auth-helpers";
+import { hasCompletedOnboarding } from "@/lib/auth-helpers";
 
 interface RouteGuardProps {
   children: React.ReactNode;
@@ -25,12 +23,12 @@ export function RouteGuard({ children, mode = "auth" }: RouteGuardProps) {
       return;
     }
 
-    if (!profile) return;
-
-    const destination = getPostAuthRedirect(profile);
-
-    if (mode === "app" && destination !== APP_ROUTES.dashboard) {
-      router.replace(destination);
+    if (
+      mode === "app" &&
+      profile &&
+      !hasCompletedOnboarding(profile, user.id)
+    ) {
+      router.replace(APP_ROUTES.onboarding);
     }
   }, [loading, mode, profile, router, user]);
 
@@ -44,9 +42,12 @@ export function RouteGuard({ children, mode = "auth" }: RouteGuardProps) {
 
   if (!user) return null;
 
-  if (mode === "app" && profile) {
-    const destination = getPostAuthRedirect(profile);
-    if (destination !== APP_ROUTES.dashboard) return null;
+  if (
+    mode === "app" &&
+    profile &&
+    !hasCompletedOnboarding(profile, user.id)
+  ) {
+    return null;
   }
 
   return <>{children}</>;

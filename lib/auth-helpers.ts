@@ -1,5 +1,19 @@
 import type { UserProfile } from "@/types/database";
-import { APP_ROUTES } from "@/lib/constants";
+import { APP_ROUTES, ONBOARDING_STORAGE_KEY } from "@/lib/constants";
+
+export function hasCompletedOnboarding(
+  profile: UserProfile | null,
+  userId?: string | null
+): boolean {
+  if (profile?.onboarding_completed) return true;
+  if (typeof window === "undefined" || !userId) return false;
+  return localStorage.getItem(ONBOARDING_STORAGE_KEY) === userId;
+}
+
+export function markOnboardingComplete(userId: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(ONBOARDING_STORAGE_KEY, userId);
+}
 
 export function getPostAuthRedirect(profile: UserProfile | null): string {
   if (!profile?.onboarding_completed) {
