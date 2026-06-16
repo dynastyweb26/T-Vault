@@ -17,8 +17,6 @@ export const SCROLL_STORAGE_KEY = "tvault-loads-scroll";
 export const ACCEPTED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
-  "image/heic",
-  "image/heif",
   "application/pdf",
 ]);
 
