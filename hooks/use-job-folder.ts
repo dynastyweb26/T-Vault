@@ -49,6 +49,19 @@ export function useJobFolder(jobId: string) {
     setLoading(false);
   }, [jobId, user]);
 
+  const refreshQuiet = useCallback(async () => {
+    if (!user || !jobId) return;
+
+    const supabase = createClient();
+    const [jobRes, docsRes] = await Promise.all([
+      supabase.from("jobs").select("*").eq("id", jobId).eq("user_id", user.id).single(),
+      supabase.from("documents").select("*").eq("job_id", jobId).eq("user_id", user.id),
+    ]);
+
+    if (jobRes.data) setJob(jobRes.data as Job);
+    setDocuments((docsRes.data ?? []) as JobDocument[]);
+  }, [jobId, user]);
+
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -78,7 +91,9 @@ export function useJobFolder(jobId: string) {
     loading,
     error,
     refresh,
+    refreshQuiet,
     updateJob,
+    setJob,
     setDocuments,
     setExpenses,
     setActiveSession,

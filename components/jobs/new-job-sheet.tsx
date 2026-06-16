@@ -92,7 +92,9 @@ export function NewJobSheet() {
   const profitabilityEstimate = (() => {
     const loadVal = Number(form.loadValue.replace(/[^0-9.]/g, ""));
     if (!loadVal || Number.isNaN(loadVal)) return null;
-    const milesNum = Number(estimatedMiles) || estimateMiles(form.pickupLocation, form.deliveryLocation);
+    const milesNum =
+      Number(estimatedMiles) ||
+      estimateMiles(form.pickupLocation, form.deliveryLocation);
     if (costPerMile && milesNum) {
       const cost = costPerMile * milesNum;
       const net = loadVal - cost;
@@ -101,6 +103,11 @@ export function NewJobSheet() {
     }
     return null;
   })();
+
+  const handleDismiss = () => {
+    closeSheet();
+    router.push(APP_ROUTES.dashboard);
+  };
 
   const applyTemplate = (template: LoadTemplate) => {
     setForm({
@@ -202,7 +209,7 @@ export function NewJobSheet() {
   return (
     <BottomSheet
       open={open}
-      onClose={closeSheet}
+      onClose={handleDismiss}
       title="New Load"
       ariaLabel="New load"
       surface="solid"

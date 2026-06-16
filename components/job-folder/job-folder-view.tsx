@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,9 +13,11 @@ import {
   Clock,
   DollarSign,
   FileText,
+  Loader2,
   MapPin,
   MoreVertical,
   Pencil,
+  PenLine,
   Plus,
   Receipt,
   Trophy,
@@ -33,19 +35,44 @@ import {
   countRequiredDocs,
   getDocument,
   hasDocument,
+  hasDocumentFile,
+  isDocumentChecklistComplete,
   isChecklistComplete,
+  isManualDocumentEntry,
   missingChecklistItems,
 } from "@/lib/job-folder/documents";
 import {
   calculateDetentionOwed,
   formatDuration,
   formatTimerDisplay,
+  getDetentionElapsedSeconds,
   isDetentionBillable,
   DETENTION_FREE_MINUTES,
 } from "@/lib/job-folder/detention";
 import { generateDetentionInvoicePdf } from "@/lib/job-folder/detention-invoice";
 import { generateAndSaveLoadInvoice } from "@/lib/job-folder/invoice";
 import { uploadJobDocument, saveDocumentFromBlob } from "@/lib/job-folder/upload";
+import {
+  isDocumentParsing,
+  needsAiReview,
+  retryDocumentParsing,
+  triggerDocumentParsing,
+} from "@/lib/job-folder/ai-parsing";
+import { isParseableDocType } from "@/lib/job-folder/ai-types";
+import {
+  resolveCrossValidationConflict,
+} from "@/lib/job-folder/cross-validation";
+import { AiParsingBanner } from "@/components/job-folder/ai-parsing-banner";
+import { AiReviewSheet } from "@/components/job-folder/ai-review-sheet";
+import { CrossValidationBanner } from "@/components/job-folder/cross-validation-banner";
+import { DocumentManualEntrySheet } from "@/components/job-folder/document-manual-entry-sheet";
+import { DocumentPreviewModal } from "@/components/job-folder/document-preview-modal";
+import { JobFolderFieldInput } from "@/components/job-folder/job-folder-field-input";
+import { saveManualDocumentEntryAndVerify } from "@/lib/job-folder/manual-document-save";
+import {
+  fieldKeyToLabel,
+  toEditFieldValue,
+} from "@/lib/job-folder/field-labels";
 import {
   detectNewMilestones,
   fetchAchievedMilestones,
@@ -59,6 +86,7 @@ import {
   updateBrokerDetentionOutcome,
 } from "@/lib/job-folder/broker-ratings";
 import { estimateMiles } from "@/lib/job-folder/mileage";
+import { updateJobProfitability } from "@/lib/job-folder/profitability";
 import {
   DOC_TYPE_LABELS,
   getDetentionRate,
@@ -72,6 +100,7 @@ import { updateStreak } from "@/lib/streak";
 import { APP_ROUTES, TEXT_LIMITS } from "@/lib/constants";
 import type { BrokerBadgeInfo, DetentionLocation, MilestoneCheck } from "@/types/job-folder";
 import type { AiConfidence, JobDocument } from "@/types/jobs";
+import type { CrossValidationConflict } from "@/lib/job-folder/ai-types";
 
 const badgeToneClasses = {
   high: "bg-[var(--color-success-bg)] text-[var(--color-success-text)] border border-[var(--color-success)]/10",
@@ -80,12 +109,43 @@ const badgeToneClasses = {
   unread: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)] border border-[var(--color-danger)]/10",
 };
 
-function TrustBadge({ confidence }: { confidence: AiConfidence | null }) {
-  if (!confidence || confidence === "low" || confidence === "unread") {
+function TrustBadge({
+  confidence,
+  onManualEntry,
+}: {
+  confidence: AiConfidence | null;
+  onManualEntry?: () => void;
+}) {
+  if (confidence === "manual") {
     return (
-      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.low}`}>
+      <span className="inline-flex items-center gap-1 rounded-full border border-white/5 bg-[#16130d] px-2 py-0.5 text-[12px] text-[#99907E]">
+        <PenLine className="size-3.5" strokeWidth={2} aria-hidden />
+        Added Manually
+      </span>
+    );
+  }
+
+  if (!confidence || confidence === "low" || confidence === "unread") {
+    const badge = (
+      <>
         <AlertTriangle className="size-3.5" strokeWidth={2} />
         Enter manually
+      </>
+    );
+    if (onManualEntry) {
+      return (
+        <button
+          type="button"
+          onClick={onManualEntry}
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] transition-opacity active:opacity-80 ${badgeToneClasses.low}`}
+        >
+          {badge}
+        </button>
+      );
+    }
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.low}`}>
+        {badge}
       </span>
     );
   }
@@ -109,7 +169,10 @@ function fieldConfidence(
   documents: JobDocument[],
   type: RequiredDocType
 ): AiConfidence | null {
-  return getDocument(documents, type)?.ai_confidence ?? null;
+  const doc = getDocument(documents, type);
+  if (!doc) return null;
+  if (isManualDocumentEntry(doc)) return "manual";
+  return doc.ai_confidence ?? null;
 }
 
 export function JobFolderView({ jobId }: { jobId: string }) {
@@ -125,6 +188,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     error,
     refresh,
     updateJob,
+    setJob,
+    setDocuments,
     setActiveSession,
   } = useJobFolder(jobId);
 
@@ -161,6 +226,23 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     noReceipt: false,
     noReceiptReason: "",
   });
+  const [aiBanner, setAiBanner] = useState<"rate_limited" | "parse_failed" | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [failedParseDoc, setFailedParseDoc] = useState<{
+    documentId: string;
+    documentType: string;
+  } | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<JobDocument | null>(null);
+  const [manualEntryDocType, setManualEntryDocType] = useState<string | null>(null);
+  const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
+  const [paymentStatusSheetOpen, setPaymentStatusSheetOpen] = useState(false);
+  const [undoPaidConfirmOpen, setUndoPaidConfirmOpen] = useState(false);
+
+  const openEditField = (key: string, rawValue: unknown) => {
+    setEditField(key);
+    setEditValue(toEditFieldValue(key, rawValue));
+  };
 
   useEffect(() => {
     if (!job?.broker_name || !user) return;
@@ -182,9 +264,12 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   }, [job?.broker_name, jobId, user]);
 
   useEffect(() => {
-    if (!activeSession) return;
-    const start = new Date(activeSession.timer_start).getTime();
-    const tick = () => setTimerSeconds(Math.floor((Date.now() - start) / 1000));
+    if (!activeSession?.timer_start) {
+      setTimerSeconds(0);
+      return;
+    }
+    const tick = () =>
+      setTimerSeconds(getDetentionElapsedSeconds(activeSession.timer_start));
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
@@ -206,6 +291,86 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       return () => window.clearTimeout(t);
     }
   }, [documents, job?.status]);
+
+  useEffect(() => {
+    if (!job || job.ai_fields_confirmed) return;
+    if (needsAiReview(job, documents)) {
+      setReviewOpen(true);
+    }
+  }, [job, documents]);
+
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+    };
+  }, []);
+
+  const runDocumentParsing = async (
+    documentId: string,
+    documentType: string,
+    poorQuality = false
+  ) => {
+    if (!user || !isParseableDocType(documentType)) return;
+    const supabase = createClient();
+    const result = await triggerDocumentParsing(supabase, {
+      documentId,
+      documentType,
+      jobId,
+      userId: user.id,
+      documents,
+      profile,
+      poorQuality,
+    });
+    await refresh();
+
+    if (result.status === "rate_limited") {
+      setAiBanner("rate_limited");
+      return;
+    }
+
+    if (result.status === "failed" && result.retryable) {
+      setAiBanner("parse_failed");
+      setFailedParseDoc({ documentId, documentType });
+      if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = window.setTimeout(async () => {
+        const retryResult = await retryDocumentParsing(supabase, {
+          documentId,
+          documentType,
+          jobId,
+          userId: user.id,
+          documents,
+          profile,
+        });
+        await refresh();
+        if (retryResult.status === "complete") {
+          setAiBanner(null);
+          setFailedParseDoc(null);
+        }
+      }, 60_000);
+      return;
+    }
+
+    if (result.status === "complete") {
+      setAiBanner(null);
+      setFailedParseDoc(null);
+    }
+  };
+
+  const handleCrossValidationResolve = async (
+    conflict: CrossValidationConflict,
+    source: "rate_con" | "bol"
+  ) => {
+    const updates = resolveCrossValidationConflict(conflict, source);
+    const remaining =
+      (job?.cross_validation_conflicts ?? []).filter(
+        (c) => c.field !== conflict.field
+      );
+    await updateJob({
+      ...updates,
+      cross_validation_conflicts: remaining.length ? remaining : null,
+    });
+    await refresh();
+  };
 
   if (loading) {
     return (
@@ -230,8 +395,93 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const hasLumperExpense = expenses.some((e) => e.category === "lumper");
   const checklistComplete = isChecklistComplete(documents);
   const missing = missingChecklistItems(documents);
+  const hasInvoice =
+    hasDocument(documents, "invoice") ||
+    Boolean(job.invoice_generated || job.invoice_url);
+  const isPaid = job.status === "paid" || Boolean(job.payment_received);
   const expenseTotal = expenses.reduce((s, e) => s + e.amount, 0);
   const estMiles = estimateMiles(job.pickup_location, job.delivery_location);
+
+  const runInvoiceGeneration = async (regenerate: boolean) => {
+    if (!user) return;
+    if (needsAiReview(job, documents)) {
+      setReviewOpen(true);
+      return;
+    }
+    setUploading(true);
+    try {
+      await generateAndSaveLoadInvoice(createClient(), {
+        job,
+        profile,
+        userId: user.id,
+        documents,
+        regenerate,
+      });
+      await refresh();
+    } catch (err) {
+      if (err instanceof Error && err.message === "ai_review_required") {
+        setReviewOpen(true);
+      } else {
+        window.alert(
+          regenerate
+            ? "Could not regenerate invoice. Try again."
+            : "Could not generate invoice. Try again."
+        );
+      }
+    } finally {
+      setUploading(false);
+      setRegenerateConfirmOpen(false);
+    }
+  };
+
+  const markJobAsPaid = async () => {
+    await updateJob({
+      status: "paid",
+      payment_received: true,
+      payment_received_date: new Date().toISOString().slice(0, 10),
+    });
+    triggerHaptic("medium");
+    setPaymentStatusSheetOpen(false);
+    await refresh();
+  };
+
+  const markJobAsUnpaid = async () => {
+    await updateJob({
+      status: "awaiting_payment",
+      payment_received: false,
+      payment_received_date: null,
+    });
+    triggerHaptic("medium");
+    setPaymentStatusSheetOpen(false);
+    setUndoPaidConfirmOpen(false);
+    await refresh();
+  };
+
+  const markJobAwaitingPayment = async () => {
+    await updateJob({
+      status: "awaiting_payment",
+      payment_received: false,
+      payment_received_date: null,
+    });
+    triggerHaptic("medium");
+    setPaymentStatusSheetOpen(false);
+    await refresh();
+  };
+
+  const renderEditPencil = (
+    fieldKey: string,
+    value: unknown,
+    label: string
+  ) => (
+    <button
+      type="button"
+      aria-label={`Edit ${label}`}
+      onClick={() => openEditField(fieldKey, value)}
+      className="shrink-0 text-[var(--color-accent)]"
+    >
+      <Pencil className="size-6" strokeWidth={2} />
+    </button>
+  );
 
   const statusBanner = (() => {
     if (job.status === "cancelled")
@@ -267,8 +517,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const stopDetention = async () => {
     if (!activeSession || !user) return;
     const end = new Date();
-    const start = new Date(activeSession.timer_start);
-    const minutes = Math.max(1, Math.round((end.getTime() - start.getTime()) / 60000));
+    const elapsedSeconds = getDetentionElapsedSeconds(activeSession.timer_start);
+    const minutes = Math.max(1, Math.round(elapsedSeconds / 60));
 
     const supabase = createClient();
     const { data } = await supabase
@@ -309,19 +559,22 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     await refresh();
   };
 
-  const handleFileSelect = async (file: File) => {
-    if (!uploadType) return;
+  const handleFileSelect = async (file: File, poorQuality = false) => {
+    if (!uploadType || !user) return;
+    const docType = uploadType;
     setPendingFile(file);
     try {
-      await uploadJobDocument(createClient(), {
-        userId: user!.id,
+      const { documentId } = await uploadJobDocument(createClient(), {
+        userId: user.id,
         jobId,
-        documentType: uploadType as RequiredDocType,
+        documentType: docType as RequiredDocType,
         file,
+        skipQualityCheck: poorQuality,
       });
       await refresh();
       setUploadType(null);
       setPendingFile(null);
+      await runDocumentParsing(documentId, docType, poorQuality);
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
       if (message === "unsupported_type") {
@@ -426,7 +679,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             {moreOpen ? (
               <div className="absolute right-0 z-10 mt-1 min-w-44 tv-glass-card rounded-xl py-1">
                 {[
-                  { label: "Edit Job Name", action: () => setEditField("job_name") },
+                  { label: "Edit Job Name", action: () => openEditField("job_name", job.job_name) },
                   { label: "Save as Template", action: async () => {
                     if (!user) return;
                     const { id: _id, ...rest } = job;
@@ -472,10 +725,14 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             ) : null}
           </div>
         </div>
-        <div className={`mt-3 flex items-center justify-center gap-2 rounded-2xl px-4 py-2 ${statusBanner.bg}`}>
+        <button
+          type="button"
+          onClick={() => setPaymentStatusSheetOpen(true)}
+          className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2 ${statusBanner.bg}`}
+        >
           {StatusIcon ? <StatusIcon className="size-5 text-[var(--color-success-text)]" strokeWidth={2} /> : null}
           <span className="text-[15px] font-medium">{statusBanner.text}</span>
-        </div>
+        </button>
       </header>
 
       <div className="px-5">
@@ -483,6 +740,47 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         <div className="mt-3 animate-pulse rounded-2xl bg-[var(--color-success-bg)] px-4 py-3 text-center text-[15px] text-[var(--color-success-text)]">
           Required documents complete!
         </div>
+      ) : null}
+
+      {aiBanner ? (
+        <AiParsingBanner
+          type={aiBanner}
+          onDismiss={() => setAiBanner(null)}
+          onRetry={
+            failedParseDoc
+              ? async () => {
+                  if (!user || !failedParseDoc) return;
+                  await retryDocumentParsing(createClient(), {
+                    documentId: failedParseDoc.documentId,
+                    documentType: failedParseDoc.documentType,
+                    jobId,
+                    userId: user.id,
+                    documents,
+                    profile,
+                  });
+                  await refresh();
+                }
+              : undefined
+          }
+        />
+      ) : null}
+
+      {job.cross_validation_conflicts?.length ? (
+        <CrossValidationBanner
+          conflicts={job.cross_validation_conflicts}
+          onResolve={handleCrossValidationResolve}
+        />
+      ) : null}
+
+      {!job.ai_fields_confirmed && needsAiReview(job, documents) ? (
+        <button
+          type="button"
+          onClick={() => setReviewOpen(true)}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--color-accent)]/30 bg-[var(--color-warning-bg)] px-4 py-3 text-[14px] text-[var(--color-warning-text)]"
+        >
+          <Bot className="size-4 text-[var(--color-accent)]" strokeWidth={2} />
+          Review AI details before invoicing
+        </button>
       ) : null}
 
       {showEarnedBanner ? (
@@ -496,46 +794,64 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       <section className="mt-4 rounded-2xl tv-glass-card border border-white/5 p-5">
         <div className="space-y-4">
           <div>
-            <p className="tv-label">Broker Name</p>
-            <div className="flex items-center gap-2">
-              <p className="text-[17px] font-bold">{job.broker_name || "Tap to add"}</p>
-              {brokerBadge ? (
-                <button
-                  type="button"
-                  onClick={() => setBrokerSheetOpen(true)}
-                  className={`rounded-full px-2 py-0.5 text-[12px] ${
-                    brokerBadge.tone === "success"
-                      ? "bg-[var(--color-success-bg)] text-[var(--color-success-text)]"
-                      : brokerBadge.tone === "warning"
-                        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]"
-                        : "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)]"
-                  }`}
-                >
-                  {brokerBadge.label}
-                </button>
-              ) : null}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <p className="tv-label">Broker Name</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[17px] font-bold">{job.broker_name || "Tap to add"}</p>
+                  {brokerBadge ? (
+                    <button
+                      type="button"
+                      onClick={() => setBrokerSheetOpen(true)}
+                      className={`rounded-full px-2 py-0.5 text-[12px] ${
+                        brokerBadge.tone === "success"
+                          ? "bg-[var(--color-success-bg)] text-[var(--color-success-text)]"
+                          : brokerBadge.tone === "warning"
+                            ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]"
+                            : "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)]"
+                      }`}
+                    >
+                      {brokerBadge.label}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              {renderEditPencil("broker_name", job.broker_name, "Broker Name")}
             </div>
           </div>
           <div>
-            <p className="tv-label">Load Value</p>
-            <p className="tv-tabular text-[24px] font-bold text-[var(--color-accent)]">
-              {job.load_value ? formatCurrencyDetailed(job.load_value) : "Tap to add"}
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="tv-label">Load Value</p>
+                <p className="tv-tabular text-[24px] font-bold text-[var(--color-accent)]">
+                  {job.load_value ? formatCurrencyDetailed(job.load_value) : "Tap to add"}
+                </p>
+              </div>
+              {renderEditPencil("load_value", job.load_value, "Load Value")}
+            </div>
           </div>
           <div>
-            <p className="tv-label">Route</p>
-            <p className="text-[17px] font-bold">
-              {job.pickup_location || "Pickup"} → {job.delivery_location || "Delivery"}
-            </p>
-            {estMiles ? (
-              <button
-                type="button"
-                onClick={() => updateJob({ miles: estMiles })}
-                className="mt-1 text-[14px] text-[var(--color-accent)]"
-              >
-                Est. {estMiles} miles · Tap to use
-              </button>
-            ) : null}
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="tv-label">Route</p>
+                <p className="text-[17px] font-bold">
+                  {job.pickup_location || "Pickup"} → {job.delivery_location || "Delivery"}
+                </p>
+                {estMiles ? (
+                  <button
+                    type="button"
+                    onClick={() => updateJob({ miles: estMiles })}
+                    className="mt-1 text-[14px] text-[var(--color-accent)]"
+                  >
+                    Est. {estMiles} miles · Tap to use
+                  </button>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 gap-1">
+                {renderEditPencil("pickup_location", job.pickup_location, "Pickup Location")}
+                {renderEditPencil("delivery_location", job.delivery_location, "Delivery Location")}
+              </div>
+            </div>
           </div>
         </div>
         <button
@@ -548,21 +864,28 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         </button>
         <div className={`grid transition-all duration-200 ${detailsOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
           <div className="overflow-hidden space-y-3 pt-2">
-            {[
-              ["pickup_date", "Pickup Date"],
-              ["delivery_date", "Delivery Date"],
-              ["miles", "Miles"],
-              ["payment_type", "Payment Type"],
-              ["notes", "Notes"],
-            ].map(([key, label]) => (
+            {(
+              [
+                "pickup_date",
+                "delivery_date",
+                "miles",
+                "payment_type",
+                "notes",
+              ] as const
+            ).map((key) => (
               <div key={key} className="flex items-center justify-between">
                 <div>
-                  <p className="tv-label">{label}</p>
+                  <p className="tv-label">{fieldKeyToLabel(key)}</p>
                   <p className="text-[17px] font-bold">
                     {(job[key as keyof typeof job] as string | number | null)?.toString() || "Tap to add"}
                   </p>
                 </div>
-                <button type="button" aria-label={`Edit ${label}`} onClick={() => { setEditField(key); setEditValue(String(job[key as keyof typeof job] ?? "")); }} className="text-[var(--color-accent)]">
+                <button
+                  type="button"
+                  aria-label={`Edit ${fieldKeyToLabel(key)}`}
+                  onClick={() => openEditField(key, job[key as keyof typeof job])}
+                  className="shrink-0 text-[var(--color-accent)]"
+                >
                   <Pencil className="size-6" strokeWidth={2} />
                 </button>
               </div>
@@ -583,17 +906,50 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         </div>
         <div className="mt-4 space-y-2">
           {REQUIRED_DOC_TYPES.map((type) => {
-            const uploaded = hasDocument(documents, type);
+            const doc = getDocument(documents, type);
+            const checklistComplete = isDocumentChecklistComplete(documents, type);
+            const hasFile = hasDocumentFile(documents, type);
+            const parsing = isDocumentParsing(doc);
             return (
               <div key={type} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
-                <span className={`size-3 shrink-0 rounded-full ${uploaded ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
+                <span className={`size-3 shrink-0 rounded-full ${checklistComplete ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
                 <div className="flex-1">
-                  <p className="font-medium">{DOC_TYPE_LABELS[type]}</p>
-                  {!uploaded ? <p className="text-[13px] text-[var(--color-text-muted)]">Tap to upload</p> : null}
-                  <TrustBadge confidence={fieldConfidence(documents, type)} />
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{DOC_TYPE_LABELS[type]}</p>
+                    {parsing ? (
+                      <Loader2
+                        className="size-4 animate-spin text-[var(--color-accent)]"
+                        strokeWidth={2}
+                        aria-label="Parsing document"
+                      />
+                    ) : null}
+                  </div>
+                  {!checklistComplete ? (
+                    <p className="text-[13px] text-[var(--color-text-muted)]">Tap to upload</p>
+                  ) : null}
+                  <TrustBadge
+                    confidence={fieldConfidence(documents, type)}
+                    onManualEntry={
+                      doc && isManualDocumentEntry(doc)
+                        ? undefined
+                        : () => setManualEntryDocType(type)
+                    }
+                  />
                 </div>
-                {uploaded ? (
-                  <button type="button" className="tv-outline-btn" onClick={() => window.open(getDocument(documents, type)?.file_url, "_blank")}>View</button>
+                {checklistComplete ? (
+                  <button
+                    type="button"
+                    className="tv-outline-btn"
+                    onClick={() => {
+                      if (hasFile && doc) {
+                        setPreviewDocument(doc);
+                        return;
+                      }
+                      setManualEntryDocType(type);
+                    }}
+                  >
+                    View
+                  </button>
                 ) : (
                   <button type="button" aria-label="Upload document" className="tv-accent-outline-btn" onClick={() => setUploadType(type)}>Upload</button>
                 )}
@@ -601,20 +957,64 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             );
           })}
           <div className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-white/5 px-4">
-            <span className={`size-3 shrink-0 rounded-full ${hasDocument(documents, "invoice") ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
+            <span className={`size-3 shrink-0 rounded-full ${hasInvoice ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
             <p className="flex-1 font-medium">Invoice</p>
-            {hasDocument(documents, "invoice") ? (
-              <button type="button" className="tv-outline-btn" onClick={() => window.open(getDocument(documents, "invoice")?.file_url, "_blank")}>Download</button>
+            {hasInvoice ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="tv-outline-btn"
+                  onClick={() => {
+                    const doc = getDocument(documents, "invoice");
+                    if (doc) setPreviewDocument(doc);
+                  }}
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  className="tv-brushed-gold-btn h-11 rounded-xl px-3 text-[14px] font-bold text-black"
+                  disabled={uploading}
+                  onClick={() => setRegenerateConfirmOpen(true)}
+                >
+                  {uploading ? "..." : "Regenerate Invoice"}
+                </button>
+              </div>
             ) : (
-              <button type="button" className="tv-brushed-gold-btn h-11 rounded-xl px-3 text-[14px] font-bold text-black" onClick={async () => {
-                if (!user) return;
-                setUploading(true);
-                await generateAndSaveLoadInvoice(createClient(), { job, profile, userId: user.id });
-                await refresh();
-                setUploading(false);
-              }}>{uploading ? "..." : "Generate Invoice"}</button>
+              <button
+                type="button"
+                className="tv-brushed-gold-btn h-11 rounded-xl px-3 text-[14px] font-bold text-black"
+                disabled={uploading}
+                onClick={() => runInvoiceGeneration(false)}
+              >
+                {uploading ? "..." : "Generate Invoice"}
+              </button>
             )}
           </div>
+          {hasInvoice || job.status === "awaiting_payment" || isPaid ? (
+            <div className="rounded-2xl tv-glass-card border border-white/5 px-4 py-3">
+              {isPaid ? (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-[var(--color-success-text)]">
+                    <Check className="size-5" strokeWidth={2} />
+                    <span className="text-[15px] font-bold">Paid ✓</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUndoPaidConfirmOpen(true)}
+                    className="text-[14px] text-[var(--color-text-muted)] underline-offset-2 hover:underline"
+                  >
+                    Undo
+                  </button>
+                </div>
+              ) : (
+                <TvButton onClick={markJobAsPaid}>
+                  <DollarSign className="size-5" strokeWidth={2} />
+                  Mark as Paid
+                </TvButton>
+              )}
+            </div>
+          ) : null}
           {hasLumperExpense ? (
             <div className="tv-divider mt-4 pt-4 space-y-2">
               {(["fuel_receipt", "lumper_receipt"] as const).map((type) => (
@@ -707,24 +1107,30 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       {/* Complete */}
       <section className="mt-6 pb-8">
         {checklistComplete && job.status === "active" ? (
-          <TvButton className={`${showCompleteBanner ? "animate-pulse" : ""}`} variant="primary" onClick={() => {
-            if (window.confirm("Mark this load as complete? It will move to your completed loads history.")) confirmComplete();
-          }}>
-            <Check className="size-5" strokeWidth={2} /> Mark Load as Complete
+          <TvButton
+            className={`bg-[var(--color-success)] text-[var(--color-success-text)] ${showCompleteBanner ? "animate-pulse" : ""}`}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Mark this load as complete? It will move to your completed loads history."
+                )
+              ) {
+                confirmComplete();
+              }
+            }}
+          >
+            <Check className="size-5" strokeWidth={2} /> Mark as Complete
           </TvButton>
-        ) : job.status === "awaiting_payment" ? (
-          <TvButton onClick={async () => {
-            await updateJob({ status: "paid", payment_received: true, payment_received_date: new Date().toISOString().slice(0, 10) });
-            triggerHaptic("medium");
-          }}>Mark as Paid</TvButton>
-        ) : (
+        ) : !checklistComplete && job.status === "active" ? (
           <>
             <TvButton disabled>Complete Checklist to Finish</TvButton>
             {missing.length > 0 ? (
-              <p className="mt-2 text-[14px] text-[var(--color-danger-text)]">Missing: {missing.join(", ")}</p>
+              <p className="mt-2 text-[14px] text-[var(--color-danger-text)]">
+                Missing: {missing.join(", ")}
+              </p>
             ) : null}
           </>
-        )}
+        ) : null}
       </section>
 
       {/* Modals & sheets */}
@@ -752,15 +1158,81 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             <TvButton onClick={() => { setQualityIssue(false); setUploadType(null); }}>Retake Photo</TvButton>
             <TvButton variant="secondary" onClick={async () => {
               if (!uploadType || !pendingFile || !user) return;
-              await uploadJobDocument(createClient(), { userId: user.id, jobId, documentType: uploadType as RequiredDocType, file: pendingFile, skipQualityCheck: true });
+              const docType = uploadType;
+              const { documentId } = await uploadJobDocument(createClient(), { userId: user.id, jobId, documentType: docType as RequiredDocType, file: pendingFile, skipQualityCheck: true });
               setQualityIssue(false);
               setPendingFile(null);
               setUploadType(null);
               await refresh();
+              await runDocumentParsing(documentId, docType, true);
             }}>Upload Anyway</TvButton>
           </div>
         </BottomSheet>
       ) : null}
+
+      <BottomSheet
+        open={regenerateConfirmOpen}
+        onClose={() => setRegenerateConfirmOpen(false)}
+        title="Regenerate Invoice?"
+        ariaLabel="Confirm invoice regeneration"
+      >
+        <p className="text-[15px] text-[var(--color-text-secondary)]">
+          This will replace your existing invoice. Make sure you haven&apos;t already sent the old one.
+        </p>
+        <div className="mt-4 flex flex-col gap-2">
+          <TvButton disabled={uploading} onClick={() => runInvoiceGeneration(true)}>
+            Confirm
+          </TvButton>
+          <TvButton variant="ghost" disabled={uploading} onClick={() => setRegenerateConfirmOpen(false)}>
+            Cancel
+          </TvButton>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet
+        open={paymentStatusSheetOpen}
+        onClose={() => setPaymentStatusSheetOpen(false)}
+        title="Payment Status"
+        ariaLabel="Update payment status"
+      >
+        <div className="flex flex-col gap-2">
+          {isPaid ? (
+            <TvButton variant="secondary" onClick={markJobAsUnpaid}>
+              Mark as Unpaid
+            </TvButton>
+          ) : (
+            <TvButton onClick={markJobAsPaid}>
+              <DollarSign className="size-5" strokeWidth={2} />
+              Mark as Paid
+            </TvButton>
+          )}
+          {job.status !== "awaiting_payment" || isPaid ? (
+            <TvButton variant="secondary" onClick={markJobAwaitingPayment}>
+              Awaiting Payment
+            </TvButton>
+          ) : null}
+          <TvButton variant="ghost" onClick={() => setPaymentStatusSheetOpen(false)}>
+            Cancel
+          </TvButton>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet
+        open={undoPaidConfirmOpen}
+        onClose={() => setUndoPaidConfirmOpen(false)}
+        title="Mark as Unpaid?"
+        ariaLabel="Confirm marking load as unpaid"
+      >
+        <p className="text-[15px] text-[var(--color-text-secondary)]">
+          Mark this load as unpaid?
+        </p>
+        <div className="mt-4 flex flex-col gap-2">
+          <TvButton onClick={markJobAsUnpaid}>Confirm</TvButton>
+          <TvButton variant="ghost" onClick={() => setUndoPaidConfirmOpen(false)}>
+            Cancel
+          </TvButton>
+        </div>
+      </BottomSheet>
 
       <BottomSheet open={paymentSheetOpen} onClose={() => setPaymentSheetOpen(false)} title="Payment Setup" ariaLabel="Payment setup">
         <p className="text-[15px] text-[var(--color-text-secondary)]">When do you expect payment?</p>
@@ -891,13 +1363,75 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       </BottomSheet>
 
       <BottomSheet open={Boolean(editField)} onClose={() => setEditField(null)} title="Edit Field" ariaLabel="Edit field">
-        <TvInput label={editField ?? ""} value={editValue} onChange={(e) => setEditValue(e.target.value)} />
+        {editField ? (
+          <JobFolderFieldInput
+            fieldKey={editField}
+            value={editValue}
+            onChange={setEditValue}
+          />
+        ) : null}
         <TvButton className="mt-4" onClick={async () => {
-          if (!editField) return;
-          await updateJob({ [editField]: editValue } as Partial<typeof job>);
+          if (!editField || !user) return;
+          const updates = { [editField]: editValue } as Partial<typeof job>;
+          if (editField === "miles" || editField === "load_value") {
+            const num = Number(editValue.replace(/[^0-9.]/g, ""));
+            if (!Number.isNaN(num)) {
+              (updates as Record<string, unknown>)[editField] = num;
+            }
+          }
+          await updateJob(updates);
+          if (editField === "miles" && job) {
+            const milesNum = Number(editValue.replace(/[^0-9.]/g, ""));
+            await updateJobProfitability(createClient(), {
+              id: job.id,
+              load_value: job.load_value,
+              miles: milesNum || job.miles,
+            }, user.id, profile);
+            await refresh();
+          }
           setEditField(null);
         }}>Save</TvButton>
       </BottomSheet>
+
+      {user ? (
+        <AiReviewSheet
+          open={reviewOpen}
+          onClose={() => setReviewOpen(false)}
+          job={job}
+          documents={documents}
+          userId={user.id}
+          profile={profile}
+          onConfirmed={refresh}
+        />
+      ) : null}
+
+      <DocumentPreviewModal
+        document={previewDocument}
+        onClose={() => setPreviewDocument(null)}
+      />
+
+      <DocumentManualEntrySheet
+        open={Boolean(manualEntryDocType)}
+        onClose={() => setManualEntryDocType(null)}
+        documentType={manualEntryDocType}
+        job={job}
+        documents={documents}
+        userId={user?.id ?? ""}
+        profile={profile}
+        onSave={async (payload) => {
+          if (!user || !job) return;
+
+          const { job: savedJob, documents: savedDocuments } =
+            await saveManualDocumentEntryAndVerify(createClient(), {
+              jobId,
+              userId: user.id,
+              payload,
+            });
+
+          setJob(savedJob);
+          setDocuments(savedDocuments);
+        }}
+      />
       </div>
     </>
   );

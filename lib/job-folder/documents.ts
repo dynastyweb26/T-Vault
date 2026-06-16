@@ -30,12 +30,52 @@ export function getDocument(
   return documents.find((doc) => doc.document_type === type);
 }
 
+export function isManualDocumentEntry(
+  doc: JobDocument | undefined
+): boolean {
+  if (!doc) return false;
+  if (doc.ai_confidence === "manual") return true;
+
+  const stored =
+    doc.manual_fields && typeof doc.manual_fields === "object"
+      ? doc.manual_fields
+      : doc.parsed_data && typeof doc.parsed_data === "object"
+        ? doc.parsed_data
+        : null;
+
+  return Boolean(
+    stored &&
+      Object.keys(stored).length > 0 &&
+      doc.upload_status === "uploaded" &&
+      doc.file_url?.startsWith("manual://")
+  );
+}
+
+/** Uploaded file or manually entered details count as checklist-complete. */
+export function isDocumentChecklistComplete(
+  documents: JobDocument[],
+  type: DocumentType | string
+): boolean {
+  const doc = getDocument(documents, type);
+  if (!doc) return false;
+  return hasDocumentFile(documents, type) || isManualDocumentEntry(doc);
+}
+
+export function hasDocumentFile(
+  documents: JobDocument[],
+  type: DocumentType | string
+): boolean {
+  const doc = getDocument(documents, type);
+  if (!doc?.file_url) return false;
+  return !doc.file_url.startsWith("manual://");
+}
+
 export function countRequiredDocs(documents: JobDocument[]): {
   complete: number;
   total: number;
 } {
   const complete = REQUIRED_DOC_TYPES.filter((type) =>
-    hasDocument(documents, type)
+    isDocumentChecklistComplete(documents, type)
   ).length;
   return { complete, total: REQUIRED_DOC_TYPES.length };
 }
@@ -61,9 +101,9 @@ export function isChecklistComplete(documents: JobDocument[]): boolean {
 }
 
 export function missingRequiredLabels(documents: JobDocument[]): string[] {
-  return REQUIRED_DOC_TYPES.filter((type) => !hasDocument(documents, type)).map(
-    (type) => DOC_TYPE_LABELS[type as RequiredDocType]
-  );
+  return REQUIRED_DOC_TYPES.filter(
+    (type) => !isDocumentChecklistComplete(documents, type)
+  ).map((type) => DOC_TYPE_LABELS[type as RequiredDocType]);
 }
 
 export function missingChecklistItems(documents: JobDocument[]): string[] {

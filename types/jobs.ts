@@ -8,7 +8,7 @@ export type JobStatus =
   | "archived";
 
 export type PaymentType = "direct" | "factoring";
-export type AiConfidence = "high" | "medium" | "low" | "unread";
+export type AiConfidence = "high" | "medium" | "low" | "unread" | "manual";
 
 export interface Job {
   id: string;
@@ -30,6 +30,7 @@ export interface Job {
   invoice_sent_date: string | null;
   invoice_number: string | null;
   invoice_generated: boolean | null;
+  invoice_url: string | null;
   payment_type: PaymentType | string | null;
   factoring_company: string | null;
   states_driven: string | null;
@@ -39,6 +40,8 @@ export interface Job {
   profitability_score: number | null;
   detention_minutes: number | null;
   detention_paid: string | null;
+  ai_fields_confirmed: boolean | null;
+  cross_validation_conflicts: import("@/lib/job-folder/ai-types").CrossValidationConflict[] | null;
 }
 
 export interface JobDocument {
@@ -50,6 +53,10 @@ export interface JobDocument {
   file_name: string | null;
   upload_status: string | null;
   ai_confidence: AiConfidence | null;
+  parsed_data: Record<string, unknown> | null;
+  manual_fields: Record<string, unknown> | null;
+  parsing_status: string | null;
+  parse_error: string | null;
   created_at: string | null;
 }
 

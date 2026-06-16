@@ -1,10 +1,18 @@
 export const DETENTION_FREE_MINUTES = 120;
 export const DEFAULT_DETENTION_RATE = 50;
 
+export function getDetentionElapsedSeconds(timerStart: string | null | undefined): number {
+  if (!timerStart) return 0;
+  const startMs = new Date(timerStart).getTime();
+  if (Number.isNaN(startMs)) return 0;
+  return Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+}
+
 export function formatTimerDisplay(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const elapsed = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(elapsed / 3600);
+  const minutes = Math.floor((elapsed % 3600) / 60);
+  const seconds = elapsed % 60;
   return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 

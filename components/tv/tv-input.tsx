@@ -7,6 +7,8 @@ interface TvInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string | null;
   helper?: string;
   counter?: string | null;
+  labelVariant?: "default" | "readable";
+  borderVariant?: "default" | "gold";
 }
 
 export function TvInput({
@@ -14,25 +16,38 @@ export function TvInput({
   error,
   helper,
   counter,
+  labelVariant = "default",
+  borderVariant = "default",
   className,
   id,
   ...props
 }: TvInputProps) {
   const inputId = id ?? label.toLowerCase().replace(/\s+/g, "-");
+  const showLabel = label.trim().length > 0;
 
   return (
-    <div className="flex w-full flex-col gap-2">
-      <label htmlFor={inputId} className="tv-label">
-        {label}
-      </label>
+    <div className={cn("flex w-full flex-col gap-2", className)}>
+      {showLabel ? (
+        <label
+          htmlFor={inputId}
+          className={
+            labelVariant === "readable"
+              ? "font-sans text-[15px] font-semibold leading-snug text-[#E9E1D7]"
+              : "tv-label"
+          }
+        >
+          {label}
+        </label>
+      ) : null}
       <input
         id={inputId}
         className={cn(
-          "h-14 w-full rounded-xl border bg-[#050505] px-4 text-[17px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] outline-none transition-colors focus:border-[var(--color-accent)]",
-          error
-            ? "border-[var(--color-danger)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
-            : "border-white/5 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]",
-          className,
+          "h-14 w-full rounded-xl border bg-[#050505] px-4 text-[17px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] outline-none transition-colors",
+          borderVariant === "gold"
+            ? "border-[#D4A017] text-[#E9E1D7] placeholder:text-[#99907E] focus:border-[var(--gold-light)]"
+            : error
+              ? "border-[var(--color-danger)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
+              : "border-white/5 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]",
           error && "border-[var(--color-danger)]"
         )}
         aria-invalid={Boolean(error)}
