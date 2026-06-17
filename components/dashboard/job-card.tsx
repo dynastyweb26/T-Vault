@@ -13,6 +13,7 @@ import { saveLoadsScrollPosition } from "@/lib/job-folder/scroll";
 interface JobCardProps {
   job: DashboardJobView;
   onAction: () => void;
+  tourTarget?: boolean;
 }
 
 const toneClasses = {
@@ -22,7 +23,7 @@ const toneClasses = {
   disabled: "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-shell-border)]",
 };
 
-export function JobCard({ job, onAction }: JobCardProps) {
+export function JobCard({ job, onAction, tourTarget = false }: JobCardProps) {
   const [offsetX, setOffsetX] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const startX = useRef(0);
@@ -67,7 +68,10 @@ export function JobCard({ job, onAction }: JobCardProps) {
   }, [menuOpen]);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl">
+    <div
+      className="relative overflow-hidden rounded-2xl"
+      {...(tourTarget ? { "data-tour": "loads-job-card" } : {})}
+    >
       <div className="absolute inset-y-0 right-0 flex items-stretch">
         <button
           type="button"

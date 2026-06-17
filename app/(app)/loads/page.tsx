@@ -120,13 +120,22 @@ export default function LoadsPage() {
     <>
       <AppHeader title="My Loads" subtitle="Track every load and document" />
 
-      <div className="mx-5 mt-4">
+      <div className="mx-5 mt-4" data-tour="loads-search-tabs">
         <LoadsSearch
           onChange={(value) => {
             setSearch(value);
             setCompletedPage(0);
           }}
         />
+        <div className="mt-4">
+          <LoadsSegmentTabs
+            active={tab}
+            onChange={(nextTab) => {
+              setTab(nextTab);
+              setCompletedPage(0);
+            }}
+          />
+        </div>
       </div>
 
       {error ? (
@@ -135,20 +144,10 @@ export default function LoadsPage() {
         </div>
       ) : null}
 
-      <div className="mx-5 mt-4">
-        <LoadsSegmentTabs
-          active={tab}
-          onChange={(nextTab) => {
-            setTab(nextTab);
-            setCompletedPage(0);
-          }}
-        />
-      </div>
-
       {loading ? (
         <div className="tv-skeleton mx-5 mt-6 h-40 rounded-2xl" />
       ) : emptyForTab ? (
-        <section className="tv-empty-state mx-5 mt-10">
+        <section className="tv-empty-state mx-5 mt-10" data-tour="loads-job-card">
           <FolderOpen
             className="size-12 text-[var(--color-accent)]"
             strokeWidth={2}
@@ -169,8 +168,13 @@ export default function LoadsPage() {
       ) : (
         <div className="mx-5 mt-4 flex flex-col gap-3">
           {tab === "active"
-            ? filteredActive.map((job) => (
-                <JobCard key={job.id} job={job} onAction={loadJobs} />
+            ? filteredActive.map((job, index) => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  onAction={loadJobs}
+                  tourTarget={index === 0}
+                />
               ))
             : null}
 

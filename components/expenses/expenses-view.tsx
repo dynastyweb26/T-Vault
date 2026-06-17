@@ -11,6 +11,7 @@ import { AddTruckExpenseSheet } from "@/components/expenses/add-truck-expense-sh
 import { ExpenseReceiptPreview } from "@/components/expenses/expense-receipt-preview";
 import { useExpenses } from "@/hooks/use-expenses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { useAppTour } from "@/components/providers/app-tour-provider";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { deleteTruckExpense } from "@/lib/expenses/queries";
@@ -36,6 +37,7 @@ function ExpenseListSkeleton() {
 
 export function ExpensesView() {
   const { user } = useAuth();
+  const { expenseSheetOpen, isRunning } = useAppTour();
   const searchParams = useSearchParams();
   const { data, loading, refreshing, error, refresh } = useExpenses();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -53,6 +55,12 @@ export function ExpensesView() {
       setSheetOpen(true);
     }
   }, [prefillAmount, prefillDescription]);
+
+  useEffect(() => {
+    if (isRunning) {
+      setSheetOpen(expenseSheetOpen);
+    }
+  }, [expenseSheetOpen, isRunning]);
 
   const { containerRef, pullDistance, handlers } = usePullToRefresh(async () => {
     await refresh();
@@ -101,12 +109,14 @@ export function ExpensesView() {
           </div>
         ) : data ? (
           <>
-            <ExpenseSummaryCard summary={data.summary} />
+            <div data-tour="expenses-summary" className="flex flex-col gap-4">
+              <ExpenseSummaryCard summary={data.summary} />
 
-            <TvButton onClick={() => setSheetOpen(true)}>
-              <Plus className="size-5" strokeWidth={2} aria-hidden />
-              Add Truck Expense
-            </TvButton>
+              <TvButton onClick={() => setSheetOpen(true)}>
+                <Plus className="size-5" strokeWidth={2} aria-hidden />
+                Add Truck Expense
+              </TvButton>
+            </div>
 
             <ExpenseFilterTabs
               active={activeFilter}
@@ -115,18 +125,19 @@ export function ExpensesView() {
 
             {filteredExpenses.length > 0 ? (
               <div className="space-y-2 pb-8">
-                {filteredExpenses.map((expense) => (
+                {filteredExpenses.map((expense, index) => (
                   <ExpenseRow
                     key={expense.id}
                     expense={expense}
                     animate={expense.id === recentExpenseId}
                     onDelete={handleDelete}
                     onViewReceipt={setPreviewExpense}
+                    tourTarget={index === 0}
                   />
                 ))}
               </div>
             ) : (
-              <section className="tv-empty-state mt-6 pb-8">
+              <section className="tv-empty-state mt-6 pb-8" data-tour="expenses-row">
                 <Receipt
                   className="size-12 text-[var(--color-accent)]"
                   strokeWidth={2}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Bell,
   ChevronRight,
+  Compass,
   FileSpreadsheet,
   Gift,
   HelpCircle,
@@ -24,6 +25,7 @@ import { TvButton } from "@/components/tv/tv-button";
 import { DataProtectionBanner } from "@/components/shell/session-banner";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTheme } from "@/components/providers/theme-provider";
+import { useAppTour } from "@/components/providers/app-tour-provider";
 import { APP_ROUTES } from "@/lib/constants";
 import type { ThemePreference } from "@/types/database";
 
@@ -86,6 +88,7 @@ function ProfileRow({
 export default function ProfilePage() {
   const { profile, signOut } = useAuth();
   const { preference, setPreference, theme } = useTheme();
+  const { startTour } = useAppTour();
   const [themeOpen, setThemeOpen] = useState(false);
 
   const themeIcon = theme === "dark" ? Moon : Sun;
@@ -154,6 +157,15 @@ export default function ProfilePage() {
           <p className="tv-label mb-2 px-1">App</p>
           <div className="tv-glass-card rounded-2xl p-2">
             <ProfileRow
+              icon={Compass}
+              label="App Tour"
+              onClick={() => {
+                void startTour();
+              }}
+            />
+          </div>
+          <div className="tv-glass-card mt-2 rounded-2xl p-2" data-tour="profile-settings">
+            <ProfileRow
               icon={themeIcon}
               label="Appearance"
               value={THEME_LABELS[preference]}
@@ -177,7 +189,7 @@ export default function ProfilePage() {
 
         <section>
           <p className="tv-label mb-2 px-1">Invite Drivers</p>
-          <div className="tv-glass-card rounded-2xl p-2">
+          <div className="tv-glass-card rounded-2xl p-2" data-tour="profile-invite">
             <ProfileRow
               href={APP_ROUTES.referral}
               icon={Users}

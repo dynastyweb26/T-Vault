@@ -894,3 +894,20 @@
     }
   }
 }
+
+/* App tour (react-joyride) */
+.react-joyride__spotlight {
+  border: 2px solid var(--color-accent) !important;
+  box-shadow:
+    0 0 0 4px rgba(var(--gold-rgb), 0.15),
+    var(--shadow-gold-strong) !important;
+}
+
+.react-joyride__overlay {
+  background-color: var(--color-overlay) !important;
+}
+
+.react-joyride__tooltip {
+  padding: 0 !important;
+  border-radius: 16px !important;
+}
