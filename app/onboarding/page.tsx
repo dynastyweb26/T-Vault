@@ -133,16 +133,14 @@ export default function OnboardingPage() {
     <div className="tv-auth-page">
       <AuthBrandHeader />
       <div className="flex flex-1 flex-col justify-center">
-        <div className="tv-gold-glow mb-8 overflow-hidden rounded-2xl">
-          <Image
-            src="/icon.png"
-            alt=""
-            width={80}
-            height={80}
-            className="size-20 rounded-2xl"
-            priority
-          />
-        </div>
+        <Image
+          src="/icon.png"
+          alt=""
+          width={80}
+          height={80}
+          className="mx-auto mb-8 block size-20"
+          priority
+        />
         <p className="tv-caption">
           Step {step + 1} of {steps.length}
         </p>
