@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [sessionWarning, setSessionWarning] = useState(false);
   const [offline, setOffline] = useState(false);
+  const profileFetchGeneration = useRef(0);
 
   const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
     if (!user || !supabase) {
@@ -49,11 +51,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
 
+    const fetchGeneration = profileFetchGeneration.current + 1;
+    profileFetchGeneration.current = fetchGeneration;
+
     const { data, error } = await supabase
       .from("users")
       .select("*")
       .eq("id", user.id)
       .maybeSingle();
+
+    if (fetchGeneration !== profileFetchGeneration.current) {
+      console.info("[auth] refreshProfile ignored stale response", {
+        userId: user.id,
+        fetchGeneration,
+        currentGeneration: profileFetchGeneration.current,
+      });
+      return null;
+    }
 
     if (error) {
       console.error("[auth] refreshProfile failed:", error.message);
@@ -66,11 +80,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const nextProfile = data as UserProfile;
+    console.info("[auth] refreshProfile applied", {
+      userId: user.id,
+      onboarding_completed: nextProfile.onboarding_completed,
+      profile_setup_completed: nextProfile.profile_setup_completed,
+      profile_setup_skipped: nextProfile.profile_setup_skipped,
+    });
     setProfile(nextProfile);
     return nextProfile;
   }, [supabase, user]);
 
   const patchProfile = useCallback((updates: Partial<UserProfile>) => {
+    profileFetchGeneration.current += 1;
+    console.info("[auth] patchProfile", {
+      updates,
+      generation: profileFetchGeneration.current,
+    });
     setProfile((current) => {
       if (current) {
         return { ...current, ...updates };

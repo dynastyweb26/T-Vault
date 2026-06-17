@@ -34,7 +34,7 @@ function requiresOnboarding(pathname) {
 
 function getProtectedRouteRedirect(pathname, profile) {
   if (!profile) {
-    return APP_ROUTES.splash;
+    return { redirectTo: APP_ROUTES.splash, reason: "protected_route_missing_profile" };
   }
 
   const isOnboardingRoute = pathname === APP_ROUTES.onboarding;
@@ -43,15 +43,20 @@ function getProtectedRouteRedirect(pathname, profile) {
 
   if (!profile.onboarding_completed) {
     if (needsOnboarding || isProfileSetupRoute) {
-      return APP_ROUTES.onboarding;
+      return { redirectTo: APP_ROUTES.onboarding, reason: "onboarding_incomplete" };
     }
-    return null;
+    return { redirectTo: null, reason: "allow_onboarding_flow_route" };
   }
 
   if (isOnboardingRoute) {
-    return !profile.profile_setup_completed && !profile.profile_setup_skipped
-      ? APP_ROUTES.profileSetup
-      : APP_ROUTES.dashboard;
+    const needsProfileSetup =
+      !profile.profile_setup_completed && !profile.profile_setup_skipped;
+    return {
+      redirectTo: needsProfileSetup ? APP_ROUTES.profileSetup : APP_ROUTES.dashboard,
+      reason: needsProfileSetup
+        ? "onboarding_complete_needs_profile_setup"
+        : "onboarding_complete_go_dashboard",
+    };
   }
 
   if (
@@ -59,30 +64,72 @@ function getProtectedRouteRedirect(pathname, profile) {
     !profile.profile_setup_skipped &&
     needsOnboarding
   ) {
-    return APP_ROUTES.profileSetup;
+    return {
+      redirectTo: APP_ROUTES.profileSetup,
+      reason: "profile_setup_required_for_app_route",
+    };
   }
 
   if (
     (profile.profile_setup_completed || profile.profile_setup_skipped) &&
     isProfileSetupRoute
   ) {
-    return APP_ROUTES.dashboard;
+    return {
+      redirectTo: APP_ROUTES.dashboard,
+      reason: "profile_setup_already_complete",
+    };
   }
 
-  return null;
+  return { redirectTo: null, reason: "allow_protected_route" };
 }
 
 function getSessionRedirect(pathname, hasUser, profile) {
   if (!hasUser && isProtectedRoute(pathname)) {
-    return APP_ROUTES.signIn;
+    return { redirectTo: APP_ROUTES.signIn, reason: "unauthenticated_protected_route" };
   }
 
   if (hasUser && isAuthRoute(pathname) && pathname !== APP_ROUTES.splash) {
-    return APP_ROUTES.splash;
+    return { redirectTo: APP_ROUTES.splash, reason: "authenticated_auth_route" };
   }
 
   if (hasUser && isProtectedRoute(pathname)) {
-    return getProtectedRouteRedirect(pathname, profile);
+    const protectedDecision = getProtectedRouteRedirect(pathname, profile);
+    return {
+      redirectTo: protectedDecision.redirectTo,
+      reason: `protected:${protectedDecision.reason}`,
+    };
+  }
+
+  return { redirectTo: null, reason: "allow_public_or_unrestricted_route" };
+}
+
+function getClientRedirect(pathname, clientProfile, profileResynced) {
+  if (!clientProfile) return null;
+
+  if (pathname === APP_ROUTES.profileSetup) {
+    if (!clientProfile.onboarding_completed) {
+      if (!profileResynced) return null;
+      return APP_ROUTES.onboarding;
+    }
+    if (
+      clientProfile.profile_setup_completed ||
+      clientProfile.profile_setup_skipped
+    ) {
+      return APP_ROUTES.dashboard;
+    }
+    return null;
+  }
+
+  if (pathname === APP_ROUTES.onboarding) {
+    if (clientProfile.onboarding_completed) {
+      if (
+        !clientProfile.profile_setup_completed &&
+        !clientProfile.profile_setup_skipped
+      ) {
+        return APP_ROUTES.profileSetup;
+      }
+      return APP_ROUTES.dashboard;
+    }
   }
 
   return null;
@@ -129,19 +176,81 @@ function detectCycle(startPath, hasUser, profile, maxSteps = 12) {
   let current = startPath;
 
   for (let step = 0; step < maxSteps; step += 1) {
-    const redirect = getSessionRedirect(current, hasUser, profile);
-    visited.push({ from: current, to: redirect });
+    const decision = getSessionRedirect(current, hasUser, profile);
+    visited.push({ from: current, to: decision.redirectTo, reason: decision.reason });
 
-    if (!redirect || redirect === current) {
+    if (!decision.redirectTo || decision.redirectTo === current) {
       return { cycle: false, visited };
     }
 
-    const repeated = visited.filter((entry) => entry.from === redirect);
+    const repeated = visited.filter((entry) => entry.from === decision.redirectTo);
     if (repeated.length > 0) {
       return { cycle: true, visited };
     }
 
-    current = redirect;
+    current = decision.redirectTo;
+  }
+
+  return { cycle: true, visited, reason: "max steps exceeded" };
+}
+
+function detectHybridCycle(dbProfile, staleClientProfile, startPath, maxSteps = 12) {
+  const visited = [];
+  let current = startPath;
+  let profileResynced = false;
+  let clientProfile = staleClientProfile;
+
+  for (let step = 0; step < maxSteps; step += 1) {
+    const middlewareDecision = getSessionRedirect(current, true, dbProfile);
+    visited.push({
+      step,
+      route: current,
+      layer: "middleware",
+      to: middlewareDecision.redirectTo,
+      reason: middlewareDecision.reason,
+    });
+
+    if (middlewareDecision.redirectTo) {
+      const repeated = visited.filter(
+        (entry) => entry.layer === "middleware" && entry.route === middlewareDecision.redirectTo
+      );
+      if (repeated.length > 0) {
+        return { cycle: true, visited };
+      }
+      current = middlewareDecision.redirectTo;
+      continue;
+    }
+
+    const clientRedirect = getClientRedirect(current, clientProfile, profileResynced);
+    visited.push({
+      step,
+      route: current,
+      layer: "client",
+      to: clientRedirect,
+      reason: clientRedirect ? "client_redirect" : "allow",
+    });
+
+    if (
+      current === APP_ROUTES.profileSetup &&
+      !clientProfile.onboarding_completed &&
+      !profileResynced
+    ) {
+      profileResynced = true;
+      clientProfile = dbProfile;
+    }
+
+    if (!clientRedirect || clientRedirect === current) {
+      return { cycle: false, visited };
+    }
+
+    const repeatedClient = visited.filter(
+      (entry) => entry.layer === "client" && entry.route === clientRedirect
+    );
+    if (repeatedClient.length > 0) {
+      return { cycle: true, visited };
+    }
+
+    current = clientRedirect;
   }
 
   return { cycle: true, visited, reason: "max steps exceeded" };
@@ -158,13 +267,12 @@ for (const { name, profile } of PROFILE_STATES) {
       failures += 1;
       console.error(`CYCLE: state=${name} start=${route}`);
       for (const entry of result.visited) {
-        console.error(`  ${entry.from} -> ${entry.to ?? "(allow)"}`);
+        console.error(`  ${entry.from} -> ${entry.to ?? "(allow)"} (${entry.reason})`);
       }
     }
   }
 }
 
-// Explicit regression: completed onboarding must not bounce with profile-setup.
 const regression = detectCycle(APP_ROUTES.profileSetup, true, {
   onboarding_completed: true,
   profile_setup_completed: false,
@@ -174,6 +282,36 @@ const regression = detectCycle(APP_ROUTES.profileSetup, true, {
 if (regression.cycle) {
   failures += 1;
   console.error("REGRESSION: profile-setup loops for users who finished onboarding");
+}
+
+const hybridRegression = detectHybridCycle(
+  {
+    onboarding_completed: true,
+    profile_setup_completed: false,
+    profile_setup_skipped: false,
+  },
+  {
+    onboarding_completed: false,
+    profile_setup_completed: false,
+    profile_setup_skipped: false,
+  },
+  APP_ROUTES.profileSetup
+);
+
+if (hybridRegression.cycle) {
+  failures += 1;
+  console.error(
+    "REGRESSION: stale client profile on profile-setup still loops with middleware"
+  );
+  for (const entry of hybridRegression.visited) {
+    console.error(
+      `  [${entry.layer}] ${entry.route} -> ${entry.to ?? "(allow)"} (${entry.reason})`
+    );
+  }
+} else {
+  console.log(
+    "Hybrid stale-profile regression passed (no middleware/client redirect loop)."
+  );
 }
 
 const flowChecks = [
@@ -253,7 +391,7 @@ const flowChecks = [
 ];
 
 for (const check of flowChecks) {
-  const actual = getSessionRedirect(check.path, check.hasUser, check.profile);
+  const actual = getSessionRedirect(check.path, check.hasUser, check.profile).redirectTo;
   if (actual !== check.expected) {
     failures += 1;
     console.error(

@@ -78,27 +78,52 @@ async function ensureUserProfile(
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, profile, patchProfile, refreshProfile } = useAuth();
+  const {
+    user,
+    profile,
+    loading: authLoading,
+    patchProfile,
+    refreshProfile,
+  } = useAuth();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ensuringProfile = useRef(false);
+  const redirectChecked = useRef(false);
 
   const current = steps[step];
   const isLast = step === steps.length - 1;
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!user) {
+      console.info("[onboarding] redirect decision: no user -> sign-in");
       router.replace(APP_ROUTES.signIn);
       return;
     }
 
+    if (!profile) return;
+
+    if (redirectChecked.current) return;
+
     if (hasCompletedOnboarding(profile)) {
-      const destination = getPostAuthRedirect(profile);
-      console.info("[onboarding] Already complete, redirecting to", destination);
-      router.replace(destination);
+      redirectChecked.current = true;
+      void (async () => {
+        const syncedProfile = (await refreshProfile()) ?? profile;
+        const destination = getPostAuthRedirect(syncedProfile);
+        console.info("[onboarding] redirect decision: already complete", {
+          destination,
+          profile: {
+            onboarding_completed: syncedProfile.onboarding_completed,
+            profile_setup_completed: syncedProfile.profile_setup_completed,
+            profile_setup_skipped: syncedProfile.profile_setup_skipped,
+          },
+        });
+        router.replace(destination);
+      })();
     }
-  }, [profile, router, user]);
+  }, [authLoading, profile, refreshProfile, router, user]);
 
   useEffect(() => {
     if (!user || profile || ensuringProfile.current) return;
@@ -162,14 +187,27 @@ export default function OnboardingPage() {
         return;
       }
 
-      const updatedProfile: UserProfile = body.profile
-        ? { ...activeProfile, ...body.profile, onboarding_completed: true }
-        : { ...activeProfile, onboarding_completed: true };
+      patchProfile(
+        body.profile
+          ? { ...activeProfile, ...body.profile, onboarding_completed: true }
+          : { ...activeProfile, onboarding_completed: true }
+      );
 
+      const syncedProfile = await refreshProfile();
+      const updatedProfile: UserProfile = syncedProfile ?? {
+        ...activeProfile,
+        onboarding_completed: true,
+      };
       const destination = getPostAuthRedirect(updatedProfile);
-      console.info("[onboarding] complete, redirecting to", destination, updatedProfile);
+      console.info("[onboarding] redirect decision: finish complete", {
+        destination,
+        profile: {
+          onboarding_completed: updatedProfile.onboarding_completed,
+          profile_setup_completed: updatedProfile.profile_setup_completed,
+          profile_setup_skipped: updatedProfile.profile_setup_skipped,
+        },
+      });
 
-      patchProfile(updatedProfile);
       router.replace(destination);
     } catch (err) {
       console.error("[onboarding] finishOnboarding unexpected error:", err);

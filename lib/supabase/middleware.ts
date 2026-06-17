@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import {
   getSessionRedirect,
   isProtectedRoute,
+  logRedirectDecision,
 } from "@/lib/middleware-redirect";
 
 export async function updateSession(request: NextRequest) {
@@ -37,20 +38,37 @@ export async function updateSession(request: NextRequest) {
 
   let profile = null;
   if (user && isProtectedRoute(pathname)) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("users")
       .select(
         "onboarding_completed, profile_setup_completed, profile_setup_skipped"
       )
       .eq("id", user.id)
       .maybeSingle();
+
+    if (error) {
+      console.error("[middleware] profile lookup failed:", {
+        pathname,
+        userId: user.id,
+        message: error.message,
+      });
+    }
+
     profile = data;
   }
 
-  const redirectPath = getSessionRedirect(pathname, Boolean(user), profile);
-  if (redirectPath) {
+  const decision = getSessionRedirect(pathname, Boolean(user), profile);
+  logRedirectDecision(pathname, Boolean(user), profile, decision);
+
+  if (decision.redirectTo) {
     const url = request.nextUrl.clone();
-    url.pathname = redirectPath;
+    url.pathname = decision.redirectTo;
+    console.info("[middleware] redirecting", {
+      from: pathname,
+      to: decision.redirectTo,
+      reason: decision.reason,
+      userId: user?.id ?? null,
+    });
     return NextResponse.redirect(url);
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
@@ -33,11 +33,14 @@ export default function ProfileSetupPage() {
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [profileResynced, setProfileResynced] = useState(false);
+  const resyncAttempted = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
 
     if (!user) {
+      console.info("[profile-setup] redirect decision: no user -> sign-in");
       router.replace(APP_ROUTES.signIn);
       return;
     }
@@ -48,14 +51,38 @@ export default function ProfileSetupPage() {
     if (!profile) return;
 
     if (!hasCompletedOnboarding(profile)) {
+      if (!resyncAttempted.current) {
+        resyncAttempted.current = true;
+        console.warn(
+          "[profile-setup] profile shows onboarding incomplete while route was allowed; refreshing profile before any redirect",
+          {
+            onboarding_completed: profile.onboarding_completed,
+            profile_setup_completed: profile.profile_setup_completed,
+            profile_setup_skipped: profile.profile_setup_skipped,
+          }
+        );
+        void refreshProfile().finally(() => setProfileResynced(true));
+        return;
+      }
+
+      if (!profileResynced) return;
+
+      console.info(
+        "[profile-setup] redirect decision: onboarding still incomplete after refresh -> onboarding"
+      );
       router.replace(APP_ROUTES.onboarding);
       return;
     }
 
     if (hasCompletedProfileSetup(profile)) {
+      console.info(
+        "[profile-setup] redirect decision: profile setup already complete -> dashboard"
+      );
       router.replace(APP_ROUTES.dashboard);
+    } else {
+      console.info("[profile-setup] redirect decision: allow profile setup page");
     }
-  }, [authLoading, profile, router, user]);
+  }, [authLoading, profile, profileResynced, refreshProfile, router, user]);
 
   useEffect(() => {
     if (!profile) return;
@@ -123,7 +150,7 @@ export default function ProfileSetupPage() {
     router.replace(APP_ROUTES.dashboard);
   };
 
-  if (authLoading || (user && !profile)) {
+  if (authLoading || (user && !profile) || (user && profile && !profileResynced && !hasCompletedOnboarding(profile))) {
     return <RouteGuardLoading />;
   }
 
