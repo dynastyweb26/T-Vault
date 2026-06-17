@@ -12,14 +12,23 @@ function resolveActiveSession(
 ): DetentionSession | null {
   const openSession = sessions.find((session) => !session.timer_end) ?? null;
 
+  if (openSession?.timer_start) return openSession;
+
   if (job?.detention_start_time) {
-    if (openSession) return openSession;
+    const location = job.detention_location_type ?? openSession?.location_type ?? "pickup";
+    if (openSession) {
+      return {
+        ...openSession,
+        timer_start: job.detention_start_time,
+        location_type: location,
+      };
+    }
 
     return {
       id: `job-${job.id}`,
       user_id: job.user_id,
       job_id: job.id,
-      location_type: job.detention_location_type ?? "pickup",
+      location_type: location,
       timer_start: job.detention_start_time,
       timer_end: null,
       total_minutes: null,

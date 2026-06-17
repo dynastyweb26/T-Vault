@@ -1,9 +1,24 @@
 export const DETENTION_FREE_MINUTES = 120;
 export const DEFAULT_DETENTION_RATE = 50;
 
+function parseTimerStartMs(timerStart: string): number {
+  const trimmed = timerStart.trim();
+  if (!trimmed) return Number.NaN;
+
+  let ms = Date.parse(trimmed);
+  if (!Number.isNaN(ms)) return ms;
+
+  const withT = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+  ms = Date.parse(withT);
+  if (!Number.isNaN(ms)) return ms;
+
+  const withZ = withT.replace(/\+00:?00?$/, "Z").replace(/\+00$/, "Z");
+  return Date.parse(withZ);
+}
+
 export function getDetentionElapsedSeconds(timerStart: string | null | undefined): number {
   if (!timerStart) return 0;
-  const startMs = new Date(timerStart).getTime();
+  const startMs = parseTimerStartMs(timerStart);
   if (Number.isNaN(startMs)) return 0;
   return Math.max(0, Math.floor((Date.now() - startMs) / 1000));
 }

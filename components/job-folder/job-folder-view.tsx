@@ -46,10 +46,10 @@ import {
   isManualDocumentEntry,
   missingChecklistItems,
 } from "@/lib/job-folder/documents";
+import { DetentionLiveTimer } from "@/components/job-folder/detention-live-timer";
 import {
   calculateDetentionOwed,
   formatDuration,
-  formatTimerDisplay,
   getDetentionElapsedSeconds,
   isDetentionBillable,
   DETENTION_FREE_MINUTES,
@@ -219,7 +219,6 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [brokerBadge, setBrokerBadge] = useState<BrokerBadgeInfo | null>(null);
   const [brokerSheetOpen, setBrokerSheetOpen] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(0);
   const [detentionResult, setDetentionResult] = useState<{
     minutes: number;
     location: DetentionLocation;
@@ -276,17 +275,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     })();
   }, [job?.broker_name, jobId, user]);
 
-  useEffect(() => {
-    const timerStart = activeSession?.timer_start ?? job?.detention_start_time;
-    if (!timerStart) {
-      setTimerSeconds(0);
-      return;
-    }
-    const tick = () => setTimerSeconds(getDetentionElapsedSeconds(timerStart));
-    tick();
-    const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
-  }, [activeSession?.timer_start, job?.detention_start_time]);
+  const detentionTimerStart =
+    activeSession?.timer_start ?? job?.detention_start_time ?? null;
 
   useEffect(() => {
     if (!paymentSheetOpen) return;
@@ -585,7 +575,6 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           }
         : current
     );
-    await refresh();
   };
 
   const stopDetention = async () => {
@@ -1204,20 +1193,17 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
           Brokers owe you after 2 hours of waiting. Document it — it&apos;s your money.
         </p>
-        {activeSession || job?.detention_start_time ? (
-          <div className="mt-4 rounded-2xl tv-glass-card border border-[var(--color-success)]/20 bg-[var(--color-success-bg)] p-5 text-center">
-            <Clock className="mx-auto size-7 animate-spin text-[var(--color-success)]" style={{ animationDuration: "4s" }} strokeWidth={2} />
-            <p className="tv-tabular mt-3 text-[40px] font-bold">{formatTimerDisplay(timerSeconds)}</p>
-            <p className="text-[14px] text-[var(--color-text-secondary)]">
-              At {(activeSession?.location_type ?? job?.detention_location_type) === "pickup" ? "Pickup" : "Delivery"}
-            </p>
-            <p className="mt-2 text-[13px] text-[var(--color-text-muted)]">
-              Free time: 2 hours. After that, you&apos;re owed money.
-            </p>
-            <TvButton variant="secondary" className="mt-4 border-[var(--color-danger)] text-[var(--color-danger-text)]" onClick={stopDetention}>
-              Stop Timer
-            </TvButton>
-          </div>
+        {detentionTimerStart ? (
+          <DetentionLiveTimer
+            timerStart={detentionTimerStart}
+            locationLabel={
+              (activeSession?.location_type ?? job?.detention_location_type) ===
+              "pickup"
+                ? "Pickup"
+                : "Delivery"
+            }
+            onStop={stopDetention}
+          />
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button type="button" onClick={() => startDetention("pickup")} className="tv-glass-card flex h-14 items-center justify-center gap-2 rounded-2xl border border-[var(--color-success)]/20 text-[15px] text-[var(--color-success-text)]">
