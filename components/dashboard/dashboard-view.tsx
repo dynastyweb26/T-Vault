@@ -36,6 +36,10 @@ export function DashboardView() {
     <>
       <QuickActions />
 
+      <div className="px-5 pb-2">
+        <TourHintBanner />
+      </div>
+
       <div ref={containerRef} {...handlers} className="relative flex flex-col">
         <p
           ref={indicatorRef}
@@ -51,10 +55,6 @@ export function DashboardView() {
 
         <div className="px-5 pb-2">
           <DataProtectionBanner />
-        </div>
-
-        <div className="px-5 pb-2">
-          <TourHintBanner />
         </div>
 
         {loading ? (

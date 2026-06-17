@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { dismissTourBanner } from "@/lib/profile/tour-banner";
 
 export async function POST() {
   try {
@@ -13,23 +14,10 @@ export async function POST() {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const { data: updated, error: updateError } = await supabase
-      .from("users")
-      .update({
-        tour_banner_dismissed: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id)
-      .select("id, tour_banner_dismissed")
-      .single();
+    const result = await dismissTourBanner(supabase, user.id);
 
-    if (updateError) {
-      console.error("dismiss-tour-hint failed:", updateError.message);
-      return NextResponse.json({ error: "profile_save_failed" }, { status: 500 });
-    }
-
-    if (updated.tour_banner_dismissed !== true) {
-      console.error("dismiss-tour-hint: flag not persisted for user", user.id);
+    if (!result.ok) {
+      console.error("dismiss-tour-hint failed:", result.error);
       return NextResponse.json({ error: "profile_save_failed" }, { status: 500 });
     }
 
