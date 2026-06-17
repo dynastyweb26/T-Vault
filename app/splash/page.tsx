@@ -73,20 +73,40 @@ export default function SplashPage() {
   }, [router, supabase]);
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-5 text-center">
-      <Image
-        src="/logo.jpeg"
-        alt="T-Vault"
-        width={240}
-        height={64}
-        className="mb-8 h-16 w-auto"
-        priority
-      />
-      <p className="tv-body max-w-sm text-[var(--color-text-secondary)]">
-        Your business command center for the road.
-      </p>
-      <p className="tv-caption mt-8">{status}</p>
-      <div className="tv-skeleton mt-6 h-2 w-24 rounded-full" />
+    <div className="relative flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-5 text-center">
+      <div className="flex flex-col items-center">
+        <div className="tv-gold-glow overflow-hidden rounded-[28px]">
+          <Image
+            src="/icon.jpeg"
+            alt=""
+            width={120}
+            height={120}
+            className="size-[120px] rounded-[28px]"
+            priority
+          />
+        </div>
+
+        <h1
+          className="mt-6 w-[200px] text-[32px] font-extrabold leading-none tracking-tight"
+          style={{
+            background: "var(--gold-gradient)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          T-Vault
+        </h1>
+
+        <p className="tv-body mt-4 max-w-[280px] text-[15px] leading-relaxed text-[var(--color-text-secondary)]">
+          Your business command center for the road.
+        </p>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-[max(3rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-4">
+        <p className="tv-caption">{status}</p>
+        <div className="tv-skeleton h-1 w-20 rounded-full" />
+      </div>
     </div>
   );
 }
