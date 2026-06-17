@@ -1,2 +1,11 @@
 [functions.parse-document]
 verify_jwt = true
+
+[functions.process-voice-note]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
+[functions.cron-notifications]
+verify_jwt = false

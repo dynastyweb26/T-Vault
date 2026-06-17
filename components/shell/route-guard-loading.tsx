@@ -1,18 +1,19 @@
 "use client";
 
-import { Wallet } from "lucide-react";
+import Image from "next/image";
 
 export function RouteGuardLoading() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-5">
-      <div className="tv-brushed-gold-btn mb-6 flex size-16 items-center justify-center rounded-2xl">
-        <Wallet
-          className="size-8 text-[var(--color-on-accent)]"
-          strokeWidth={2}
-          aria-hidden
-        />
-      </div>
-      <div className="tv-skeleton h-3 w-32 rounded-full" />
+    <div className="tv-page-canvas flex min-h-dvh flex-col items-center justify-center px-5">
+      <Image
+        src="/icon.png"
+        alt=""
+        width={64}
+        height={64}
+        className="tv-loading-pulse mb-8 size-16 rounded-2xl shadow-[var(--shadow-gold)]"
+        aria-hidden
+      />
+      <div className="tv-skeleton h-1 w-28 rounded-full" />
     </div>
   );
 }

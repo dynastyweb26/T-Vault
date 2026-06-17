@@ -7,12 +7,14 @@ import {
   AlertCircle,
   AlertTriangle,
   Bot,
+  Camera,
   Check,
   ChevronDown,
   ChevronLeft,
   Clock,
   DollarSign,
   FileText,
+  Image as ImageIcon,
   Loader2,
   MapPin,
   MoreVertical,
@@ -24,10 +26,12 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
+import type { UserProfile } from "@/types/database";
 import { useJobFolder } from "@/hooks/use-job-folder";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
+import { TvTextarea } from "@/components/tv/tv-textarea";
 import { triggerHaptic } from "@/lib/haptics";
 import { saveLoadsScrollPosition } from "@/lib/job-folder/scroll";
 import {
@@ -50,7 +54,7 @@ import {
   DETENTION_FREE_MINUTES,
 } from "@/lib/job-folder/detention";
 import { generateDetentionInvoicePdf } from "@/lib/job-folder/detention-invoice";
-import { generateAndSaveLoadInvoice } from "@/lib/job-folder/invoice";
+import { generateAndSaveLoadInvoice, formatMissingInvoiceFieldsMessage } from "@/lib/job-folder/invoice";
 import { uploadJobDocument, saveDocumentFromBlob } from "@/lib/job-folder/upload";
 import {
   isDocumentParsing,
@@ -67,6 +71,8 @@ import { AiReviewSheet } from "@/components/job-folder/ai-review-sheet";
 import { CrossValidationBanner } from "@/components/job-folder/cross-validation-banner";
 import { DocumentManualEntrySheet } from "@/components/job-folder/document-manual-entry-sheet";
 import { DocumentPreviewModal } from "@/components/job-folder/document-preview-modal";
+import { BrokerRatingPrompt } from "@/components/broker-history/broker-rating-prompt";
+import { markJobAsPaid as markJobPaidInDb } from "@/lib/loads/mark-paid";
 import { JobFolderFieldInput } from "@/components/job-folder/job-folder-field-input";
 import { saveManualDocumentEntryAndVerify } from "@/lib/job-folder/manual-document-save";
 import {
@@ -98,6 +104,7 @@ import {
 import { formatCurrency, formatCurrencyDetailed, formatShortDate } from "@/lib/dashboard/format";
 import { updateStreak } from "@/lib/streak";
 import { APP_ROUTES, TEXT_LIMITS } from "@/lib/constants";
+import { sanitizeText, validateTextLength } from "@/lib/validation";
 import type { BrokerBadgeInfo, DetentionLocation, MilestoneCheck } from "@/types/job-folder";
 import type { AiConfidence, JobDocument } from "@/types/jobs";
 import type { CrossValidationConflict } from "@/lib/job-folder/ai-types";
@@ -223,9 +230,11 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     amount: "",
     date: new Date().toISOString().slice(0, 10),
     description: "",
-    noReceipt: false,
+    receiptMode: "receipt" as "receipt" | "no_receipt",
     noReceiptReason: "",
   });
+  const [expenseReceiptFile, setExpenseReceiptFile] = useState<File | null>(null);
+  const [expenseSaving, setExpenseSaving] = useState(false);
   const [aiBanner, setAiBanner] = useState<"rate_limited" | "parse_failed" | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [failedParseDoc, setFailedParseDoc] = useState<{
@@ -238,6 +247,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
   const [paymentStatusSheetOpen, setPaymentStatusSheetOpen] = useState(false);
   const [undoPaidConfirmOpen, setUndoPaidConfirmOpen] = useState(false);
+  const [ratingPromptOpen, setRatingPromptOpen] = useState(false);
+  const [ratingPromptJob, setRatingPromptJob] = useState<typeof job>(null);
 
   const openEditField = (key: string, rawValue: unknown) => {
     setEditField(key);
@@ -421,6 +432,14 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     } catch (err) {
       if (err instanceof Error && err.message === "ai_review_required") {
         setReviewOpen(true);
+      } else if (err instanceof Error && err.message === "no_invoice_to_regenerate") {
+        window.alert("No invoice exists yet to regenerate.");
+      } else if (
+        err instanceof Error &&
+        err.message.startsWith("missing_invoice_fields:")
+      ) {
+        const missing = err.message.replace("missing_invoice_fields:", "").split(",");
+        window.alert(formatMissingInvoiceFieldsMessage(missing));
       } else {
         window.alert(
           regenerate
@@ -435,14 +454,21 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   };
 
   const markJobAsPaid = async () => {
-    await updateJob({
-      status: "paid",
-      payment_received: true,
-      payment_received_date: new Date().toISOString().slice(0, 10),
-    });
+    if (!user || !job) return;
+    const supabase = createClient();
+    const { job: updated } = await markJobPaidInDb(supabase, user.id, job.id);
+    if (!updated) {
+      window.alert("Could not mark this load as paid. Try again.");
+      return;
+    }
     triggerHaptic("medium");
     setPaymentStatusSheetOpen(false);
     await refresh();
+
+    if (updated && updated.broker_name?.trim() && !updated.broker_rating) {
+      setRatingPromptJob(updated);
+      setRatingPromptOpen(true);
+    }
   };
 
   const markJobAsUnpaid = async () => {
@@ -562,9 +588,10 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   };
 
   const handleFileSelect = async (file: File, poorQuality = false) => {
-    if (!uploadType || !user) return;
+    if (!uploadType || !user || uploading) return;
     const docType = uploadType;
     setPendingFile(file);
+    setUploading(true);
     try {
       const { documentId } = await uploadJobDocument(createClient(), {
         userId: user.id,
@@ -588,17 +615,23 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       } else {
         window.alert("Upload failed — check your connection and try again.");
       }
+    } finally {
+      setUploading(false);
     }
   };
 
   const confirmComplete = async () => {
-    if (!user || !checklistComplete) return;
+    if (!user || !checklistComplete || job.status !== "active") return;
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("jobs")
       .update({ status: "awaiting_payment", updated_at: new Date().toISOString() })
       .eq("id", jobId)
       .eq("user_id", user.id);
+    if (error) {
+      window.alert("Could not update load status. Try again.");
+      return;
+    }
     await updateStreak(supabase, user.id);
     await refreshProfile();
     setPaymentSheetOpen(true);
@@ -608,31 +641,59 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const finalizePayment = async () => {
     if (!user || !job) return;
     const supabase = createClient();
-    await supabase.from("payments").insert({
-      user_id: user.id,
-      job_id: jobId,
-      amount: job.load_value,
-      payment_type: job.payment_type,
-      expected_date: paymentDate,
-      status: "pending",
-    });
-    await supabase
+
+    const { data: existingPayment } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("job_id", jobId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!existingPayment) {
+      const { error: paymentError } = await supabase.from("payments").insert({
+        user_id: user.id,
+        job_id: jobId,
+        amount: job.load_value,
+        payment_type: job.payment_type,
+        expected_date: paymentDate,
+        status: "pending",
+      });
+
+      if (paymentError) {
+        window.alert("Could not save payment details. Try again.");
+        return;
+      }
+
+      await updateUserStatsOnComplete(
+        supabase,
+        user.id,
+        job.load_value ?? 0
+      );
+    }
+
+    const { error: jobError } = await supabase
       .from("jobs")
       .update({ payment_expected_date: paymentDate })
       .eq("id", jobId)
       .eq("user_id", user.id);
 
-    const updatedProfile = await updateUserStatsOnComplete(
-      supabase,
-      user.id,
-      job.load_value ?? 0
-    );
+    if (jobError) {
+      window.alert("Could not save payment details. Try again.");
+      return;
+    }
+
     await refreshProfile();
 
+    const { data: updatedProfile } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
     const achieved = await fetchAchievedMilestones(supabase, user.id);
-    const monthEarnings = (updatedProfile?.best_month_earnings ?? 0);
+    const monthEarnings = updatedProfile?.best_month_earnings ?? 0;
     const newMilestones = updatedProfile
-      ? detectNewMilestones(updatedProfile, monthEarnings, achieved)
+      ? detectNewMilestones(updatedProfile as UserProfile, monthEarnings, achieved)
       : [];
 
     if (newMilestones.length > 0) {
@@ -695,7 +756,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                     });
                     setMoreOpen(false);
                   }},
-                  { label: "Mark as Complete", action: confirmComplete, hidden: !checklistComplete },
+                  { label: "Mark as Complete", action: confirmComplete, hidden: !checklistComplete || job.status !== "active" },
                   { label: "Cancel Load", action: async () => {
                     if (window.confirm("Cancel this load? Documents will be preserved.")) {
                       await updateJob({ status: "cancelled" });
@@ -1117,7 +1178,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             onClick={() => {
               if (
                 window.confirm(
-                  "Mark this load as complete? It will move to your completed loads history."
+                  "Mark this load as complete? It will move to Awaiting Payment until you record payment."
                 )
               ) {
                 confirmComplete();
@@ -1140,14 +1201,14 @@ export function JobFolderView({ jobId }: { jobId: string }) {
 
       {/* Modals & sheets */}
       <BottomSheet open={Boolean(uploadType)} onClose={() => setUploadType(null)} ariaLabel="Upload document">
-        <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" id="doc-upload" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+        <input type="file" accept="image/jpeg,image/png,application/pdf" capture="environment" className="hidden" id="doc-upload" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
         <div className="space-y-2">
           <label htmlFor="doc-upload" className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
             <AlertCircle className="size-6 text-[var(--color-accent)]" strokeWidth={2} /> Take a Photo
           </label>
           <label className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
             <FileText className="size-6 text-[var(--color-accent)]" strokeWidth={2} /> Choose from Gallery
-            <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+            <input type="file" accept="image/jpeg,image/png,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
           </label>
           <button type="button" onClick={() => setUploadType(null)} className="w-full py-3 text-center text-[var(--color-text-muted)]">Cancel</button>
         </div>
@@ -1268,7 +1329,21 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           <p className="mt-4 rounded-xl tv-glass-card px-4 py-3 tv-tabular text-[18px] font-bold text-[var(--color-accent)]">
             {profile?.referral_code ?? "TVT-XXX-0000"}
           </p>
-          <TvButton className="mt-4" onClick={() => { setShowReferral(false); setShowUpgrade(true); }}>Share</TvButton>
+          <TvButton
+            className="mt-4"
+            onClick={async () => {
+              const message = `I've been using T-Vault to keep my loads organized. Here's my invite code: ${profile?.referral_code ?? ""} — try it at TVT.app`;
+              if (navigator.share) {
+                await navigator.share({ text: message });
+              } else {
+                await navigator.clipboard.writeText(message);
+              }
+              setShowReferral(false);
+              setShowUpgrade(true);
+            }}
+          >
+            Share
+          </TvButton>
           <button type="button" className="mt-4 text-[14px] text-[var(--color-text-muted)]" onClick={() => { setShowReferral(false); setShowUpgrade(true); }}>Maybe later</button>
           </div>
         </div>
@@ -1285,8 +1360,35 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           </div>
           <h3 className="tv-section-header mt-6">Keep building with T-Vault Pro</h3>
           <p className="tv-tabular mt-2 text-[36px] font-bold text-[var(--color-accent)]">$9.99/month · Cancel anytime</p>
-          <TvButton className="mt-4">Start Pro — $9.99/month</TvButton>
-          <button type="button" className="mt-4 w-full text-center text-[14px] text-[var(--color-text-muted)]" onClick={() => { setShowUpgrade(false); setShowEarnedBanner(true); triggerHaptic("strong"); }}>Maybe later — keep 1 load</button>
+          <TvButton
+            className="mt-4"
+            onClick={async () => {
+              await fetch("/api/pro-waitlist", { method: "POST" });
+              setShowUpgrade(false);
+              setShowEarnedBanner(true);
+              triggerHaptic("strong");
+            }}
+          >
+            Start Pro — $9.99/month
+          </TvButton>
+          <button
+            type="button"
+            className="mt-4 w-full text-center text-[14px] text-[var(--color-text-muted)]"
+            onClick={async () => {
+              const supabase = createClient();
+              if (user) {
+                await supabase
+                  .from("users")
+                  .update({ upgrade_dismissed_at: new Date().toISOString() })
+                  .eq("id", user.id);
+              }
+              setShowUpgrade(false);
+              setShowEarnedBanner(true);
+              triggerHaptic("strong");
+            }}
+          >
+            Maybe later — keep 1 load
+          </button>
         </div>
       ) : null}
 
@@ -1351,18 +1453,164 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         </div>
         <TvInput label="Amount" inputMode="decimal" value={expenseForm.amount} onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value.replace(/[^0-9.]/g, "") }))} className="mt-4" />
         <TvInput label="Date" type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((f) => ({ ...f, date: e.target.value }))} className="mt-4" />
-        <TvButton className="mt-4" onClick={async () => {
+        <TvTextarea
+          label="Description"
+          value={expenseForm.description}
+          onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
+          maxLength={TEXT_LIMITS.description}
+          rows={2}
+          className="mt-4"
+        />
+        <div className="mt-4">
+          <p className="tv-label mb-2">Receipt</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setExpenseForm((f) => ({ ...f, receiptMode: "receipt" }))}
+              className={`tv-chip h-11 ${expenseForm.receiptMode === "receipt" ? "tv-chip-active" : "tv-chip-inactive"}`}
+            >
+              Receipt
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setExpenseForm((f) => ({ ...f, receiptMode: "no_receipt" }));
+                setExpenseReceiptFile(null);
+              }}
+              className={`tv-chip h-11 ${expenseForm.receiptMode === "no_receipt" ? "tv-chip-active" : "tv-chip-inactive"}`}
+            >
+              No receipt
+            </button>
+          </div>
+        </div>
+        {expenseForm.receiptMode === "receipt" ? (
+          <div className="mt-4 space-y-2">
+            <label className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
+              <Camera className="size-6 text-[var(--color-accent)]" strokeWidth={2} />
+              <span className="text-[15px]">Take a Photo</span>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                capture="environment"
+                className="hidden"
+                onChange={(event) => {
+                  setExpenseReceiptFile(event.target.files?.[0] ?? null);
+                }}
+              />
+            </label>
+            <label className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
+              <ImageIcon className="size-6 text-[var(--color-accent)]" strokeWidth={2} />
+              <span className="text-[15px]">Choose from Gallery</span>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(event) => {
+                  setExpenseReceiptFile(event.target.files?.[0] ?? null);
+                }}
+              />
+            </label>
+            {expenseReceiptFile ? (
+              <p className="flex items-center gap-2 text-[13px] text-[var(--color-text-secondary)]">
+                <FileText className="size-4 text-[var(--color-success-text)]" />
+                {expenseReceiptFile.name}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <TvTextarea
+            label="Why is there no receipt?"
+            value={expenseForm.noReceiptReason}
+            onChange={(e) =>
+              setExpenseForm((f) => ({ ...f, noReceiptReason: e.target.value }))
+            }
+            maxLength={TEXT_LIMITS.description}
+            rows={2}
+            className="mt-4"
+          />
+        )}
+        <TvButton
+          className="mt-4"
+          loading={expenseSaving}
+          onClick={async () => {
           if (!user) return;
-          await createClient().from("expenses").insert({
+          const amount = Number(expenseForm.amount);
+          if (!expenseForm.amount.trim() || Number.isNaN(amount) || amount <= 0) {
+            window.alert("Enter a valid expense amount.");
+            return;
+          }
+          if (!expenseForm.date) {
+            window.alert("Select an expense date.");
+            return;
+          }
+          if (
+            expenseForm.receiptMode === "no_receipt" &&
+            validateTextLength(
+              expenseForm.noReceiptReason,
+              TEXT_LIMITS.description,
+              "Note"
+            )
+          ) {
+            window.alert("Explain why there is no receipt.");
+            return;
+          }
+
+          setExpenseSaving(true);
+          const supabase = createClient();
+          const { data: inserted, error } = await supabase.from("expenses").insert({
             user_id: user.id,
             job_id: jobId,
             category: expenseForm.category,
-            amount: Number(expenseForm.amount),
+            amount,
             expense_date: expenseForm.date,
-            description: expenseForm.description || null,
-          });
+            description: sanitizeText(expenseForm.description) || null,
+            no_receipt_reason:
+              expenseForm.receiptMode === "no_receipt"
+                ? sanitizeText(expenseForm.noReceiptReason)
+                : null,
+          }).select("id").single();
+
+          if (error || !inserted?.id) {
+            setExpenseSaving(false);
+            window.alert("Could not save expense. Try again.");
+            return;
+          }
+
+          if (expenseForm.receiptMode === "receipt" && expenseReceiptFile) {
+            const formData = new FormData();
+            formData.append("file", expenseReceiptFile);
+            formData.append("expenseId", inserted.id);
+
+            const uploadResponse = await fetch("/api/expenses/upload-receipt", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+              await supabase
+                .from("expenses")
+                .delete()
+                .eq("id", inserted.id)
+                .eq("user_id", user.id)
+                .eq("job_id", jobId);
+              setExpenseSaving(false);
+              window.alert("Could not save expense. Try again.");
+              return;
+            }
+          }
+
           triggerHaptic("medium");
+          setExpenseSaving(false);
           setExpenseSheetOpen(false);
+          setExpenseReceiptFile(null);
+          setExpenseForm({
+            category: "fuel",
+            amount: "",
+            date: new Date().toISOString().slice(0, 10),
+            description: "",
+            receiptMode: "receipt",
+            noReceiptReason: "",
+          });
           await refresh();
         }}>Save Expense</TvButton>
       </BottomSheet>
@@ -1436,6 +1684,16 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           setJob(savedJob);
           setDocuments(savedDocuments);
         }}
+      />
+
+      <BrokerRatingPrompt
+        job={ratingPromptJob}
+        open={ratingPromptOpen}
+        onClose={() => {
+          setRatingPromptOpen(false);
+          setRatingPromptJob(null);
+        }}
+        onSaved={refresh}
       />
       </div>
     </>

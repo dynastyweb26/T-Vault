@@ -1,20 +1,18 @@
 "use client";
 
-import { Wallet } from "lucide-react";
+import Image from "next/image";
 
 export function AuthBrandHeader() {
   return (
-    <div className="mb-8 flex items-center gap-2">
-      <div className="tv-brushed-gold-btn flex size-11 items-center justify-center rounded-lg">
-        <Wallet
-          className="size-5 text-[var(--color-on-accent)]"
-          strokeWidth={2.5}
-          aria-hidden
-        />
-      </div>
-      <span className="tv-section-header tracking-tight text-[var(--color-accent)]">
-        T-Vault
-      </span>
+    <div className="mb-10">
+      <Image
+        src="/logo.png"
+        alt="T-Vault"
+        width={180}
+        height={48}
+        className="tv-brand-mark h-10 w-auto"
+        priority
+      />
     </div>
   );
 }

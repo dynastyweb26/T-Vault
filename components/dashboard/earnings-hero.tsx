@@ -18,7 +18,7 @@ export function EarningsHero({ data }: EarningsHeroProps) {
   const ahead = (data.yearOverYearDiff ?? 0) >= 0;
 
   return (
-    <section className="tv-feed-card tv-metallic-gold tv-gold-glow relative mx-5 flex aspect-[4/5] flex-col items-center justify-center overflow-hidden rounded-2xl">
+    <section className="tv-feed-card tv-metallic-gold tv-gold-glow relative mx-5 flex aspect-[4/5] flex-col items-center justify-center overflow-hidden rounded-[20px]">
       <div className="relative z-10 flex flex-col items-center px-6 text-center">
         <span className="tv-caption mb-4 text-[var(--color-accent)]/80 tracking-[0.2em]">
           Current Revenue Stream

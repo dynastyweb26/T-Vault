@@ -2,7 +2,7 @@ const SAFE_REDIRECT_PATTERN = /^\/[a-zA-Z0-9/_-]*$/;
 
 export function validateRedirectPath(
   next: string | null | undefined,
-  fallback = "/onboarding"
+  fallback = "/splash"
 ): string {
   if (!next) return fallback;
   if (!SAFE_REDIRECT_PATTERN.test(next)) return fallback;

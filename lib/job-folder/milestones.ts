@@ -37,6 +37,10 @@ const MILESTONE_COPY: Record<
     title: "New best month!",
     subtitle: "You just beat your personal earnings record.",
   },
+  streak_30: {
+    title: "30-day streak!",
+    subtitle: "A full month of showing up. That's a real habit.",
+  },
 };
 
 export async function fetchAchievedMilestones(

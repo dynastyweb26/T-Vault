@@ -9,6 +9,7 @@ export type JobStatus =
 
 export type PaymentType = "direct" | "factoring";
 export type AiConfidence = "high" | "medium" | "low" | "unread" | "manual";
+export type BrokerRatingValue = "on_time" | "late" | "problem";
 
 export interface Job {
   id: string;
@@ -42,6 +43,8 @@ export interface Job {
   detention_paid: string | null;
   ai_fields_confirmed: boolean | null;
   cross_validation_conflicts: import("@/lib/job-folder/ai-types").CrossValidationConflict[] | null;
+  broker_rating: BrokerRatingValue | null;
+  broker_rating_notes: string | null;
 }
 
 export interface JobDocument {

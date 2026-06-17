@@ -12,13 +12,13 @@ interface TvButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<TvButtonVariant, string> = {
   primary:
-    "tv-brushed-gold-btn font-bold text-[var(--color-on-accent)] hover:opacity-95",
+    "tv-brushed-gold-btn rounded-full font-semibold tracking-[-0.01em] text-[var(--color-on-accent)]",
   secondary:
-    "bg-transparent border border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5",
+    "tv-accent-outline-btn rounded-full bg-transparent",
   destructive:
-    "bg-[var(--color-danger-bg)] border border-[var(--color-danger)]/20 text-[var(--color-danger-text)] hover:opacity-90",
+    "rounded-full border border-[var(--color-danger)]/25 bg-[var(--color-danger-bg)] text-[var(--color-danger-text)] hover:opacity-90",
   ghost:
-    "bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)]",
+    "rounded-xl bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)]",
 };
 
 export function TvButton({
@@ -34,7 +34,7 @@ export function TvButton({
       type="button"
       disabled={disabled || loading}
       className={cn(
-        "tv-pressable inline-flex h-14 w-full min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-[15px] transition-[transform,opacity] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50",
+        "tv-pressable inline-flex h-14 w-full min-h-11 items-center justify-center gap-2 px-5 text-[15px] disabled:cursor-not-allowed disabled:opacity-50",
         variantClasses[variant],
         className
       )}

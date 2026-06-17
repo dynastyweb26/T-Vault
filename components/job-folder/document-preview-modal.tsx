@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 import { DOC_TYPE_LABELS } from "@/lib/job-folder/constants";
 import { isPdfDocument } from "@/lib/job-folder/document-fields";
@@ -15,14 +15,60 @@ export function DocumentPreviewModal({
   document,
   onClose,
 }: DocumentPreviewModalProps) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!document?.file_url) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
+
+    const loadUrl = async () => {
+      try {
+        const response = await fetch("/api/documents/signed-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ documentId: document.id }),
+        });
+
+        if (response.ok) {
+          const payload = await response.json();
+          if (active) {
+            setPreviewUrl(payload.url ?? document.file_url);
+          }
+          return;
+        }
+      } catch {
+        // Fall back to stored URL below.
+      }
+
+      if (active) {
+        setPreviewUrl(document.file_url);
+      }
+    };
+
+    void loadUrl().finally(() => {
+      if (active) setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [document]);
+
   const handleDownload = useCallback(async () => {
-    if (!document?.file_url) return;
+    const fileUrl = previewUrl ?? document?.file_url;
+    if (!fileUrl || !document) return;
     const fileName =
       document.file_name ||
-      `${document.document_type}-${Date.now()}.${isPdfDocument(document.file_url, document.file_name) ? "pdf" : "jpg"}`;
+      `${document.document_type}-${Date.now()}.${isPdfDocument(fileUrl, document.file_name) ? "pdf" : "jpg"}`;
 
     try {
-      const response = await fetch(document.file_url);
+      const response = await fetch(fileUrl);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       const anchor = window.document.createElement("a");
@@ -36,14 +82,15 @@ export function DocumentPreviewModal({
     } catch {
       window.alert("Download failed — check your connection and try again.");
     }
-  }, [document]);
+  }, [document, previewUrl]);
 
   if (!document?.file_url) return null;
 
   const title =
     DOC_TYPE_LABELS[document.document_type as keyof typeof DOC_TYPE_LABELS] ??
     "Document";
-  const pdf = isPdfDocument(document.file_url, document.file_name);
+  const fileUrl = previewUrl ?? document.file_url;
+  const pdf = isPdfDocument(fileUrl, document.file_name);
 
   return (
     <div
@@ -82,9 +129,11 @@ export function DocumentPreviewModal({
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {pdf ? (
+        {loading ? (
+          <div className="tv-skeleton m-auto h-48 w-full max-w-md rounded-2xl" />
+        ) : pdf ? (
           <iframe
-            src={document.file_url}
+            src={fileUrl}
             title={title}
             className="h-full w-full flex-1 rounded-2xl border border-[var(--color-shell-border)] bg-[var(--color-input-bg)]"
           />
@@ -92,7 +141,7 @@ export function DocumentPreviewModal({
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={document.file_url}
+              src={fileUrl}
               alt={title}
               className="max-h-full max-w-full rounded-2xl object-contain"
             />

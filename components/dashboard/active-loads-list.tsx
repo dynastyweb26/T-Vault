@@ -34,10 +34,7 @@ export function ActiveLoadsList({ jobs, onRefresh }: ActiveLoadsListProps) {
               aria-hidden
             />
           </div>
-          <h3 className="tv-card-title mt-4">No loads detected.</h3>
-          <p className="tv-body mt-2 max-w-xs text-[var(--color-text-secondary)]">
-            Start tracking your journey. Every mile logged is progress verified.
-          </p>
+          <h3 className="tv-card-title mt-4">Ready for your next load?</h3>
           <Link href={APP_ROUTES.newJob} className="mt-6 w-full">
             <TvButton>Start New Load</TvButton>
           </Link>

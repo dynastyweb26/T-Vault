@@ -11,9 +11,12 @@ import {
   QuickExpenseRow,
   QuickExpenseSheet,
 } from "@/components/dashboard/quick-expense-sheet";
+import { StreakCard } from "@/components/dashboard/streak-card";
+import { VoiceNoteShortcut } from "@/components/voice-note/voice-note-shortcut";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { SuccessBanner } from "@/components/dashboard/success-banner";
+import { CostPerMileDashboardCard } from "@/components/cost-per-mile/cost-per-mile-view";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
@@ -54,12 +57,26 @@ export function DashboardView() {
         ) : data ? (
           <>
             <EarningsHero data={data} />
+            <div className="px-5">
+              <StreakCard streakDays={data.streakDays} />
+            </div>
             <MoneyOutRow data={data} />
+            <div className="px-5">
+              <CostPerMileDashboardCard
+                netPerMile={
+                  data.totalMilesThisMonth > 0
+                    ? (data.earnedThisMonth - data.expensesThisMonth) /
+                      data.totalMilesThisMonth
+                    : 0
+                }
+              />
+            </div>
             <div className="flex flex-col gap-6 px-5">
               <NeedsAttention items={data.attentionItems} />
               <AwaitingPayment items={data.awaitingPayments} />
               <ActiveLoadsList jobs={data.activeJobs} onRefresh={refresh} />
               <QuickExpenseRow onOpen={() => setExpenseOpen(true)} />
+              <VoiceNoteShortcut />
             </div>
           </>
         ) : null}

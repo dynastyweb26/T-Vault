@@ -6,6 +6,8 @@ export const TEXT_LIMITS = {
   description: 500,
   company: 100,
   fullName: 80,
+  truckInfo: 200,
+  brokerRatingNotes: 200,
 } as const;
 
 export const LOAD_VALUE_MAX = 999_999;
@@ -22,6 +24,20 @@ export const APP_ROUTES = {
   newJob: "/new-job",
   expenses: "/expenses",
   profile: "/profile",
+  costPerMile: "/cost-per-mile",
+  taxSummary: "/tax-summary",
+  brokerHistory: "/broker-history",
+  voiceNote: "/voice-note",
+  voiceNotes: "/voice-notes",
+  documents: "/documents",
+  referral: "/referral",
+  editProfile: "/profile/edit",
+  notificationPrefs: "/profile/notifications",
+  deleteAccount: "/profile/delete-account",
+  help: "/profile/help",
+  privacy: "/profile/privacy",
+  terms: "/profile/terms",
+  changePassword: "/profile/change-password",
 } as const;
 
 export const PROTECTED_PREFIXES = [
@@ -30,6 +46,13 @@ export const PROTECTED_PREFIXES = [
   "/new-job",
   "/expenses",
   "/profile",
+  "/cost-per-mile",
+  "/tax-summary",
+  "/broker-history",
+  "/voice-note",
+  "/voice-notes",
+  "/documents",
+  "/referral",
   "/onboarding",
   "/profile-setup",
 ] as const;
@@ -41,6 +64,13 @@ export const ONBOARDING_REQUIRED_PREFIXES = [
   "/new-job",
   "/expenses",
   "/profile",
+  "/cost-per-mile",
+  "/tax-summary",
+  "/broker-history",
+  "/voice-note",
+  "/voice-notes",
+  "/documents",
+  "/referral",
 ] as const;
 
 export const AUTH_ROUTES = [

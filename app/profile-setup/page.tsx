@@ -1,13 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
+import {
+  hasCompletedOnboarding,
+  hasCompletedProfileSetup,
+} from "@/lib/auth-helpers";
 import {
   FIELD_LIMITS,
   formatDotNumber,
@@ -21,15 +24,38 @@ import {
 
 export default function ProfileSetupPage() {
   const router = useRouter();
-  const supabase = createClient();
   const { user, profile, refreshProfile } = useAuth();
-  const [fullName, setFullName] = useState(profile?.full_name ?? "");
-  const [companyName, setCompanyName] = useState(profile?.company_name ?? "");
-  const [mcNumber, setMcNumber] = useState(profile?.mc_number ?? "");
-  const [dotNumber, setDotNumber] = useState(profile?.dot_number ?? "");
+  const [fullName, setFullName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [mcNumber, setMcNumber] = useState("");
+  const [dotNumber, setDotNumber] = useState("");
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      router.replace(APP_ROUTES.signIn);
+      return;
+    }
+
+    if (!hasCompletedOnboarding(profile)) {
+      router.replace(APP_ROUTES.onboarding);
+      return;
+    }
+
+    if (hasCompletedProfileSetup(profile)) {
+      router.replace(APP_ROUTES.dashboard);
+    }
+  }, [profile, router, user]);
+
+  useEffect(() => {
+    if (!profile) return;
+    setFullName(profile.full_name ?? "");
+    setCompanyName(profile.company_name ?? "");
+    setMcNumber(profile.mc_number ?? "");
+    setDotNumber(profile.dot_number ?? "");
+  }, [profile]);
 
   const validate = () => {
     const nextErrors = {
@@ -59,27 +85,26 @@ export default function ProfileSetupPage() {
     if (!skipped && !validate()) return;
 
     setLoading(true);
-    const payload = skipped
-      ? {
-          profile_setup_skipped: true,
-          profile_setup_completed: true,
-        }
-      : {
-          full_name: sanitizeText(fullName),
-          company_name: sanitizeText(companyName),
-          mc_number: formatMcNumber(mcNumber),
-          dot_number: formatDotNumber(dotNumber),
-          profile_setup_completed: true,
-          profile_setup_skipped: false,
-        };
+    setFormError(null);
 
-    const { error } = await supabase
-      .from("users")
-      .update(payload)
-      .eq("id", user.id);
+    const response = await fetch("/api/auth/complete-profile-setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        skipped
+          ? { skipped: true }
+          : {
+              fullName,
+              companyName,
+              mcNumber,
+              dotNumber,
+            }
+      ),
+    });
+
     setLoading(false);
 
-    if (error) {
+    if (!response.ok) {
       setFormError(
         "We could not save your profile. Check your connection and try again."
       );

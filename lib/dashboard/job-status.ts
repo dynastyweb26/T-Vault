@@ -92,11 +92,13 @@ export function isJobCompletedInMonth(
     "complete",
     "completed",
     "paid",
-    "awaiting_payment",
   ]);
   if (!completedStatuses.has(job.status)) return false;
   const completionDate =
-    job.delivery_date || job.updated_at?.slice(0, 10) || null;
+    job.payment_received_date ||
+    job.delivery_date ||
+    job.updated_at?.slice(0, 10) ||
+    null;
   if (!completionDate) return false;
   return completionDate >= start && completionDate <= end;
 }

@@ -1,43 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { DollarSign, Shield, Smartphone } from "lucide-react";
 import { TvButton } from "@/components/tv/tv-button";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
-import { hasCompletedOnboarding } from "@/lib/auth-helpers";
+import { getPostAuthRedirect, hasCompletedOnboarding } from "@/lib/auth-helpers";
+import type { UserProfile } from "@/types/database";
 
 const steps = [
   {
     title: "Fight for your money",
     body: "T-Vault documents detention time, tracks unpaid invoices, and shows what you really net per mile.",
-    icon: DollarSign,
   },
   {
     title: "Built for the cab",
     body: "Big buttons, glove-friendly taps, and fast screens designed for tired shifts on the road.",
-    icon: Smartphone,
   },
   {
     title: "Your data stays yours",
     body: "Your load records are encrypted, never sold, and always under your control.",
-    icon: Shield,
   },
 ] as const;
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const supabase = createClient();
-  const { user, profile, patchProfile } = useAuth();
+  const { user, profile, patchProfile, refreshProfile } = useAuth();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ensuringProfile = useRef(false);
 
   const current = steps[step];
-  const Icon = current.icon;
   const isLast = step === steps.length - 1;
 
   useEffect(() => {
@@ -47,9 +44,43 @@ export default function OnboardingPage() {
     }
 
     if (hasCompletedOnboarding(profile)) {
-      router.replace(APP_ROUTES.dashboard);
+      router.replace(getPostAuthRedirect(profile));
     }
   }, [profile, router, user]);
+
+  useEffect(() => {
+    if (!user || profile || ensuringProfile.current) return;
+
+    ensuringProfile.current = true;
+
+    const ensureProfile = async () => {
+      const fullName =
+        (user.user_metadata?.full_name as string | undefined) ||
+        user.email?.split("@")[0] ||
+        "Driver";
+
+      const response = await fetch("/api/auth/complete-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName,
+          referredBy: user.user_metadata?.referred_by,
+        }),
+      });
+
+      if (response.ok) {
+        await refreshProfile();
+      } else {
+        setError(
+          "We could not finish setting up your account. Check your connection and try again."
+        );
+      }
+
+      ensuringProfile.current = false;
+    };
+
+    void ensureProfile();
+  }, [profile, refreshProfile, user]);
 
   const finishOnboarding = async () => {
     if (!user) {
@@ -60,12 +91,37 @@ export default function OnboardingPage() {
     setLoading(true);
     setError(null);
 
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({ onboarding_completed: true })
-      .eq("id", user.id);
+    if (!profile) {
+      const fullName =
+        (user.user_metadata?.full_name as string | undefined) ||
+        user.email?.split("@")[0] ||
+        "Driver";
 
-    if (updateError) {
+      const signupResponse = await fetch("/api/auth/complete-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName,
+          referredBy: user.user_metadata?.referred_by,
+        }),
+      });
+
+      if (!signupResponse.ok) {
+        setLoading(false);
+        setError(
+          "We could not save your progress. Check your connection and try again."
+        );
+        return;
+      }
+
+      await refreshProfile();
+    }
+
+    const response = await fetch("/api/auth/complete-onboarding", {
+      method: "POST",
+    });
+
+    if (!response.ok) {
       setLoading(false);
       setError(
         "We could not save your progress. Check your connection and try again."
@@ -73,22 +129,29 @@ export default function OnboardingPage() {
       return;
     }
 
-    patchProfile({ onboarding_completed: true });
+    const { data: updatedProfile } = await createClient()
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    patchProfile({ onboarding_completed: true, ...(updatedProfile ?? {}) });
     setLoading(false);
-    router.push(APP_ROUTES.dashboard);
+    router.push(getPostAuthRedirect(updatedProfile as UserProfile | null));
   };
 
   return (
     <div className="tv-auth-page">
       <AuthBrandHeader />
       <div className="flex flex-1 flex-col justify-center">
-        <div className="mb-8 flex size-20 items-center justify-center rounded-2xl tv-glass-card">
-          <Icon
-            className="size-10 text-[var(--color-accent)]"
-            strokeWidth={2}
-            aria-hidden
-          />
-        </div>
+        <Image
+          src="/icon.png"
+          alt=""
+          width={80}
+          height={80}
+          className="mx-auto mb-8 block size-20"
+          priority
+        />
         <p className="tv-caption">
           Step {step + 1} of {steps.length}
         </p>

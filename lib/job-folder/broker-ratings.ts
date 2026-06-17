@@ -47,7 +47,7 @@ export function buildBrokerBadge(
 ): BrokerBadgeInfo | null {
   if (!rating || historyCount === 0) return null;
 
-  const total = rating.total_loads;
+  const total = Math.max(rating.total_loads, historyCount);
   if (total < 1) return null;
 
   const onTime = rating.on_time_count;
@@ -62,15 +62,10 @@ export function buildBrokerBadge(
     label = `Payment problem on ${problems} load${problems === 1 ? "" : "s"}`;
   } else if (late > 0) {
     tone = "warning";
-    label = `Paid late ${late}/${total} times`;
-  } else if (onTime >= 3 && onTime === total) {
+    label = `Late payment ${late}/${total} times`;
+  } else if (onTime > 0) {
     tone = "success";
     label = `Paid on time ${onTime}/${total}`;
-  } else if (total >= 3 && onTime === total) {
-    tone = "success";
-    label = `Paid on time ${onTime}/${total}`;
-  } else if (total < 3) {
-    return null;
   }
 
   return {

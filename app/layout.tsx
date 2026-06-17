@@ -20,7 +20,11 @@ const dmMono = DM_Mono({
 export const metadata = {
   title: "T-Vault",
   description: "Mobile-first back-office toolkit for truck owner-operators.",
-  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+    shortcut: "/icon.png",
+  },
   appleWebApp: {
     capable: true,
     title: "T-Vault",
@@ -33,8 +37,8 @@ export const viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f5f3" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a08" },
   ],
 };
 
