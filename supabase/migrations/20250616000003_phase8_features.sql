@@ -1,4 +1,5 @@
 -- Phase 8: Retention, Voice Notes, Document Wallet, Notifications, Pro Waitlist
+-- Idempotent: safe to re-run when tables/policies already exist.
 
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS theme_preference text DEFAULT 'system',
@@ -46,19 +47,23 @@ CREATE TABLE IF NOT EXISTS voice_notes (
 
 ALTER TABLE voice_notes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users read own voice_notes" ON voice_notes;
 CREATE POLICY "Users read own voice_notes"
   ON voice_notes FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users insert own voice_notes" ON voice_notes;
 CREATE POLICY "Users insert own voice_notes"
   ON voice_notes FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users update own voice_notes" ON voice_notes;
 CREATE POLICY "Users update own voice_notes"
   ON voice_notes FOR UPDATE TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users delete own voice_notes" ON voice_notes;
 CREATE POLICY "Users delete own voice_notes"
   ON voice_notes FOR DELETE TO authenticated
   USING (auth.uid() = user_id);
@@ -85,19 +90,23 @@ CREATE TABLE IF NOT EXISTS user_documents (
 
 ALTER TABLE user_documents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users read own user_documents" ON user_documents;
 CREATE POLICY "Users read own user_documents"
   ON user_documents FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users insert own user_documents" ON user_documents;
 CREATE POLICY "Users insert own user_documents"
   ON user_documents FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users update own user_documents" ON user_documents;
 CREATE POLICY "Users update own user_documents"
   ON user_documents FOR UPDATE TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users delete own user_documents" ON user_documents;
 CREATE POLICY "Users delete own user_documents"
   ON user_documents FOR DELETE TO authenticated
   USING (auth.uid() = user_id);
@@ -116,10 +125,12 @@ CREATE TABLE IF NOT EXISTS pro_waitlist (
 
 ALTER TABLE pro_waitlist ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users read own pro_waitlist" ON pro_waitlist;
 CREATE POLICY "Users read own pro_waitlist"
   ON pro_waitlist FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users insert own pro_waitlist" ON pro_waitlist;
 CREATE POLICY "Users insert own pro_waitlist"
   ON pro_waitlist FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = user_id);
@@ -141,14 +152,17 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
 
 ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users read own notification_preferences" ON notification_preferences;
 CREATE POLICY "Users read own notification_preferences"
   ON notification_preferences FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users upsert own notification_preferences" ON notification_preferences;
 CREATE POLICY "Users upsert own notification_preferences"
   ON notification_preferences FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users update own notification_preferences" ON notification_preferences;
 CREATE POLICY "Users update own notification_preferences"
   ON notification_preferences FOR UPDATE TO authenticated
   USING (auth.uid() = user_id)
@@ -169,10 +183,12 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users read own notifications" ON notifications;
 CREATE POLICY "Users read own notifications"
   ON notifications FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users update own notifications" ON notifications;
 CREATE POLICY "Users update own notifications"
   ON notifications FOR UPDATE TO authenticated
   USING (auth.uid() = user_id)
@@ -202,20 +218,21 @@ BEGIN
   ) THEN
     ALTER TABLE milestones DROP CONSTRAINT milestones_milestone_type_check;
   END IF;
-END $$;
 
-ALTER TABLE milestones
-  ADD CONSTRAINT milestones_milestone_type_check
-  CHECK (milestone_type IN (
-    'first_load', 'loads_10', 'loads_50', 'loads_100',
-    'first_10k_month', 'best_month', 'streak_30'
-  ));
+  ALTER TABLE milestones
+    ADD CONSTRAINT milestones_milestone_type_check
+    CHECK (milestone_type IN (
+      'first_load', 'loads_10', 'loads_50', 'loads_100',
+      'first_10k_month', 'best_month', 'streak_30'
+    ));
+END $$;
 
 -- Storage policies for voice and wallet paths under game1-documents
 DROP POLICY IF EXISTS "Users upload own files" ON storage.objects;
 DROP POLICY IF EXISTS "Users read own files" ON storage.objects;
 DROP POLICY IF EXISTS "Users update own files" ON storage.objects;
 DROP POLICY IF EXISTS "Users delete own files" ON storage.objects;
+DROP POLICY IF EXISTS "Users upload to own folder" ON storage.objects;
 
 CREATE POLICY "Users upload own files"
   ON storage.objects FOR INSERT TO authenticated
