@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DataProtectionBanner } from "@/components/shell/session-banner";
+import { TourHintBanner } from "@/components/dashboard/tour-hint-banner";
 import { EarningsHero } from "@/components/dashboard/earnings-hero";
 import { MoneyOutRow } from "@/components/dashboard/money-out-row";
 import { ActiveLoadsList } from "@/components/dashboard/active-loads-list";
@@ -50,6 +51,10 @@ export function DashboardView() {
 
         <div className="px-5 pb-2">
           <DataProtectionBanner />
+        </div>
+
+        <div className="px-5 pb-2">
+          <TourHintBanner />
         </div>
 
         {loading ? (

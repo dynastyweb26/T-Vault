@@ -809,6 +809,10 @@
     }
   }
 
+  .tv-tour-hint-banner {
+    animation: tv-fade-in var(--transition-base) ease-out;
+  }
+
   @keyframes tv-slide-up {
     from {
       opacity: 0;
