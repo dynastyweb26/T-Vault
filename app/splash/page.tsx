@@ -77,7 +77,7 @@ export default function SplashPage() {
       <div className="flex flex-col items-center">
         <div className="tv-gold-glow overflow-hidden rounded-[28px]">
           <Image
-            src="/icon.jpeg"
+            src="/icon.png"
             alt=""
             width={120}
             height={120}

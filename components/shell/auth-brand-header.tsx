@@ -6,7 +6,7 @@ export function AuthBrandHeader() {
   return (
     <div className="mb-8">
       <Image
-        src="/logo.jpeg"
+        src="/logo.png"
         alt="T-Vault"
         width={180}
         height={48}

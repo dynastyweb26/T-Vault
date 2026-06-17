@@ -21,9 +21,9 @@ export const metadata = {
   title: "T-Vault",
   description: "Mobile-first back-office toolkit for truck owner-operators.",
   icons: {
-    icon: "/icon.jpeg",
-    apple: "/icon.jpeg",
-    shortcut: "/icon.jpeg",
+    icon: "/icon.png",
+    apple: "/icon.png",
+    shortcut: "/icon.png",
   },
   appleWebApp: {
     capable: true,

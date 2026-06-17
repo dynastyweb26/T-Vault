@@ -13,7 +13,7 @@ export function VaultHeader() {
       <div className="mx-auto flex w-full max-w-lg items-center justify-between">
         <div className="flex items-center gap-2">
           <Image
-            src="/icon.jpeg"
+            src="/icon.png"
             alt=""
             width={44}
             height={44}

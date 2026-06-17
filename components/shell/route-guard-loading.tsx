@@ -6,7 +6,7 @@ export function RouteGuardLoading() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-5">
       <Image
-        src="/icon.jpeg"
+        src="/icon.png"
         alt=""
         width={64}
         height={64}

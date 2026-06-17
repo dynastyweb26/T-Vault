@@ -135,7 +135,7 @@ export default function OnboardingPage() {
       <div className="flex flex-1 flex-col justify-center">
         <div className="tv-gold-glow mb-8 overflow-hidden rounded-2xl">
           <Image
-            src="/icon.jpeg"
+            src="/icon.png"
             alt=""
             width={80}
             height={80}
