@@ -569,6 +569,24 @@
     }
   }
 
+  .tv-loading-bar {
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    border-radius: 9999px;
+    background-color: #b8960c;
+    animation: tv-loading-slide 1.2s ease-in-out infinite;
+  }
+
+  @keyframes tv-loading-slide {
+    0% {
+      transform: translateX(-110%);
+    }
+    100% {
+      transform: translateX(360%);
+    }
+  }
+
   @keyframes tv-slide-in-right {
     from {
       opacity: 0;
@@ -651,6 +669,7 @@
   @media (prefers-reduced-motion: reduce) {
     .tv-skeleton,
     .tv-metallic-gold,
+    .tv-loading-bar,
     .tv-expense-row-enter,
     .tv-voice-pulse,
     .tv-wallet-expiry-pulse,

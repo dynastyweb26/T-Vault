@@ -73,39 +73,38 @@ export default function SplashPage() {
   }, [router, supabase]);
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-5 text-center">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center bg-[#0A0A0A] px-5 text-center">
       <div className="flex flex-col items-center">
-        <div className="tv-gold-glow overflow-hidden rounded-[28px]">
-          <Image
-            src="/icon.jpeg"
-            alt=""
-            width={120}
-            height={120}
-            className="size-[120px] rounded-[28px]"
-            priority
-          />
-        </div>
+        <Image
+          src="/icon.jpeg"
+          alt="T-Vault"
+          width={120}
+          height={120}
+          className="h-[120px] w-[120px]"
+          priority
+        />
 
-        <h1
-          className="mt-6 w-[200px] text-[32px] font-extrabold leading-none tracking-tight"
-          style={{
-            background: "var(--gold-gradient)",
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            color: "transparent",
-          }}
-        >
-          T-Vault
-        </h1>
+        <Image
+          src="/logo.jpeg"
+          alt="T-Vault"
+          width={220}
+          height={64}
+          className="mt-8 w-[220px] h-auto"
+          priority
+        />
 
-        <p className="tv-body mt-4 max-w-[280px] text-[15px] leading-relaxed text-[var(--color-text-secondary)]">
+        <p className="mt-5 max-w-[280px] text-[16px] font-light leading-relaxed text-white">
           Your business command center for the road.
         </p>
       </div>
 
       <div className="absolute inset-x-0 bottom-[max(3rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-4">
-        <p className="tv-caption">{status}</p>
-        <div className="tv-skeleton h-1 w-20 rounded-full" />
+        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#B8960C]">
+          {status}
+        </p>
+        <div className="relative h-[2px] w-[160px] overflow-hidden rounded-full bg-[#B8960C]/15">
+          <div className="tv-loading-bar" />
+        </div>
       </div>
     </div>
   );
