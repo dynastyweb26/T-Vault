@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { DollarSign, Shield, Smartphone } from "lucide-react";
 import { TvButton } from "@/components/tv/tv-button";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
 import { hasCompletedOnboarding } from "@/lib/auth-helpers";
@@ -14,30 +13,26 @@ const steps = [
   {
     title: "Fight for your money",
     body: "T-Vault documents detention time, tracks unpaid invoices, and shows what you really net per mile.",
-    icon: DollarSign,
   },
   {
     title: "Built for the cab",
     body: "Big buttons, glove-friendly taps, and fast screens designed for tired shifts on the road.",
-    icon: Smartphone,
   },
   {
     title: "Your data stays yours",
     body: "Your load records are encrypted, never sold, and always under your control.",
-    icon: Shield,
   },
 ] as const;
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const supabase = createClient();
-  const { user, profile, patchProfile } = useAuth();
+  const { user, profile, patchProfile, refreshProfile } = useAuth();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ensuringProfile = useRef(false);
 
   const current = steps[step];
-  const Icon = current.icon;
   const isLast = step === steps.length - 1;
 
   useEffect(() => {
@@ -51,6 +46,36 @@ export default function OnboardingPage() {
     }
   }, [profile, router, user]);
 
+  useEffect(() => {
+    if (!user || profile || ensuringProfile.current) return;
+
+    ensuringProfile.current = true;
+
+    const ensureProfile = async () => {
+      const fullName =
+        (user.user_metadata?.full_name as string | undefined) ||
+        user.email?.split("@")[0] ||
+        "Driver";
+
+      const response = await fetch("/api/auth/complete-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName,
+          referredBy: user.user_metadata?.referred_by,
+        }),
+      });
+
+      if (response.ok) {
+        await refreshProfile();
+      }
+
+      ensuringProfile.current = false;
+    };
+
+    void ensureProfile();
+  }, [profile, refreshProfile, user]);
+
   const finishOnboarding = async () => {
     if (!user) {
       router.replace(APP_ROUTES.signIn);
@@ -60,12 +85,37 @@ export default function OnboardingPage() {
     setLoading(true);
     setError(null);
 
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({ onboarding_completed: true })
-      .eq("id", user.id);
+    if (!profile) {
+      const fullName =
+        (user.user_metadata?.full_name as string | undefined) ||
+        user.email?.split("@")[0] ||
+        "Driver";
 
-    if (updateError) {
+      const signupResponse = await fetch("/api/auth/complete-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName,
+          referredBy: user.user_metadata?.referred_by,
+        }),
+      });
+
+      if (!signupResponse.ok) {
+        setLoading(false);
+        setError(
+          "We could not save your progress. Check your connection and try again."
+        );
+        return;
+      }
+
+      await refreshProfile();
+    }
+
+    const response = await fetch("/api/auth/complete-onboarding", {
+      method: "POST",
+    });
+
+    if (!response.ok) {
       setLoading(false);
       setError(
         "We could not save your progress. Check your connection and try again."
@@ -74,6 +124,7 @@ export default function OnboardingPage() {
     }
 
     patchProfile({ onboarding_completed: true });
+    await refreshProfile();
     setLoading(false);
     router.push(APP_ROUTES.dashboard);
   };
@@ -82,11 +133,14 @@ export default function OnboardingPage() {
     <div className="tv-auth-page">
       <AuthBrandHeader />
       <div className="flex flex-1 flex-col justify-center">
-        <div className="mb-8 flex size-20 items-center justify-center rounded-2xl tv-glass-card">
-          <Icon
-            className="size-10 text-[var(--color-accent)]"
-            strokeWidth={2}
-            aria-hidden
+        <div className="tv-gold-glow mb-8 overflow-hidden rounded-2xl">
+          <Image
+            src="/icon.jpeg"
+            alt=""
+            width={80}
+            height={80}
+            className="size-20 rounded-2xl"
+            priority
           />
         </div>
         <p className="tv-caption">
