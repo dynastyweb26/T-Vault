@@ -14,6 +14,7 @@ import {
 import { StreakCard } from "@/components/dashboard/streak-card";
 import { VoiceNoteShortcut } from "@/components/voice-note/voice-note-shortcut";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { VOICE_NOTES_ENABLED } from "@/lib/features";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { SuccessBanner } from "@/components/dashboard/success-banner";
 import { CostPerMileDashboardCard } from "@/components/cost-per-mile/cost-per-mile-view";
@@ -79,7 +80,9 @@ export function DashboardView() {
               <AwaitingPayment items={data.awaitingPayments} />
               <ActiveLoadsList jobs={data.activeJobs} onRefresh={refresh} />
               <QuickExpenseRow onOpen={() => setExpenseOpen(true)} />
-              <VoiceNoteShortcut />
+              {VOICE_NOTES_ENABLED ? (
+                <VoiceNoteShortcut />
+              ) : null}
             </div>
           </>
         ) : null}

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { VoiceNote, VoiceNoteResult } from "@/types/database";
+import { VOICE_NOTES_ENABLED } from "@/lib/features";
 
 const STORAGE_BUCKET = "game1-documents";
 
@@ -8,6 +9,8 @@ export async function createVoiceNoteRecord(
   userId: string,
   audioPath: string
 ): Promise<VoiceNote | null> {
+  if (!VOICE_NOTES_ENABLED) return null;
+
   const { data, error } = await supabase
     .from("voice_notes")
     .insert({
@@ -30,6 +33,8 @@ export async function uploadVoiceAudio(
   userId: string,
   blob: Blob
 ): Promise<string | null> {
+  if (!VOICE_NOTES_ENABLED) return null;
+
   const path = `${userId}/voice/${Date.now()}.webm`;
   const { error } = await supabase.storage
     .from(STORAGE_BUCKET)
@@ -50,6 +55,8 @@ export async function processVoiceNote(
   voiceNoteId: string,
   storagePath: string
 ): Promise<VoiceNoteResult | { rateLimited: true } | null> {
+  if (!VOICE_NOTES_ENABLED) return null;
+
   const { data: session } = await supabase.auth.getSession();
   if (!session.session) return null;
 
@@ -81,6 +88,8 @@ export async function fetchVoiceNotes(
   userId: string,
   includeProcessed = false
 ): Promise<VoiceNote[]> {
+  if (!VOICE_NOTES_ENABLED) return [];
+
   let query = supabase
     .from("voice_notes")
     .select("*")
@@ -101,6 +110,8 @@ export async function markVoiceNoteProcessed(
   noteId: string,
   jobId?: string | null
 ): Promise<void> {
+  if (!VOICE_NOTES_ENABLED) return;
+
   await supabase
     .from("voice_notes")
     .update({
@@ -117,6 +128,8 @@ export async function deleteVoiceNote(
   userId: string,
   noteId: string
 ): Promise<void> {
+  if (!VOICE_NOTES_ENABLED) return;
+
   const { data: note } = await supabase
     .from("voice_notes")
     .select("audio_path")
