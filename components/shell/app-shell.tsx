@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
-import { BottomNav } from "@/components/shell/bottom-nav";
+import { BottomNavContainer } from "@/components/shell/bottom-nav";
 import { SessionBanner } from "@/components/shell/session-banner";
 import { VaultHeader } from "@/components/shell/vault-header";
 import { OfflineBanner } from "@/components/offline/offline-banner";
@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col px-0 pb-32">
         {children}
       </main>
-      <BottomNav />
+      <BottomNavContainer />
     </div>
   );
 }

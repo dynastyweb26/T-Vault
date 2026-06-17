@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback } from "react";
 import { Download, X } from "lucide-react";
+import { PinchZoomImage } from "@/components/expenses/pinch-zoom-image";
 import { isPdfDocument } from "@/lib/job-folder/document-fields";
 import { getCategoryMeta } from "@/lib/expenses/constants";
 import type { Expense } from "@/types/jobs";
@@ -9,89 +10,6 @@ import type { Expense } from "@/types/jobs";
 interface ExpenseReceiptPreviewProps {
   expense: Expense | null;
   onClose: () => void;
-}
-
-function PinchZoomImage({ src, alt }: { src: string; alt: string }) {
-  const [scale, setScale] = useState(1);
-  const [translate, setTranslate] = useState({ x: 0, y: 0 });
-  const pinchStartDistance = useRef<number | null>(null);
-  const pinchStartScale = useRef(1);
-  const lastPan = useRef({ x: 0, y: 0 });
-  const panStart = useRef({ x: 0, y: 0 });
-  const isPanning = useRef(false);
-
-  const getTouchDistance = (touches: React.TouchList) => {
-    const [a, b] = [touches[0], touches[1]];
-    const dx = a.clientX - b.clientX;
-    const dy = a.clientY - b.clientY;
-    return Math.hypot(dx, dy);
-  };
-
-  return (
-    <div
-      className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden"
-      onTouchStart={(event) => {
-        if (event.touches.length === 2) {
-          pinchStartDistance.current = getTouchDistance(event.touches);
-          pinchStartScale.current = scale;
-          isPanning.current = false;
-        } else if (event.touches.length === 1 && scale > 1) {
-          isPanning.current = true;
-          panStart.current = {
-            x: event.touches[0].clientX,
-            y: event.touches[0].clientY,
-          };
-          lastPan.current = translate;
-        }
-      }}
-      onTouchMove={(event) => {
-        if (event.touches.length === 2 && pinchStartDistance.current) {
-          const distance = getTouchDistance(event.touches);
-          const nextScale = Math.min(
-            4,
-            Math.max(1, (distance / pinchStartDistance.current) * pinchStartScale.current)
-          );
-          setScale(nextScale);
-          if (nextScale <= 1) setTranslate({ x: 0, y: 0 });
-        } else if (event.touches.length === 1 && isPanning.current && scale > 1) {
-          const dx = event.touches[0].clientX - panStart.current.x;
-          const dy = event.touches[0].clientY - panStart.current.y;
-          setTranslate({
-            x: lastPan.current.x + dx,
-            y: lastPan.current.y + dy,
-          });
-        }
-      }}
-      onTouchEnd={() => {
-        pinchStartDistance.current = null;
-        isPanning.current = false;
-        if (scale <= 1.05) {
-          setScale(1);
-          setTranslate({ x: 0, y: 0 });
-        }
-      }}
-      onDoubleClick={() => {
-        if (scale > 1) {
-          setScale(1);
-          setTranslate({ x: 0, y: 0 });
-        } else {
-          setScale(2);
-        }
-      }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        className="max-h-full max-w-full select-none object-contain"
-        style={{
-          transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-          transition: pinchStartDistance.current ? "none" : "transform 150ms ease-out",
-        }}
-        draggable={false}
-      />
-    </div>
-  );
 }
 
 export function ExpenseReceiptPreview({

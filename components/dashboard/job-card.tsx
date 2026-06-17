@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Archive, MoreVertical, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatShortDate } from "@/lib/dashboard/format";
 import { getBorderColor } from "@/lib/dashboard/job-status";
+import { useSwipeToReveal } from "@/hooks/use-swipe-to-reveal";
 import type { DashboardJobView } from "@/types/jobs";
 import { APP_ROUTES } from "@/lib/constants";
 import { saveLoadsScrollPosition } from "@/lib/job-folder/scroll";
@@ -23,14 +24,19 @@ const toneClasses = {
   disabled: "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-shell-border)]",
 };
 
-export function JobCard({ job, onAction, tourTarget = false }: JobCardProps) {
-  const [offsetX, setOffsetX] = useState(0);
+export const JobCard = memo(function JobCard({
+  job,
+  onAction,
+  tourTarget = false,
+}: JobCardProps) {
+  const { surfaceRef, handlers } = useSwipeToReveal({
+    maxOffset: 160,
+    snapThreshold: 0.5,
+  });
   const [menuOpen, setMenuOpen] = useState(false);
-  const startX = useRef(0);
-  const swiping = useRef(false);
 
   const progress = job.docsTotal
-    ? (job.docsComplete / job.docsTotal) * 100
+    ? job.docsComplete / job.docsTotal
     : 0;
 
   const archiveJob = async () => {
@@ -92,24 +98,12 @@ export function JobCard({ job, onAction, tourTarget = false }: JobCardProps) {
       </div>
 
       <div
-        className="tv-glass-card relative transition-transform duration-300 ease-out"
+        ref={surfaceRef}
+        className="tv-swipe-surface tv-glass-card relative"
         style={{
-          transform: `translateX(${offsetX}px)`,
           borderLeft: `3px solid ${getBorderColor(job.borderStatus)}`,
         }}
-        onTouchStart={(event) => {
-          startX.current = event.touches[0].clientX;
-          swiping.current = true;
-        }}
-        onTouchMove={(event) => {
-          if (!swiping.current) return;
-          const delta = event.touches[0].clientX - startX.current;
-          if (delta < 0) setOffsetX(Math.max(delta, -160));
-        }}
-        onTouchEnd={() => {
-          swiping.current = false;
-          setOffsetX(offsetX < -80 ? -160 : 0);
-        }}
+        {...handlers}
       >
         <Link
           href={`${APP_ROUTES.loads}/${job.id}`}
@@ -136,7 +130,7 @@ export function JobCard({ job, onAction, tourTarget = false }: JobCardProps) {
             <div className="tv-progress-track h-2 flex-1">
               <div
                 className="tv-progress-fill"
-                style={{ width: `${progress}%` }}
+                style={{ "--tv-progress": progress } as React.CSSProperties}
               />
             </div>
             <span className="tv-caption shrink-0 normal-case tracking-normal">
@@ -189,4 +183,4 @@ export function JobCard({ job, onAction, tourTarget = false }: JobCardProps) {
       </div>
     </div>
   );
-}
+});

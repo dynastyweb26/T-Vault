@@ -25,24 +25,27 @@ export function DashboardView() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const { containerRef, pullDistance, handlers } = usePullToRefresh(async () => {
-    await refresh();
-  });
+  const { containerRef, contentRef, indicatorRef, refreshing: pullRefreshing, handlers } =
+    usePullToRefresh(async () => {
+      await refresh();
+    });
 
   return (
     <>
       <QuickActions />
 
-      <div
-        ref={containerRef}
-        {...handlers}
-        className="relative flex flex-col"
-      >
-        {pullDistance > 0 || refreshing ? (
-          <p className="px-5 py-2 text-center text-[13px] text-[var(--color-text-muted)]">
-            {refreshing ? "Refreshing..." : "Pull to refresh"}
-          </p>
-        ) : null}
+      <div ref={containerRef} {...handlers} className="relative flex flex-col">
+        <p
+          ref={indicatorRef}
+          className="tv-pull-indicator px-5 py-2 text-center text-[13px] text-[var(--color-text-muted)]"
+          style={{
+            display: pullRefreshing || refreshing ? "block" : undefined,
+          }}
+        >
+          {pullRefreshing || refreshing ? "Refreshing..." : "Pull to refresh"}
+        </p>
+
+        <div ref={contentRef} className="tv-pull-content flex flex-col">
 
         <div className="px-5 pb-2">
           <DataProtectionBanner />
@@ -80,6 +83,7 @@ export function DashboardView() {
             </div>
           </>
         ) : null}
+        </div>
       </div>
 
       <QuickExpenseSheet

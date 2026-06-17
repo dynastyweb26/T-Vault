@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { AlertCircle, FileText, Trash2 } from "lucide-react";
 import { formatCurrencyDetailed, formatShortDate } from "@/lib/dashboard/format";
 import { getCategoryMeta } from "@/lib/expenses/constants";
+import { useSwipeToReveal } from "@/hooks/use-swipe-to-reveal";
 import type { Expense } from "@/types/jobs";
 
 interface ExpenseRowProps {
@@ -14,16 +15,17 @@ interface ExpenseRowProps {
   tourTarget?: boolean;
 }
 
-export function ExpenseRow({
+export const ExpenseRow = memo(function ExpenseRow({
   expense,
   animate = false,
   onDelete,
   onViewReceipt,
   tourTarget = false,
 }: ExpenseRowProps) {
-  const [offsetX, setOffsetX] = useState(0);
-  const startX = useRef(0);
-  const swiping = useRef(false);
+  const { surfaceRef, handlers, reset } = useSwipeToReveal({
+    maxOffset: 80,
+    snapThreshold: 0.5,
+  });
   const category = getCategoryMeta(expense.category);
   const Icon = category.icon;
   const hasReceipt = Boolean(expense.receipt_url);
@@ -34,7 +36,7 @@ export function ExpenseRow({
       "Delete this truck expense? This cannot be undone."
     );
     if (!confirmed) {
-      setOffsetX(0);
+      reset();
       return;
     }
     onDelete(expense.id);
@@ -57,23 +59,11 @@ export function ExpenseRow({
       </div>
 
       <div
-        className={`tv-glass-card relative flex min-h-16 items-center gap-3 border border-[var(--color-shell-border)] px-4 transition-transform duration-200 ${
+        ref={surfaceRef}
+        className={`tv-swipe-surface tv-glass-card relative flex min-h-16 items-center gap-3 border border-[var(--color-shell-border)] px-4 ${
           animate ? "tv-expense-row-enter" : ""
         }`}
-        style={{ transform: `translateX(${offsetX}px)` }}
-        onTouchStart={(event) => {
-          startX.current = event.touches[0].clientX;
-          swiping.current = true;
-        }}
-        onTouchMove={(event) => {
-          if (!swiping.current) return;
-          const delta = event.touches[0].clientX - startX.current;
-          if (delta < 0) setOffsetX(Math.max(delta, -80));
-        }}
-        onTouchEnd={() => {
-          swiping.current = false;
-          setOffsetX((current) => (current < -40 ? -80 : 0));
-        }}
+        {...handlers}
       >
         <Icon
           className="size-6 shrink-0 text-[var(--color-accent)]"
@@ -122,4 +112,4 @@ export function ExpenseRow({
       </div>
     </div>
   );
-}
+});

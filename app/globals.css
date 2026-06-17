@@ -499,10 +499,14 @@
 
   .tv-progress-fill {
     height: 100%;
+    width: 100%;
     border-radius: 9999px;
     background: var(--gold-gradient);
-    transition: width var(--transition-smooth);
+    transform: scaleX(var(--tv-progress, 0));
+    transform-origin: left center;
+    transition: transform var(--transition-smooth);
     box-shadow: 0 0 12px rgba(var(--gold-rgb), 0.35);
+    will-change: transform;
   }
 
   .tv-modal-overlay {
@@ -536,14 +540,60 @@
     background: var(--color-overlay);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    animation: tv-fade-in var(--transition-base) ease-out;
+    transition: opacity var(--transition-smooth);
+    will-change: opacity;
+  }
+
+  .tv-sheet-overlay-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .tv-sheet-overlay-closed {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .tv-sheet-panel {
     border-top-left-radius: var(--radius-sheet);
     border-top-right-radius: var(--radius-sheet);
     box-shadow: 0 -8px 48px rgba(0, 0, 0, 0.35);
-    animation: tv-sheet-up var(--transition-smooth) cubic-bezier(0.25, 0.1, 0.25, 1);
+    transition: transform var(--transition-smooth)
+      cubic-bezier(0.25, 0.1, 0.25, 1);
+    will-change: transform;
+  }
+
+  .tv-sheet-panel-open {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .tv-sheet-panel-closed {
+    transform: translate3d(0, 100%, 0);
+  }
+
+  .tv-swipe-surface {
+    touch-action: pan-y;
+    will-change: transform;
+    transition: transform var(--transition-fast) cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  .tv-swipe-surface.is-dragging {
+    transition: none;
+  }
+
+  .tv-pull-content {
+    transition: transform var(--transition-fast) cubic-bezier(0.25, 0.1, 0.25, 1);
+    will-change: transform;
+  }
+
+  .tv-pull-content.is-pulling {
+    transition: none;
+  }
+
+  .tv-pull-indicator {
+    opacity: 0;
+    will-change: transform, opacity;
+    transition: opacity var(--transition-fast);
   }
 
   .tv-sheet-handle {
@@ -910,4 +960,10 @@
 .react-joyride__tooltip {
   padding: 0 !important;
   border-radius: 16px !important;
+  max-width: min(calc(100vw - 2.5rem), 22rem) !important;
+  z-index: 10001 !important;
+}
+
+.react-joyride__floater {
+  z-index: 10001 !important;
 }

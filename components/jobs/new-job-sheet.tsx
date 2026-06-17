@@ -339,15 +339,8 @@ export function NewJobSheet() {
           </div>
         </div>
 
-        <div
-          className={`grid transition-all duration-200 ${
-            form.paymentType === "factoring"
-              ? "grid-rows-[1fr] opacity-100"
-              : "grid-rows-[0fr] opacity-0"
-          }`}
-        >
-          <div className="overflow-hidden">
-            <TvInput
+        <div className={form.paymentType === "factoring" ? "block" : "hidden"}>
+          <TvInput
               label="Factoring Company"
               borderVariant="gold"
               labelVariant="readable"
@@ -357,7 +350,6 @@ export function NewJobSheet() {
                 setForm((f) => ({ ...f, factoringCompany: e.target.value }))
               }
             />
-          </div>
         </div>
 
         <label className="flex min-h-11 items-center gap-3">

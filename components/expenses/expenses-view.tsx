@@ -62,7 +62,13 @@ export function ExpensesView() {
     }
   }, [expenseSheetOpen, isRunning]);
 
-  const { containerRef, pullDistance, handlers } = usePullToRefresh(async () => {
+  const {
+    containerRef,
+    contentRef,
+    indicatorRef,
+    refreshing: pullRefreshing,
+    handlers,
+  } = usePullToRefresh(async () => {
     await refresh();
   });
 
@@ -87,16 +93,18 @@ export function ExpensesView() {
 
   return (
     <>
-      <div
-        ref={containerRef}
-        {...handlers}
-        className="flex flex-col gap-4 px-5"
-      >
-        {pullDistance > 0 || refreshing ? (
-          <p className="text-center text-[13px] text-[var(--color-text-muted)]">
-            {refreshing ? "Refreshing..." : "Pull to refresh"}
-          </p>
-        ) : null}
+      <div ref={containerRef} {...handlers} className="flex flex-col">
+        <p
+          ref={indicatorRef}
+          className="tv-pull-indicator px-5 py-2 text-center text-[13px] text-[var(--color-text-muted)]"
+          style={{
+            display: pullRefreshing || refreshing ? "block" : undefined,
+          }}
+        >
+          {pullRefreshing || refreshing ? "Refreshing..." : "Pull to refresh"}
+        </p>
+
+        <div ref={contentRef} className="tv-pull-content flex flex-col gap-4 px-5">
 
         {loading ? (
           <>
@@ -155,6 +163,7 @@ export function ExpensesView() {
             )}
           </>
         ) : null}
+        </div>
       </div>
 
       <AddTruckExpenseSheet
