@@ -11,6 +11,11 @@ export type ProfileFlowState = {
   profile_setup_skipped: boolean | null;
 };
 
+export type RedirectDecision = {
+  redirectTo: string | null;
+  reason: string;
+};
+
 export function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some((route) => pathname === route);
 }
@@ -23,15 +28,27 @@ export function requiresOnboarding(pathname: string): boolean {
   return ONBOARDING_REQUIRED_PREFIXES.some((route) => pathname.startsWith(route));
 }
 
+function summarizeProfile(profile: ProfileFlowState | null): string {
+  if (!profile) return "null";
+  return JSON.stringify({
+    onboarding_completed: profile.onboarding_completed,
+    profile_setup_completed: profile.profile_setup_completed,
+    profile_setup_skipped: profile.profile_setup_skipped,
+  });
+}
+
 /**
  * Returns the pathname to redirect to, or null when the request should proceed.
  */
 export function getProtectedRouteRedirect(
   pathname: string,
   profile: ProfileFlowState | null
-): string | null {
+): RedirectDecision {
   if (!profile) {
-    return APP_ROUTES.splash;
+    return {
+      redirectTo: APP_ROUTES.splash,
+      reason: "protected_route_missing_profile",
+    };
   }
 
   const isOnboardingRoute = pathname === APP_ROUTES.onboarding;
@@ -40,15 +57,26 @@ export function getProtectedRouteRedirect(
 
   if (!profile.onboarding_completed) {
     if (needsOnboarding || isProfileSetupRoute) {
-      return APP_ROUTES.onboarding;
+      return {
+        redirectTo: APP_ROUTES.onboarding,
+        reason: "onboarding_incomplete",
+      };
     }
-    return null;
+    return {
+      redirectTo: null,
+      reason: "allow_onboarding_flow_route",
+    };
   }
 
   if (isOnboardingRoute) {
-    return !profile.profile_setup_completed && !profile.profile_setup_skipped
-      ? APP_ROUTES.profileSetup
-      : APP_ROUTES.dashboard;
+    const needsProfileSetup =
+      !profile.profile_setup_completed && !profile.profile_setup_skipped;
+    return {
+      redirectTo: needsProfileSetup ? APP_ROUTES.profileSetup : APP_ROUTES.dashboard,
+      reason: needsProfileSetup
+        ? "onboarding_complete_needs_profile_setup"
+        : "onboarding_complete_go_dashboard",
+    };
   }
 
   if (
@@ -56,17 +84,26 @@ export function getProtectedRouteRedirect(
     !profile.profile_setup_skipped &&
     needsOnboarding
   ) {
-    return APP_ROUTES.profileSetup;
+    return {
+      redirectTo: APP_ROUTES.profileSetup,
+      reason: "profile_setup_required_for_app_route",
+    };
   }
 
   if (
     (profile.profile_setup_completed || profile.profile_setup_skipped) &&
     isProfileSetupRoute
   ) {
-    return APP_ROUTES.dashboard;
+    return {
+      redirectTo: APP_ROUTES.dashboard,
+      reason: "profile_setup_already_complete",
+    };
   }
 
-  return null;
+  return {
+    redirectTo: null,
+    reason: "allow_protected_route",
+  };
 }
 
 /**
@@ -76,18 +113,46 @@ export function getSessionRedirect(
   pathname: string,
   hasUser: boolean,
   profile: ProfileFlowState | null
-): string | null {
+): RedirectDecision {
   if (!hasUser && isProtectedRoute(pathname)) {
-    return APP_ROUTES.signIn;
+    return {
+      redirectTo: APP_ROUTES.signIn,
+      reason: "unauthenticated_protected_route",
+    };
   }
 
   if (hasUser && isAuthRoute(pathname) && pathname !== APP_ROUTES.splash) {
-    return APP_ROUTES.splash;
+    return {
+      redirectTo: APP_ROUTES.splash,
+      reason: "authenticated_auth_route",
+    };
   }
 
   if (hasUser && isProtectedRoute(pathname)) {
-    return getProtectedRouteRedirect(pathname, profile);
+    const protectedDecision = getProtectedRouteRedirect(pathname, profile);
+    return {
+      redirectTo: protectedDecision.redirectTo,
+      reason: `protected:${protectedDecision.reason}`,
+    };
   }
 
-  return null;
+  return {
+    redirectTo: null,
+    reason: "allow_public_or_unrestricted_route",
+  };
+}
+
+export function logRedirectDecision(
+  pathname: string,
+  hasUser: boolean,
+  profile: ProfileFlowState | null,
+  decision: RedirectDecision
+): void {
+  console.info("[middleware-redirect]", {
+    pathname,
+    hasUser,
+    profile: summarizeProfile(profile),
+    redirectTo: decision.redirectTo,
+    reason: decision.reason,
+  });
 }
