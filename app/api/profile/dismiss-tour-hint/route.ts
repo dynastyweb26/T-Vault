@@ -16,23 +16,24 @@ export async function POST() {
     const { data: updated, error: updateError } = await supabase
       .from("users")
       .update({
-        has_dismissed_tour_hint: true,
+        tour_banner_dismissed: true,
         updated_at: new Date().toISOString(),
       })
       .eq("id", user.id)
-      .select("id")
-      .maybeSingle();
+      .select("id, tour_banner_dismissed")
+      .single();
 
     if (updateError) {
       console.error("dismiss-tour-hint failed:", updateError.message);
       return NextResponse.json({ error: "profile_save_failed" }, { status: 500 });
     }
 
-    if (!updated) {
-      return NextResponse.json({ error: "profile_missing" }, { status: 404 });
+    if (updated.tour_banner_dismissed !== true) {
+      console.error("dismiss-tour-hint: flag not persisted for user", user.id);
+      return NextResponse.json({ error: "profile_save_failed" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, tour_banner_dismissed: true });
   } catch (err) {
     console.error("dismiss-tour-hint error:", err);
     return NextResponse.json({ error: "profile_save_failed" }, { status: 500 });

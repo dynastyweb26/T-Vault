@@ -14,7 +14,8 @@ export interface UserProfile {
   onboarding_completed: boolean | null;
   profile_setup_completed: boolean | null;
   profile_setup_skipped: boolean | null;
-  has_dismissed_tour_hint: boolean | null;
+  tour_banner_dismissed: boolean | null;
+  has_dismissed_tour_hint?: boolean | null;
   referral_code: string | null;
   referred_by: string | null;
   invoice_count: number | null;
