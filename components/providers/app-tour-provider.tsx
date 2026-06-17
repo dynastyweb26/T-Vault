@@ -39,6 +39,7 @@ async function fetchSampleJobId(userId: string): Promise<string | null> {
     .select("id")
     .eq("user_id", userId)
     .eq("is_template", false)
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();

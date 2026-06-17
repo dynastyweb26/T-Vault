@@ -50,6 +50,7 @@ export async function fetchBrokerHistory(
       .select("*")
       .eq("user_id", userId)
       .neq("is_template", true)
+      .is("deleted_at", null)
       .not("broker_name", "is", null)
       .in("status", ["paid", "complete", "completed", "awaiting_payment"])
       .order("updated_at", { ascending: false }),

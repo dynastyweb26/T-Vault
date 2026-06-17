@@ -31,6 +31,7 @@ export async function fetchBrokerHistory(
     .eq("user_id", userId)
     .eq("broker_name", brokerName.trim())
     .neq("is_template", true)
+    .is("deleted_at", null)
     .in("status", ["awaiting_payment", "paid", "complete", "completed"])
     .order("updated_at", { ascending: false })
     .limit(10);

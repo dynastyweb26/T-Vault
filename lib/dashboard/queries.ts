@@ -88,6 +88,7 @@ export async function fetchDashboardData(
         .select("*")
         .eq("user_id", userId)
         .neq("is_template", true)
+        .is("deleted_at", null)
         .order("updated_at", { ascending: false }),
       supabase.from("expenses").select("*").eq("user_id", userId),
       supabase.from("payments").select("*").eq("user_id", userId),

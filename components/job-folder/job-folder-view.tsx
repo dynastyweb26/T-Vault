@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useDeleteUndo } from "@/components/providers/delete-undo-provider";
 import type { UserProfile } from "@/types/database";
 import { useJobFolder } from "@/hooks/use-job-folder";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -185,6 +186,7 @@ function fieldConfidence(
 export function JobFolderView({ jobId }: { jobId: string }) {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuth();
+  const { deleteJobWithUndo } = useDeleteUndo();
   const {
     job,
     documents,
@@ -275,16 +277,16 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   }, [job?.broker_name, jobId, user]);
 
   useEffect(() => {
-    if (!activeSession?.timer_start) {
+    const timerStart = activeSession?.timer_start ?? job?.detention_start_time;
+    if (!timerStart) {
       setTimerSeconds(0);
       return;
     }
-    const tick = () =>
-      setTimerSeconds(getDetentionElapsedSeconds(activeSession.timer_start));
+    const tick = () => setTimerSeconds(getDetentionElapsedSeconds(timerStart));
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [activeSession]);
+  }, [activeSession?.timer_start, job?.detention_start_time]);
 
   useEffect(() => {
     if (!paymentSheetOpen) return;
@@ -523,53 +525,153 @@ export function JobFolderView({ jobId }: { jobId: string }) {
 
   const startDetention = async (location: DetentionLocation) => {
     if (!user) return;
+    const start = new Date().toISOString();
     const supabase = createClient();
-    const { data } = await supabase
+
+    const { error: jobError } = await supabase
+      .from("jobs")
+      .update({
+        detention_start_time: start,
+        detention_location_type: location,
+        updated_at: start,
+      })
+      .eq("id", jobId)
+      .eq("user_id", user.id);
+
+    if (jobError) {
+      window.alert("Could not start detention timer. Try again.");
+      return;
+    }
+
+    const { data: session, error: sessionError } = await supabase
       .from("detention_sessions")
       .insert({
         user_id: user.id,
         job_id: jobId,
         location_type: location,
-        timer_start: new Date().toISOString(),
+        timer_start: start,
       })
       .select("*")
       .single();
-    if (data) {
-      setActiveSession(data as typeof activeSession);
-      await refresh();
+
+    if (sessionError) {
+      console.error("detention_sessions insert failed:", sessionError.message);
     }
+
+    if (session) {
+      setActiveSession(session as typeof activeSession);
+    } else {
+      setActiveSession({
+        id: `job-${jobId}`,
+        user_id: user.id,
+        job_id: jobId,
+        location_type: location,
+        timer_start: start,
+        timer_end: null,
+        total_minutes: null,
+        amount_owed: null,
+        detention_invoice_url: null,
+        paid: null,
+        created_at: null,
+      });
+    }
+
+    setJob((current) =>
+      current
+        ? {
+            ...current,
+            detention_start_time: start,
+            detention_location_type: location,
+          }
+        : current
+    );
+    await refresh();
   };
 
   const stopDetention = async () => {
     if (!activeSession || !user) return;
     const end = new Date();
-    const elapsedSeconds = getDetentionElapsedSeconds(activeSession.timer_start);
-    const minutes = Math.max(1, Math.round(elapsedSeconds / 60));
+    const timerStart = activeSession.timer_start ?? job?.detention_start_time;
+    if (!timerStart) return;
 
+    const elapsedSeconds = getDetentionElapsedSeconds(timerStart);
+    const minutes = Math.max(1, Math.round(elapsedSeconds / 60));
     const supabase = createClient();
-    const { data } = await supabase
-      .from("detention_sessions")
+    const hasPersistedSession = !activeSession.id.startsWith("job-");
+
+    let sessionId = activeSession.id;
+    let sessionData: typeof activeSession = activeSession;
+
+    if (hasPersistedSession) {
+      const { data, error } = await supabase
+        .from("detention_sessions")
+        .update({
+          timer_end: end.toISOString(),
+          total_minutes: minutes,
+          amount_owed: calculateDetentionOwed(minutes, getDetentionRate()),
+        })
+        .eq("id", activeSession.id)
+        .eq("user_id", user.id)
+        .select("*")
+        .single();
+
+      if (error) {
+        window.alert("Could not stop detention timer. Try again.");
+        return;
+      }
+
+      sessionData = (data ?? activeSession) as typeof activeSession;
+      sessionId = sessionData.id;
+    } else {
+      const { data, error } = await supabase
+        .from("detention_sessions")
+        .insert({
+          user_id: user.id,
+          job_id: jobId,
+          location_type: activeSession.location_type,
+          timer_start: timerStart,
+          timer_end: end.toISOString(),
+          total_minutes: minutes,
+          amount_owed: calculateDetentionOwed(minutes, getDetentionRate()),
+        })
+        .select("*")
+        .single();
+
+      if (error) {
+        window.alert("Could not stop detention timer. Try again.");
+        return;
+      }
+
+      sessionData = (data ?? activeSession) as typeof activeSession;
+      sessionId = sessionData.id;
+    }
+
+    const { error: clearError } = await supabase
+      .from("jobs")
       .update({
-        timer_end: end.toISOString(),
-        total_minutes: minutes,
-        amount_owed: calculateDetentionOwed(minutes, getDetentionRate()),
+        detention_start_time: null,
+        detention_location_type: null,
+        updated_at: end.toISOString(),
       })
-      .eq("id", activeSession.id)
-      .eq("user_id", user.id)
-      .select("*")
-      .single();
+      .eq("id", jobId)
+      .eq("user_id", user.id);
+
+    if (clearError) {
+      window.alert("Could not stop detention timer. Try again.");
+      return;
+    }
 
     setActiveSession(null);
-    if (data) {
-      setDetentionResult({
-        minutes,
-        location: activeSession.location_type as DetentionLocation,
-        sessionId: activeSession.id,
-      });
-      await updateJob({
-        detention_minutes: (job.detention_minutes ?? 0) + minutes,
-      });
-    }
+    setDetentionResult({
+      minutes,
+      location: activeSession.location_type as DetentionLocation,
+      sessionId,
+    });
+    await updateJob({
+      detention_minutes: (job?.detention_minutes ?? 0) + minutes,
+      detention_start_time: null,
+      detention_location_type: null,
+    });
     await refresh();
   };
 
@@ -764,16 +866,17 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                     }
                   }},
                   { label: "Delete Load", danger: true, action: async () => {
-                    if (job.status !== "cancelled") {
-                      window.alert("Cancel the load before deleting.");
+                    setMoreOpen(false);
+                    const confirmed = window.confirm(
+                      `Delete ${job.job_name}? You can undo for a few seconds.`
+                    );
+                    if (!confirmed) return;
+                    const result = await deleteJobWithUndo(jobId, job.job_name);
+                    if (!result.ok) {
+                      window.alert(result.message);
                       return;
                     }
-                    if (window.confirm("Delete permanently? This cannot be undone.")) {
-                      if (!window.confirm("Are you absolutely sure?")) return;
-                      if (!user) return;
-                      await createClient().from("jobs").delete().eq("id", jobId).eq("user_id", user.id);
-                      router.push(APP_ROUTES.loads);
-                    }
+                    router.push(APP_ROUTES.loads);
                   }},
                 ].filter((i) => !i.hidden).map((item) => (
                   <button
@@ -1101,12 +1204,12 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
           Brokers owe you after 2 hours of waiting. Document it — it&apos;s your money.
         </p>
-        {activeSession ? (
+        {activeSession || job?.detention_start_time ? (
           <div className="mt-4 rounded-2xl tv-glass-card border border-[var(--color-success)]/20 bg-[var(--color-success-bg)] p-5 text-center">
             <Clock className="mx-auto size-7 animate-spin text-[var(--color-success)]" style={{ animationDuration: "4s" }} strokeWidth={2} />
             <p className="tv-tabular mt-3 text-[40px] font-bold">{formatTimerDisplay(timerSeconds)}</p>
             <p className="text-[14px] text-[var(--color-text-secondary)]">
-              At {activeSession.location_type === "pickup" ? "Pickup" : "Delivery"}
+              At {(activeSession?.location_type ?? job?.detention_location_type) === "pickup" ? "Pickup" : "Delivery"}
             </p>
             <p className="mt-2 text-[13px] text-[var(--color-text-muted)]">
               Free time: 2 hours. After that, you&apos;re owed money.

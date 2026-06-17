@@ -10,6 +10,7 @@ import { useSwipeToReveal } from "@/hooks/use-swipe-to-reveal";
 import type { DashboardJobView } from "@/types/jobs";
 import { APP_ROUTES } from "@/lib/constants";
 import { saveLoadsScrollPosition } from "@/lib/job-folder/scroll";
+import { useDeleteUndo } from "@/components/providers/delete-undo-provider";
 
 interface JobCardProps {
   job: DashboardJobView;
@@ -34,6 +35,7 @@ export const JobCard = memo(function JobCard({
     snapThreshold: 0.5,
   });
   const [menuOpen, setMenuOpen] = useState(false);
+  const { deleteJobWithUndo } = useDeleteUndo();
 
   const progress = job.docsTotal
     ? job.docsComplete / job.docsTotal
@@ -54,14 +56,16 @@ export const JobCard = memo(function JobCard({
 
   const deleteJob = async () => {
     const confirmed = window.confirm(
-      `Delete ${job.job_name}? This cannot be undone.`
+      `Delete ${job.job_name}? You can undo for a few seconds.`
     );
     if (!confirmed) return;
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("jobs").delete().eq("id", job.id).eq("user_id", user.id);
+    const result = await deleteJobWithUndo(job.id, job.job_name);
+    if (!result.ok) {
+      window.alert(result.message);
+      return;
+    }
+
     setMenuOpen(false);
     onAction();
   };

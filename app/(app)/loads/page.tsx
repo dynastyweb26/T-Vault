@@ -15,6 +15,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { fetchLoadsData, matchesLoadSearch } from "@/lib/loads/queries";
 import { markJobAsPaid } from "@/lib/loads/mark-paid";
 import { restoreLoadsScrollPosition } from "@/lib/job-folder/scroll";
+import { onJobsChanged } from "@/lib/loads/job-events";
 import type { DashboardJobView, Job, JobDocument } from "@/types/jobs";
 import { useNewJobSheet } from "@/components/providers/new-job-provider";
 import type { LoadsTabId } from "@/lib/loads/constants";
@@ -60,6 +61,12 @@ export default function LoadsPage() {
 
   useEffect(() => {
     loadJobs();
+  }, [loadJobs]);
+
+  useEffect(() => {
+    return onJobsChanged(() => {
+      void loadJobs();
+    });
   }, [loadJobs]);
 
   const filteredActive = useMemo(

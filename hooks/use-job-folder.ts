@@ -6,6 +6,33 @@ import { useAuth } from "@/components/providers/auth-provider";
 import type { DetentionSession } from "@/types/job-folder";
 import type { Expense, Job, JobDocument } from "@/types/jobs";
 
+function resolveActiveSession(
+  job: Job | null,
+  sessions: DetentionSession[]
+): DetentionSession | null {
+  const openSession = sessions.find((session) => !session.timer_end) ?? null;
+
+  if (job?.detention_start_time) {
+    if (openSession) return openSession;
+
+    return {
+      id: `job-${job.id}`,
+      user_id: job.user_id,
+      job_id: job.id,
+      location_type: job.detention_location_type ?? "pickup",
+      timer_start: job.detention_start_time,
+      timer_end: null,
+      total_minutes: null,
+      amount_owed: null,
+      detention_invoice_url: null,
+      paid: null,
+      created_at: null,
+    };
+  }
+
+  return openSession;
+}
+
 export function useJobFolder(jobId: string) {
   const { user, refreshProfile } = useAuth();
   const [job, setJob] = useState<Job | null>(null);
@@ -23,7 +50,13 @@ export function useJobFolder(jobId: string) {
 
     const supabase = createClient();
     const [jobRes, docsRes, expRes, detRes] = await Promise.all([
-      supabase.from("jobs").select("*").eq("id", jobId).eq("user_id", user.id).single(),
+      supabase
+        .from("jobs")
+        .select("*")
+        .eq("id", jobId)
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .single(),
       supabase.from("documents").select("*").eq("job_id", jobId).eq("user_id", user.id),
       supabase.from("expenses").select("*").eq("job_id", jobId).eq("user_id", user.id),
       supabase
@@ -40,12 +73,14 @@ export function useJobFolder(jobId: string) {
       return;
     }
 
-    setJob(jobRes.data as Job);
+    const nextJob = jobRes.data as Job;
+    const sessions = (detRes.data ?? []) as DetentionSession[];
+
+    setJob(nextJob);
     setDocuments((docsRes.data ?? []) as JobDocument[]);
     setExpenses((expRes.data ?? []) as Expense[]);
-    const sessions = (detRes.data ?? []) as DetentionSession[];
     setDetentionSessions(sessions);
-    setActiveSession(sessions.find((s) => !s.timer_end) ?? null);
+    setActiveSession(resolveActiveSession(nextJob, sessions));
     setLoading(false);
   }, [jobId, user]);
 
@@ -54,13 +89,23 @@ export function useJobFolder(jobId: string) {
 
     const supabase = createClient();
     const [jobRes, docsRes] = await Promise.all([
-      supabase.from("jobs").select("*").eq("id", jobId).eq("user_id", user.id).single(),
+      supabase
+        .from("jobs")
+        .select("*")
+        .eq("id", jobId)
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .single(),
       supabase.from("documents").select("*").eq("job_id", jobId).eq("user_id", user.id),
     ]);
 
-    if (jobRes.data) setJob(jobRes.data as Job);
+    if (jobRes.data) {
+      const nextJob = jobRes.data as Job;
+      setJob(nextJob);
+      setActiveSession((current) => resolveActiveSession(nextJob, detentionSessions));
+    }
     setDocuments((docsRes.data ?? []) as JobDocument[]);
-  }, [jobId, user]);
+  }, [detentionSessions, jobId, user]);
 
   useEffect(() => {
     refresh();
@@ -77,10 +122,14 @@ export function useJobFolder(jobId: string) {
         .eq("user_id", user.id)
         .select("*")
         .single();
-      if (data) setJob(data as Job);
+      if (data) {
+        const nextJob = data as Job;
+        setJob(nextJob);
+        setActiveSession(resolveActiveSession(nextJob, detentionSessions));
+      }
       await refreshProfile();
     },
-    [jobId, refreshProfile, user]
+    [detentionSessions, jobId, refreshProfile, user]
   );
 
   return {

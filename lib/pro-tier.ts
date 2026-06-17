@@ -55,7 +55,8 @@ export async function countUserJobs(
     .from("jobs")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("is_template", false);
+    .eq("is_template", false)
+    .is("deleted_at", null);
 
   return count ?? 0;
 }
