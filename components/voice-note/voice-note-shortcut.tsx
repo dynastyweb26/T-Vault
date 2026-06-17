@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { Mic } from "lucide-react";
 import { APP_ROUTES } from "@/lib/constants";
+import { VOICE_NOTES_ENABLED } from "@/lib/features";
 
 export function VoiceNoteShortcut() {
+  if (!VOICE_NOTES_ENABLED) return null;
+
   return (
     <Link
       href={APP_ROUTES.voiceNote}
