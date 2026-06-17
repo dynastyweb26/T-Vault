@@ -929,8 +929,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           More Details
           <ChevronDown className={`size-5 transition-transform duration-200 ${detailsOpen ? "rotate-180" : ""}`} strokeWidth={2} />
         </button>
-        <div className={`grid transition-all duration-200 ${detailsOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
-          <div className="overflow-hidden space-y-3 pt-2">
+        <div className={detailsOpen ? "mt-2 space-y-3 pt-2" : "hidden"}>
             {(
               [
                 "pickup_date",
@@ -957,7 +956,6 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                 </button>
               </div>
             ))}
-          </div>
         </div>
       </section>
 
@@ -969,7 +967,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         </p>
         <p className="text-[13px] text-[var(--color-text-muted)]">{optionalCount} optional docs added</p>
         <div className="tv-progress-track mt-2">
-          <div className="tv-progress-fill" style={{ width: `${(complete / total) * 100}%` }} />
+          <div className="tv-progress-fill" style={{ "--tv-progress": complete / total } as React.CSSProperties} />
         </div>
         <div className="mt-4 space-y-2">
           {REQUIRED_DOC_TYPES.map((type) => {

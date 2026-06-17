@@ -185,10 +185,10 @@ export function TaxSummaryView({
                   </div>
                   <div className="tv-progress-track h-2">
                     <div
-                      className="h-full rounded-full bg-[var(--color-accent)]"
+                      className="tv-progress-fill"
                       style={{
-                        width: `${Math.max(4, (item.amount / maxExpense) * 100)}%`,
-                      }}
+                        "--tv-progress": Math.max(0.04, item.amount / maxExpense),
+                      } as React.CSSProperties}
                     />
                   </div>
                 </div>

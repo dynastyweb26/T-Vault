@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -13,9 +13,6 @@ import {
 import { APP_ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useNewJobSheet } from "@/components/providers/new-job-provider";
-import { useAuth } from "@/components/providers/auth-provider";
-import { createClient } from "@/lib/supabase/client";
-import { hasExpiredDocuments } from "@/lib/document-wallet/queries";
 import { triggerHaptic } from "@/lib/haptics";
 
 const tabs = [
@@ -26,19 +23,84 @@ const tabs = [
   { href: APP_ROUTES.profile, label: "Profile", icon: User },
 ] as const;
 
-export function BottomNav() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { openSheet } = useNewJobSheet();
-  const { user } = useAuth();
-  const [expiredDocs, setExpiredDocs] = useState(false);
+const BottomNavTab = memo(function BottomNavTab({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+  showExpiredBadge,
+  onNewJob,
+}: {
+  href: string;
+  label: string;
+  icon: typeof Home;
+  isActive: boolean;
+  showExpiredBadge: boolean;
+  onNewJob?: () => void;
+}) {
+  if (onNewJob) {
+    return (
+      <li className="flex justify-center">
+        <button
+          type="button"
+          aria-label="Create new job"
+          onClick={onNewJob}
+          className="tv-brushed-gold-btn tv-gold-glow tv-pressable tv-icon-btn mx-1 rounded-full"
+        >
+          <Plus
+            className="size-5 font-bold text-[var(--color-on-accent)]"
+            strokeWidth={2.5}
+            aria-hidden
+          />
+        </button>
+      </li>
+    );
+  }
 
-  useEffect(() => {
-    if (!user) return;
-    const supabase = createClient();
-    hasExpiredDocuments(supabase, user.id).then(setExpiredDocs);
-  }, [user, pathname]);
+  return (
+    <li className="relative">
+      <Link
+        href={href}
+        aria-label={label}
+        onClick={() => triggerHaptic("light")}
+        className={cn(
+          "tv-pressable flex min-h-11 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium tracking-wide transition-colors",
+          isActive
+            ? "tv-active-glow font-bold text-[var(--color-accent)]"
+            : "text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
+        )}
+      >
+        <span className="relative">
+          <Icon
+            className={cn(
+              "size-7",
+              showExpiredBadge && "tv-profile-expired-pulse"
+            )}
+            strokeWidth={isActive ? 2.5 : 2}
+            aria-hidden
+          />
+          {showExpiredBadge ? (
+            <span
+              className="absolute -right-1 -top-1 size-2.5 rounded-full bg-[var(--color-danger)]"
+              aria-hidden
+            />
+          ) : null}
+        </span>
+        <span>{label}</span>
+      </Link>
+    </li>
+  );
+});
 
+export const BottomNav = memo(function BottomNav({
+  pathname,
+  expiredDocs,
+  onNewJob,
+}: {
+  pathname: string;
+  expiredDocs: boolean;
+  onNewJob: () => void;
+}) {
   return (
     <nav
       aria-label="Main navigation"
@@ -46,71 +108,73 @@ export function BottomNav() {
     >
       <ul className="mx-auto grid max-w-lg grid-cols-5 items-end px-2">
         {tabs.map((tab) => {
-          const Icon = tab.icon;
           const isActive = pathname === tab.href;
           const showExpiredBadge =
             tab.href === APP_ROUTES.profile && expiredDocs;
 
-          if ("center" in tab && tab.center) {
-            return (
-              <li key={tab.href} className="flex justify-center">
-                <button
-                  type="button"
-                  aria-label="Create new job"
-                  onClick={() => {
-                    if (pathname === APP_ROUTES.newJob) {
-                      openSheet();
-                    } else {
-                      router.push(APP_ROUTES.newJob);
-                    }
-                  }}
-                  className="tv-brushed-gold-btn tv-gold-glow tv-pressable tv-icon-btn mx-1 rounded-full"
-                >
-                  <Plus
-                    className="size-5 font-bold text-[var(--color-on-accent)]"
-                    strokeWidth={2.5}
-                    aria-hidden
-                  />
-                </button>
-              </li>
-            );
-          }
-
           return (
-            <li key={tab.href} className="relative">
-              <Link
-                href={tab.href}
-                aria-label={tab.label}
-                onClick={() => triggerHaptic("light")}
-                className={cn(
-                  "tv-pressable flex min-h-11 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium tracking-wide transition-colors",
-                  isActive
-                    ? "tv-active-glow font-bold text-[var(--color-accent)]"
-                    : "text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
-                )}
-              >
-                <span className="relative">
-                  <Icon
-                    className={cn(
-                      "size-7",
-                      showExpiredBadge && "tv-profile-expired-pulse"
-                    )}
-                    strokeWidth={isActive ? 2.5 : 2}
-                    aria-hidden
-                  />
-                  {showExpiredBadge ? (
-                    <span
-                      className="absolute -right-1 -top-1 size-2.5 rounded-full bg-[var(--color-danger)]"
-                      aria-hidden
-                    />
-                  ) : null}
-                </span>
-                <span>{tab.label}</span>
-              </Link>
-            </li>
+            <BottomNavTab
+              key={tab.href}
+              href={tab.href}
+              label={tab.label}
+              icon={tab.icon}
+              isActive={isActive}
+              showExpiredBadge={showExpiredBadge}
+              onNewJob={"center" in tab && tab.center ? onNewJob : undefined}
+            />
           );
         })}
       </ul>
     </nav>
+  );
+});
+
+export function BottomNavContainer() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { openSheet } = useNewJobSheet();
+  const [expiredDocs, setExpiredDocs] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadExpiredDocs = async () => {
+      const { createClient } = await import("@/lib/supabase/client");
+      const { hasExpiredDocuments } = await import(
+        "@/lib/document-wallet/queries"
+      );
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const expired = await hasExpiredDocuments(supabase, user.id);
+      if (!cancelled) setExpiredDocs(expired);
+    };
+
+    const timer = window.setTimeout(() => {
+      void loadExpiredDocs();
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [pathname]);
+
+  const handleNewJob = () => {
+    if (pathname === APP_ROUTES.newJob) {
+      openSheet();
+    } else {
+      router.push(APP_ROUTES.newJob);
+    }
+  };
+
+  return (
+    <BottomNav
+      pathname={pathname}
+      expiredDocs={expiredDocs}
+      onNewJob={handleNewJob}
+    />
   );
 }
