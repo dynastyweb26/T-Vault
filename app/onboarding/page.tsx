@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { TvButton } from "@/components/tv/tv-button";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
 import { getPostAuthRedirect, hasCompletedOnboarding } from "@/lib/auth-helpers";
@@ -26,6 +26,56 @@ const steps = [
   },
 ] as const;
 
+function onboardingErrorMessage(status: number, code?: string): string {
+  if (status === 401) {
+    return "Your session expired. Sign in again and retry.";
+  }
+  if (status === 404 || code === "profile_missing") {
+    return "We could not find your profile. Pull down to refresh or sign out and sign back in.";
+  }
+  if (status === 429) {
+    return "Too many attempts. Wait a few minutes and try again.";
+  }
+  return "We could not save your progress. Check your connection and try again.";
+}
+
+async function ensureUserProfile(
+  user: User,
+  refreshProfile: () => Promise<UserProfile | null>
+): Promise<UserProfile | null> {
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined) ||
+    user.email?.split("@")[0] ||
+    "Driver";
+
+  console.info("[onboarding] ensureUserProfile: calling complete-signup");
+
+  const response = await fetch("/api/auth/complete-signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fullName,
+      referredBy: user.user_metadata?.referred_by,
+    }),
+  });
+
+  const body = (await response.json().catch(() => ({}))) as {
+    error?: string;
+  };
+
+  if (!response.ok) {
+    console.error(
+      "[onboarding] complete-signup failed:",
+      response.status,
+      body.error ?? body
+    );
+    return null;
+  }
+
+  console.info("[onboarding] complete-signup ok, refreshing profile");
+  return refreshProfile();
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, profile, patchProfile, refreshProfile } = useAuth();
@@ -44,7 +94,9 @@ export default function OnboardingPage() {
     }
 
     if (hasCompletedOnboarding(profile)) {
-      router.replace(getPostAuthRedirect(profile));
+      const destination = getPostAuthRedirect(profile);
+      console.info("[onboarding] Already complete, redirecting to", destination);
+      router.replace(destination);
     }
   }, [profile, router, user]);
 
@@ -53,33 +105,15 @@ export default function OnboardingPage() {
 
     ensuringProfile.current = true;
 
-    const ensureProfile = async () => {
-      const fullName =
-        (user.user_metadata?.full_name as string | undefined) ||
-        user.email?.split("@")[0] ||
-        "Driver";
-
-      const response = await fetch("/api/auth/complete-signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName,
-          referredBy: user.user_metadata?.referred_by,
-        }),
-      });
-
-      if (response.ok) {
-        await refreshProfile();
-      } else {
+    void (async () => {
+      const ensured = await ensureUserProfile(user, refreshProfile);
+      if (!ensured) {
         setError(
           "We could not finish setting up your account. Check your connection and try again."
         );
       }
-
       ensuringProfile.current = false;
-    };
-
-    void ensureProfile();
+    })();
   }, [profile, refreshProfile, user]);
 
   const finishOnboarding = async () => {
@@ -90,54 +124,61 @@ export default function OnboardingPage() {
 
     setLoading(true);
     setError(null);
+    console.info("[onboarding] finishOnboarding started", {
+      step,
+      hasProfile: Boolean(profile),
+    });
 
-    if (!profile) {
-      const fullName =
-        (user.user_metadata?.full_name as string | undefined) ||
-        user.email?.split("@")[0] ||
-        "Driver";
+    try {
+      let activeProfile = profile;
 
-      const signupResponse = await fetch("/api/auth/complete-signup", {
+      if (!activeProfile) {
+        activeProfile = await ensureUserProfile(user, refreshProfile);
+        if (!activeProfile) {
+          setError(
+            "We could not finish setting up your account. Check your connection and try again."
+          );
+          return;
+        }
+      }
+
+      console.info("[onboarding] calling complete-onboarding");
+      const response = await fetch("/api/auth/complete-onboarding", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName,
-          referredBy: user.user_metadata?.referred_by,
-        }),
       });
 
-      if (!signupResponse.ok) {
-        setLoading(false);
-        setError(
-          "We could not save your progress. Check your connection and try again."
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        profile?: UserProfile;
+      };
+
+      if (!response.ok) {
+        console.error(
+          "[onboarding] complete-onboarding failed:",
+          response.status,
+          body.error ?? body
         );
+        setError(onboardingErrorMessage(response.status, body.error));
         return;
       }
 
-      await refreshProfile();
-    }
+      const updatedProfile: UserProfile = body.profile
+        ? { ...activeProfile, ...body.profile, onboarding_completed: true }
+        : { ...activeProfile, onboarding_completed: true };
 
-    const response = await fetch("/api/auth/complete-onboarding", {
-      method: "POST",
-    });
+      const destination = getPostAuthRedirect(updatedProfile);
+      console.info("[onboarding] complete, redirecting to", destination, updatedProfile);
 
-    if (!response.ok) {
-      setLoading(false);
+      patchProfile(updatedProfile);
+      router.replace(destination);
+    } catch (err) {
+      console.error("[onboarding] finishOnboarding unexpected error:", err);
       setError(
-        "We could not save your progress. Check your connection and try again."
+        "Something went wrong while saving your progress. Please try again."
       );
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    const { data: updatedProfile } = await createClient()
-      .from("users")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    patchProfile({ onboarding_completed: true, ...(updatedProfile ?? {}) });
-    setLoading(false);
-    router.push(getPostAuthRedirect(updatedProfile as UserProfile | null));
   };
 
   return (
@@ -173,12 +214,12 @@ export default function OnboardingPage() {
             Continue
           </TvButton>
         ) : (
-          <TvButton loading={loading} onClick={finishOnboarding}>
+          <TvButton loading={loading} onClick={() => void finishOnboarding()}>
             Get started
           </TvButton>
         )}
         {!isLast ? (
-          <TvButton variant="ghost" onClick={finishOnboarding}>
+          <TvButton variant="ghost" onClick={() => void finishOnboarding()}>
             Skip tour
           </TvButton>
         ) : null}

@@ -20,7 +20,9 @@ export async function POST() {
       .from("users")
       .update({ onboarding_completed: true })
       .eq("id", user.id)
-      .select("id")
+      .select(
+        "id, email, full_name, onboarding_completed, profile_setup_completed, profile_setup_skipped"
+      )
       .maybeSingle();
 
     if (updateError) {
@@ -36,7 +38,7 @@ export async function POST() {
       return NextResponse.json({ error: "profile_missing" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, profile: updated });
   } catch (err) {
     console.error("complete-onboarding error:", err);
     return NextResponse.json(

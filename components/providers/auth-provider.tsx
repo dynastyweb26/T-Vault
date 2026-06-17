@@ -20,7 +20,7 @@ interface AuthContextValue {
   loading: boolean;
   sessionWarning: boolean;
   offline: boolean;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: () => Promise<UserProfile | null>;
   patchProfile: (updates: Partial<UserProfile>) => void;
   recordActivity: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -43,25 +43,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sessionWarning, setSessionWarning] = useState(false);
   const [offline, setOffline] = useState(false);
 
-  const refreshProfile = useCallback(async () => {
+  const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
     if (!user || !supabase) {
       setProfile(null);
-      return;
+      return null;
     }
 
     const { data, error } = await supabase
       .from("users")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (!error && data) {
-      setProfile(data as UserProfile);
+    if (error) {
+      console.error("[auth] refreshProfile failed:", error.message);
+      return null;
     }
+
+    if (!data) {
+      console.warn("[auth] refreshProfile: no users row for", user.id);
+      return null;
+    }
+
+    const nextProfile = data as UserProfile;
+    setProfile(nextProfile);
+    return nextProfile;
   }, [supabase, user]);
 
   const patchProfile = useCallback((updates: Partial<UserProfile>) => {
-    setProfile((current) => (current ? { ...current, ...updates } : current));
+    setProfile((current) => {
+      if (current) {
+        return { ...current, ...updates };
+      }
+      if (updates.id) {
+        return updates as UserProfile;
+      }
+      return null;
+    });
   }, []);
 
   const recordActivity = useCallback(async () => {
