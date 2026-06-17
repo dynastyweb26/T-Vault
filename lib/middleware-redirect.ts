@@ -108,11 +108,14 @@ export function getProtectedRouteRedirect(
 
 /**
  * Returns the pathname to redirect to for session-aware routing, or null.
+ *
+ * Onboarding/profile-setup gating is temporarily disabled to avoid redirect loops.
+ * Only authentication is enforced here.
  */
 export function getSessionRedirect(
   pathname: string,
   hasUser: boolean,
-  profile: ProfileFlowState | null
+  _profile: ProfileFlowState | null
 ): RedirectDecision {
   if (!hasUser && isProtectedRoute(pathname)) {
     return {
@@ -125,14 +128,6 @@ export function getSessionRedirect(
     return {
       redirectTo: APP_ROUTES.splash,
       reason: "authenticated_auth_route",
-    };
-  }
-
-  if (hasUser && isProtectedRoute(pathname)) {
-    const protectedDecision = getProtectedRouteRedirect(pathname, profile);
-    return {
-      redirectTo: protectedDecision.redirectTo,
-      reason: `protected:${protectedDecision.reason}`,
     };
   }
 

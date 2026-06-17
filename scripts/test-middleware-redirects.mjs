@@ -32,72 +32,13 @@ function requiresOnboarding(pathname) {
   return ONBOARDING_REQUIRED_PREFIXES.some((route) => pathname.startsWith(route));
 }
 
-function getProtectedRouteRedirect(pathname, profile) {
-  if (!profile) {
-    return { redirectTo: APP_ROUTES.splash, reason: "protected_route_missing_profile" };
-  }
-
-  const isOnboardingRoute = pathname === APP_ROUTES.onboarding;
-  const isProfileSetupRoute = pathname === APP_ROUTES.profileSetup;
-  const needsOnboarding = requiresOnboarding(pathname);
-
-  if (!profile.onboarding_completed) {
-    if (needsOnboarding || isProfileSetupRoute) {
-      return { redirectTo: APP_ROUTES.onboarding, reason: "onboarding_incomplete" };
-    }
-    return { redirectTo: null, reason: "allow_onboarding_flow_route" };
-  }
-
-  if (isOnboardingRoute) {
-    const needsProfileSetup =
-      !profile.profile_setup_completed && !profile.profile_setup_skipped;
-    return {
-      redirectTo: needsProfileSetup ? APP_ROUTES.profileSetup : APP_ROUTES.dashboard,
-      reason: needsProfileSetup
-        ? "onboarding_complete_needs_profile_setup"
-        : "onboarding_complete_go_dashboard",
-    };
-  }
-
-  if (
-    !profile.profile_setup_completed &&
-    !profile.profile_setup_skipped &&
-    needsOnboarding
-  ) {
-    return {
-      redirectTo: APP_ROUTES.profileSetup,
-      reason: "profile_setup_required_for_app_route",
-    };
-  }
-
-  if (
-    (profile.profile_setup_completed || profile.profile_setup_skipped) &&
-    isProfileSetupRoute
-  ) {
-    return {
-      redirectTo: APP_ROUTES.dashboard,
-      reason: "profile_setup_already_complete",
-    };
-  }
-
-  return { redirectTo: null, reason: "allow_protected_route" };
-}
-
-function getSessionRedirect(pathname, hasUser, profile) {
+function getSessionRedirect(pathname, hasUser, _profile) {
   if (!hasUser && isProtectedRoute(pathname)) {
     return { redirectTo: APP_ROUTES.signIn, reason: "unauthenticated_protected_route" };
   }
 
   if (hasUser && isAuthRoute(pathname) && pathname !== APP_ROUTES.splash) {
     return { redirectTo: APP_ROUTES.splash, reason: "authenticated_auth_route" };
-  }
-
-  if (hasUser && isProtectedRoute(pathname)) {
-    const protectedDecision = getProtectedRouteRedirect(pathname, profile);
-    return {
-      redirectTo: protectedDecision.redirectTo,
-      reason: `protected:${protectedDecision.reason}`,
-    };
   }
 
   return { redirectTo: null, reason: "allow_public_or_unrestricted_route" };
@@ -345,7 +286,7 @@ const flowChecks = [
     expected: null,
   },
   {
-    name: "onboarding -> profile-setup after onboarding complete",
+    name: "onboarding allowed after onboarding complete (no middleware gating)",
     path: APP_ROUTES.onboarding,
     hasUser: true,
     profile: {
@@ -353,7 +294,7 @@ const flowChecks = [
       profile_setup_completed: false,
       profile_setup_skipped: false,
     },
-    expected: APP_ROUTES.profileSetup,
+    expected: null,
   },
   {
     name: "profile-setup allowed after onboarding complete",
@@ -367,7 +308,7 @@ const flowChecks = [
     expected: null,
   },
   {
-    name: "dashboard -> profile-setup before profile setup",
+    name: "dashboard allowed before profile setup (no middleware gating)",
     path: APP_ROUTES.dashboard,
     hasUser: true,
     profile: {
@@ -375,7 +316,7 @@ const flowChecks = [
       profile_setup_completed: false,
       profile_setup_skipped: false,
     },
-    expected: APP_ROUTES.profileSetup,
+    expected: null,
   },
   {
     name: "dashboard allowed after full setup",
