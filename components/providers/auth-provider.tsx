@@ -89,10 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     setProfile((current) => {
       if (
-        current?.has_dismissed_tour_hint === true &&
-        nextProfile.has_dismissed_tour_hint !== true
+        current?.tour_banner_dismissed === true &&
+        nextProfile.tour_banner_dismissed !== true
       ) {
-        appliedProfile = { ...nextProfile, has_dismissed_tour_hint: true };
+        appliedProfile = { ...nextProfile, tour_banner_dismissed: true };
         return appliedProfile;
       }
       return nextProfile;

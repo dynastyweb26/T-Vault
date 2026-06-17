@@ -1,26 +1,17 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { Compass, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 
 export function TourHintBanner() {
   const { profile, patchProfile } = useAuth();
-  const [optimisticallyDismissed, setOptimisticallyDismissed] = useState(false);
   const dismissingRef = useRef(false);
-
-  const showBanner =
-    !optimisticallyDismissed &&
-    profile != null &&
-    profile.has_dismissed_tour_hint !== true;
 
   const dismiss = useCallback(async () => {
     if (dismissingRef.current || !profile) return;
 
     dismissingRef.current = true;
-    setOptimisticallyDismissed(true);
-    patchProfile({ has_dismissed_tour_hint: true });
-
     try {
       const response = await fetch("/api/profile/dismiss-tour-hint", {
         method: "POST",
@@ -29,14 +20,16 @@ export function TourHintBanner() {
       if (!response.ok) {
         throw new Error("dismiss_failed");
       }
+
+      patchProfile({ tour_banner_dismissed: true });
     } catch {
-      setOptimisticallyDismissed(false);
-      patchProfile({ has_dismissed_tour_hint: false });
       dismissingRef.current = false;
     }
   }, [patchProfile, profile]);
 
-  if (!showBanner) return null;
+  if (!profile || profile.tour_banner_dismissed === true) {
+    return null;
+  }
 
   return (
     <div
