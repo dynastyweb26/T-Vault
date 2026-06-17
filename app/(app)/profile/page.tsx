@@ -27,6 +27,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useAppTour } from "@/components/providers/app-tour-provider";
 import { APP_ROUTES } from "@/lib/constants";
+import { VOICE_NOTES_ENABLED } from "@/lib/features";
 import type { ThemePreference } from "@/types/database";
 
 const THEME_LABELS: Record<ThemePreference, string> = {
@@ -145,11 +146,13 @@ export default function ProfilePage() {
               icon={Wallet}
               label="My Documents"
             />
-            <ProfileRow
-              href={APP_ROUTES.voiceNotes}
-              icon={Mic}
-              label="Voice Notes"
-            />
+            {VOICE_NOTES_ENABLED ? (
+              <ProfileRow
+                href={APP_ROUTES.voiceNotes}
+                icon={Mic}
+                label="Voice Notes"
+              />
+            ) : null}
           </div>
         </section>
 

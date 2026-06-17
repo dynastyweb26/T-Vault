@@ -5,6 +5,8 @@ import { corsHeaders, extractJson, jsonResponse } from "../_shared/cors.ts";
 import { checkAiRateLimit, recordAiUsage } from "../_shared/rate-limit.ts";
 
 const STORAGE_BUCKET = "game1-documents";
+// Keep in sync with lib/features.ts VOICE_NOTES_ENABLED
+const VOICE_NOTES_ENABLED = false;
 const VOICE_PROMPT = `Transcribe this audio and categorize it.
 Return JSON: { "transcript": "", "category": "expense|general", "suggested_action": "log_expense|note_only", "extracted_amount": null or number, "extracted_category": null or "fuel|lumper|tolls|scales|parking|other", "extracted_description": "" }
 If expense: extract the dollar amount and what it's for.
@@ -114,6 +116,10 @@ Deno.serve(async (req) => {
 
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers });
+  }
+
+  if (!VOICE_NOTES_ENABLED) {
+    return jsonResponse(req, { error: "not_found" }, 404);
   }
 
   try {
