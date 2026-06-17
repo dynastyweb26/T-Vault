@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import { getPostAuthRedirect } from "@/lib/auth-helpers";
@@ -74,15 +74,15 @@ export default function SplashPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-5 text-center">
-      <div className="tv-brushed-gold-btn tv-gold-glow mb-8 flex size-24 items-center justify-center rounded-2xl">
-        <Wallet
-          className="size-12 text-[var(--color-on-accent)]"
-          strokeWidth={2}
-          aria-hidden
-        />
-      </div>
-      <h1 className="tv-page-title text-[var(--color-accent)]">T-Vault</h1>
-      <p className="tv-body mt-3 max-w-sm text-[var(--color-text-secondary)]">
+      <Image
+        src="/logo.jpeg"
+        alt="T-Vault"
+        width={240}
+        height={64}
+        className="mb-8 h-16 w-auto"
+        priority
+      />
+      <p className="tv-body max-w-sm text-[var(--color-text-secondary)]">
         Your business command center for the road.
       </p>
       <p className="tv-caption mt-8">{status}</p>

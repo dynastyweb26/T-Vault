@@ -1,6 +1,6 @@
 "use client";
 
-import { Wallet } from "lucide-react";
+import Image from "next/image";
 import { useAuth } from "@/components/providers/auth-provider";
 import Link from "next/link";
 import { APP_ROUTES } from "@/lib/constants";
@@ -12,13 +12,14 @@ export function VaultHeader() {
     <header className="sticky top-0 z-50 border-b border-[var(--color-shell-border)] bg-[var(--color-bg)]/95 px-5 py-4 backdrop-blur-2xl">
       <div className="mx-auto flex w-full max-w-lg items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="tv-brushed-gold-btn flex size-11 items-center justify-center rounded-lg">
-            <Wallet
-              className="size-5 text-[var(--color-on-accent)]"
-              strokeWidth={2.5}
-              aria-hidden
-            />
-          </div>
+          <Image
+            src="/icon.jpeg"
+            alt=""
+            width={44}
+            height={44}
+            className="size-11 rounded-lg"
+            aria-hidden
+          />
           <h1 className="tv-section-header tracking-tight text-[var(--color-accent)]">
             T-Vault
           </h1>

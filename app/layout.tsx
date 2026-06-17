@@ -20,7 +20,11 @@ const dmMono = DM_Mono({
 export const metadata = {
   title: "T-Vault",
   description: "Mobile-first back-office toolkit for truck owner-operators.",
-  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon.jpeg",
+    apple: "/icon.jpeg",
+    shortcut: "/icon.jpeg",
+  },
   appleWebApp: {
     capable: true,
     title: "T-Vault",
