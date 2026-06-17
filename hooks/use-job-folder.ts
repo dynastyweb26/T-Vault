@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import type { DetentionSession } from "@/types/job-folder";
 import type { Expense, Job, JobDocument } from "@/types/jobs";
+import {
+  isParseableTimerStart,
+  normalizeTimerStart,
+} from "@/lib/job-folder/detention";
 
 function resolveActiveSession(
   job: Job | null,
@@ -12,14 +16,17 @@ function resolveActiveSession(
 ): DetentionSession | null {
   const openSession = sessions.find((session) => !session.timer_end) ?? null;
 
-  if (openSession?.timer_start) return openSession;
+  if (openSession?.timer_start && isParseableTimerStart(openSession.timer_start)) {
+    return openSession;
+  }
 
-  if (job?.detention_start_time) {
+  const jobStart = normalizeTimerStart(job?.detention_start_time);
+  if (job && jobStart && isParseableTimerStart(jobStart)) {
     const location = job.detention_location_type ?? openSession?.location_type ?? "pickup";
     if (openSession) {
       return {
         ...openSession,
-        timer_start: job.detention_start_time,
+        timer_start: jobStart,
         location_type: location,
       };
     }
@@ -29,7 +36,7 @@ function resolveActiveSession(
       user_id: job.user_id,
       job_id: job.id,
       location_type: location,
-      timer_start: job.detention_start_time,
+      timer_start: jobStart,
       timer_end: null,
       total_minutes: null,
       amount_owed: null,

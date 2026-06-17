@@ -52,6 +52,7 @@ import {
   formatDuration,
   getDetentionElapsedSeconds,
   isDetentionBillable,
+  resolveDetentionTimerStart,
   DETENTION_FREE_MINUTES,
 } from "@/lib/job-folder/detention";
 import { generateDetentionInvoicePdf } from "@/lib/job-folder/detention-invoice";
@@ -275,8 +276,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     })();
   }, [job?.broker_name, jobId, user]);
 
-  const detentionTimerStart =
-    activeSession?.timer_start ?? job?.detention_start_time ?? null;
+  const detentionTimerStart = resolveDetentionTimerStart(job, activeSession);
 
   useEffect(() => {
     if (!paymentSheetOpen) return;
@@ -580,7 +580,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const stopDetention = async () => {
     if (!activeSession || !user) return;
     const end = new Date();
-    const timerStart = activeSession.timer_start ?? job?.detention_start_time;
+    const timerStart = resolveDetentionTimerStart(job, activeSession);
     if (!timerStart) return;
 
     const elapsedSeconds = getDetentionElapsedSeconds(timerStart);

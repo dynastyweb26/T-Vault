@@ -6,6 +6,7 @@ import { TvButton } from "@/components/tv/tv-button";
 import {
   formatTimerDisplay,
   getDetentionElapsedSeconds,
+  normalizeTimerStart,
 } from "@/lib/job-folder/detention";
 
 interface DetentionLiveTimerProps {
@@ -19,17 +20,16 @@ export function DetentionLiveTimer({
   locationLabel,
   onStop,
 }: DetentionLiveTimerProps) {
-  const timerStartRef = useRef(timerStart);
-  timerStartRef.current = timerStart;
+  const timerStartRef = useRef(normalizeTimerStart(timerStart));
+  timerStartRef.current = normalizeTimerStart(timerStart);
 
-  const [tickCount, setTickCount] = useState(0);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(() =>
+    getDetentionElapsedSeconds(timerStartRef.current)
+  );
 
   useEffect(() => {
     const update = () => {
-      const start = timerStartRef.current;
-      setElapsedSeconds(getDetentionElapsedSeconds(start));
-      setTickCount((count) => count + 1);
+      setElapsedSeconds(getDetentionElapsedSeconds(timerStartRef.current));
     };
 
     update();
@@ -47,7 +47,6 @@ export function DetentionLiveTimer({
       <p className="tv-tabular mt-3 text-[40px] font-bold">
         {formatTimerDisplay(elapsedSeconds)}
       </p>
-      <p className="text-[11px] text-[var(--color-text-muted)]">tick: {tickCount}</p>
       <p className="text-[14px] text-[var(--color-text-secondary)]">
         At {locationLabel}
       </p>
