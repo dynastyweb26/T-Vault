@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/shell/app-shell";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { NewJobProvider } from "@/components/providers/new-job-provider";
+import { AppTourProvider } from "@/components/providers/app-tour-provider";
 import { NewJobSheet } from "@/components/jobs/new-job-sheet";
 
 export default function AppLayout({
@@ -11,8 +12,10 @@ export default function AppLayout({
   return (
     <RouteGuard mode="app">
       <NewJobProvider>
-        <AppShell>{children}</AppShell>
-        <NewJobSheet />
+        <AppTourProvider>
+          <AppShell>{children}</AppShell>
+          <NewJobSheet />
+        </AppTourProvider>
       </NewJobProvider>
     </RouteGuard>
   );

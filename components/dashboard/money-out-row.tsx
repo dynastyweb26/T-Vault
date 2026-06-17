@@ -11,7 +11,10 @@ export function MoneyOutRow({ data }: MoneyOutRowProps) {
 
   return (
     <section id="ledger-insight" className="tv-feed-card px-5">
-      <div className="tv-glass-card overflow-hidden rounded-2xl">
+      <div
+        data-tour="dashboard-ledger-insight"
+        className="tv-glass-card overflow-hidden rounded-2xl"
+      >
         <div className="flex items-center gap-3 border-b border-[var(--color-shell-border)] p-4">
           <div className="flex size-8 items-center justify-center rounded-full bg-[var(--color-accent)]/10">
             <Receipt className="size-4 text-[var(--color-accent)]" strokeWidth={2} aria-hidden />

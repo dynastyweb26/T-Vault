@@ -257,7 +257,7 @@ export function NewJobSheet() {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" data-tour="new-load-form">
         <TvInput
           label="Job Name"
           borderVariant="gold"

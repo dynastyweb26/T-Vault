@@ -856,6 +856,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         </div>
       ) : null}
 
+      <div data-tour="job-folder-details">
       {/* Job Details */}
       <section className="mt-4 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] p-5">
         <div className="space-y-4">
@@ -1094,9 +1095,10 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           ) : null}
         </div>
       </section>
+      </div>
 
       {/* Detention */}
-      <section className="mt-6">
+      <section className="mt-6" data-tour="job-folder-detention">
         <h2 className="tv-section-header">Detention</h2>
         <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
           Brokers owe you after 2 hours of waiting. Document it — it&apos;s your money.

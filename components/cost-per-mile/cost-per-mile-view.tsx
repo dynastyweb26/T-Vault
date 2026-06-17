@@ -384,6 +384,7 @@ export function CostPerMileDashboardCard({ netPerMile }: CostPerMileCardProps) {
   return (
     <Link
       href={APP_ROUTES.costPerMile}
+      data-tour="dashboard-cost-per-mile"
       className="tv-glass-card block rounded-2xl p-4 transition-opacity hover:opacity-95"
     >
       <p className="tv-caption opacity-80">Cost Per Mile</p>

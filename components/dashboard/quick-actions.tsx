@@ -42,7 +42,10 @@ export function QuickActions() {
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto border-b border-[var(--color-shell-border)] px-5 py-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div
+      data-tour="dashboard-quick-actions"
+      className="flex gap-4 overflow-x-auto border-b border-[var(--color-shell-border)] px-5 py-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {actions.map((action) => {
         const Icon = action.icon;
 
