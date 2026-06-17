@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
+import { RouteGuardLoading } from "@/components/shell/route-guard-loading";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
 import {
@@ -24,7 +25,7 @@ import {
 
 export default function ProfileSetupPage() {
   const router = useRouter();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [mcNumber, setMcNumber] = useState("");
@@ -34,10 +35,17 @@ export default function ProfileSetupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!user) {
       router.replace(APP_ROUTES.signIn);
       return;
     }
+
+    // Wait for profile to load before gating — null is not "onboarding incomplete".
+    // Middleware already routes authenticated users; treating null as incomplete
+    // caused /profile-setup → /onboarding → /profile-setup redirect loops.
+    if (!profile) return;
 
     if (!hasCompletedOnboarding(profile)) {
       router.replace(APP_ROUTES.onboarding);
@@ -47,7 +55,7 @@ export default function ProfileSetupPage() {
     if (hasCompletedProfileSetup(profile)) {
       router.replace(APP_ROUTES.dashboard);
     }
-  }, [profile, router, user]);
+  }, [authLoading, profile, router, user]);
 
   useEffect(() => {
     if (!profile) return;
@@ -114,6 +122,10 @@ export default function ProfileSetupPage() {
     await refreshProfile();
     router.replace(APP_ROUTES.dashboard);
   };
+
+  if (authLoading || (user && !profile)) {
+    return <RouteGuardLoading />;
+  }
 
   return (
     <div className="tv-auth-page">
