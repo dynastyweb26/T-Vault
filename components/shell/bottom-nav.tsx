@@ -42,7 +42,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-shell-border)] bg-[var(--color-bg)]/95 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-3xl"
+      className="tv-frosted-bar fixed inset-x-0 bottom-0 z-50 border-t pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3"
     >
       <ul className="mx-auto grid max-w-lg grid-cols-5 items-end px-2">
         {tabs.map((tab) => {
@@ -64,7 +64,7 @@ export function BottomNav() {
                       router.push(APP_ROUTES.newJob);
                     }
                   }}
-                  className="tv-brushed-gold-btn tv-pressable tv-icon-btn mx-1 rounded-xl transition-transform duration-150 active:scale-90"
+                  className="tv-brushed-gold-btn tv-gold-glow tv-pressable tv-icon-btn mx-1 rounded-full"
                 >
                   <Plus
                     className="size-5 font-bold text-[var(--color-on-accent)]"
@@ -83,7 +83,7 @@ export function BottomNav() {
                 aria-label={tab.label}
                 onClick={() => triggerHaptic("light")}
                 className={cn(
-                  "tv-pressable flex min-h-11 flex-col items-center justify-center gap-1 py-2 text-[10px] transition-colors duration-150",
+                  "tv-pressable flex min-h-11 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium tracking-wide transition-colors",
                   isActive
                     ? "tv-active-glow font-bold text-[var(--color-accent)]"
                     : "text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"

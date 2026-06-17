@@ -88,7 +88,7 @@ export function JobCard({ job, onAction }: JobCardProps) {
       </div>
 
       <div
-        className="tv-glass-card relative transition-transform duration-200"
+        className="tv-glass-card relative transition-transform duration-300 ease-out"
         style={{
           transform: `translateX(${offsetX}px)`,
           borderLeft: `3px solid ${getBorderColor(job.borderStatus)}`,

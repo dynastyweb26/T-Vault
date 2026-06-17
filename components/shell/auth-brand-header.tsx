@@ -4,13 +4,13 @@ import Image from "next/image";
 
 export function AuthBrandHeader() {
   return (
-    <div className="mb-8">
+    <div className="mb-10">
       <Image
         src="/logo.png"
         alt="T-Vault"
         width={180}
         height={48}
-        className="h-9 w-auto"
+        className="tv-brand-mark h-10 w-auto"
         priority
       />
     </div>

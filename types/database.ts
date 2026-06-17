@@ -8,6 +8,7 @@ export interface UserProfile {
   company_name: string | null;
   mc_number: string | null;
   dot_number: string | null;
+  truck_info: string | null;
   phone: string | null;
   theme_preference: ThemePreference | null;
   onboarding_completed: boolean | null;

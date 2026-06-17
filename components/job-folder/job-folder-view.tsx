@@ -7,12 +7,14 @@ import {
   AlertCircle,
   AlertTriangle,
   Bot,
+  Camera,
   Check,
   ChevronDown,
   ChevronLeft,
   Clock,
   DollarSign,
   FileText,
+  Image as ImageIcon,
   Loader2,
   MapPin,
   MoreVertical,
@@ -29,6 +31,7 @@ import { useJobFolder } from "@/hooks/use-job-folder";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
+import { TvTextarea } from "@/components/tv/tv-textarea";
 import { triggerHaptic } from "@/lib/haptics";
 import { saveLoadsScrollPosition } from "@/lib/job-folder/scroll";
 import {
@@ -51,7 +54,7 @@ import {
   DETENTION_FREE_MINUTES,
 } from "@/lib/job-folder/detention";
 import { generateDetentionInvoicePdf } from "@/lib/job-folder/detention-invoice";
-import { generateAndSaveLoadInvoice } from "@/lib/job-folder/invoice";
+import { generateAndSaveLoadInvoice, formatMissingInvoiceFieldsMessage } from "@/lib/job-folder/invoice";
 import { uploadJobDocument, saveDocumentFromBlob } from "@/lib/job-folder/upload";
 import {
   isDocumentParsing,
@@ -101,6 +104,7 @@ import {
 import { formatCurrency, formatCurrencyDetailed, formatShortDate } from "@/lib/dashboard/format";
 import { updateStreak } from "@/lib/streak";
 import { APP_ROUTES, TEXT_LIMITS } from "@/lib/constants";
+import { sanitizeText, validateTextLength } from "@/lib/validation";
 import type { BrokerBadgeInfo, DetentionLocation, MilestoneCheck } from "@/types/job-folder";
 import type { AiConfidence, JobDocument } from "@/types/jobs";
 import type { CrossValidationConflict } from "@/lib/job-folder/ai-types";
@@ -226,9 +230,11 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     amount: "",
     date: new Date().toISOString().slice(0, 10),
     description: "",
-    noReceipt: false,
+    receiptMode: "receipt" as "receipt" | "no_receipt",
     noReceiptReason: "",
   });
+  const [expenseReceiptFile, setExpenseReceiptFile] = useState<File | null>(null);
+  const [expenseSaving, setExpenseSaving] = useState(false);
   const [aiBanner, setAiBanner] = useState<"rate_limited" | "parse_failed" | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [failedParseDoc, setFailedParseDoc] = useState<{
@@ -428,6 +434,12 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         setReviewOpen(true);
       } else if (err instanceof Error && err.message === "no_invoice_to_regenerate") {
         window.alert("No invoice exists yet to regenerate.");
+      } else if (
+        err instanceof Error &&
+        err.message.startsWith("missing_invoice_fields:")
+      ) {
+        const missing = err.message.replace("missing_invoice_fields:", "").split(",");
+        window.alert(formatMissingInvoiceFieldsMessage(missing));
       } else {
         window.alert(
           regenerate
@@ -1441,7 +1453,86 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         </div>
         <TvInput label="Amount" inputMode="decimal" value={expenseForm.amount} onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value.replace(/[^0-9.]/g, "") }))} className="mt-4" />
         <TvInput label="Date" type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((f) => ({ ...f, date: e.target.value }))} className="mt-4" />
-        <TvButton className="mt-4" onClick={async () => {
+        <TvTextarea
+          label="Description"
+          value={expenseForm.description}
+          onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
+          maxLength={TEXT_LIMITS.description}
+          rows={2}
+          className="mt-4"
+        />
+        <div className="mt-4">
+          <p className="tv-label mb-2">Receipt</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setExpenseForm((f) => ({ ...f, receiptMode: "receipt" }))}
+              className={`tv-chip h-11 ${expenseForm.receiptMode === "receipt" ? "tv-chip-active" : "tv-chip-inactive"}`}
+            >
+              Receipt
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setExpenseForm((f) => ({ ...f, receiptMode: "no_receipt" }));
+                setExpenseReceiptFile(null);
+              }}
+              className={`tv-chip h-11 ${expenseForm.receiptMode === "no_receipt" ? "tv-chip-active" : "tv-chip-inactive"}`}
+            >
+              No receipt
+            </button>
+          </div>
+        </div>
+        {expenseForm.receiptMode === "receipt" ? (
+          <div className="mt-4 space-y-2">
+            <label className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
+              <Camera className="size-6 text-[var(--color-accent)]" strokeWidth={2} />
+              <span className="text-[15px]">Take a Photo</span>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                capture="environment"
+                className="hidden"
+                onChange={(event) => {
+                  setExpenseReceiptFile(event.target.files?.[0] ?? null);
+                }}
+              />
+            </label>
+            <label className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
+              <ImageIcon className="size-6 text-[var(--color-accent)]" strokeWidth={2} />
+              <span className="text-[15px]">Choose from Gallery</span>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(event) => {
+                  setExpenseReceiptFile(event.target.files?.[0] ?? null);
+                }}
+              />
+            </label>
+            {expenseReceiptFile ? (
+              <p className="flex items-center gap-2 text-[13px] text-[var(--color-text-secondary)]">
+                <FileText className="size-4 text-[var(--color-success-text)]" />
+                {expenseReceiptFile.name}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <TvTextarea
+            label="Why is there no receipt?"
+            value={expenseForm.noReceiptReason}
+            onChange={(e) =>
+              setExpenseForm((f) => ({ ...f, noReceiptReason: e.target.value }))
+            }
+            maxLength={TEXT_LIMITS.description}
+            rows={2}
+            className="mt-4"
+          />
+        )}
+        <TvButton
+          className="mt-4"
+          loading={expenseSaving}
+          onClick={async () => {
           if (!user) return;
           const amount = Number(expenseForm.amount);
           if (!expenseForm.amount.trim() || Number.isNaN(amount) || amount <= 0) {
@@ -1452,20 +1543,74 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             window.alert("Select an expense date.");
             return;
           }
-          const { error } = await createClient().from("expenses").insert({
+          if (
+            expenseForm.receiptMode === "no_receipt" &&
+            validateTextLength(
+              expenseForm.noReceiptReason,
+              TEXT_LIMITS.description,
+              "Note"
+            )
+          ) {
+            window.alert("Explain why there is no receipt.");
+            return;
+          }
+
+          setExpenseSaving(true);
+          const supabase = createClient();
+          const { data: inserted, error } = await supabase.from("expenses").insert({
             user_id: user.id,
             job_id: jobId,
             category: expenseForm.category,
             amount,
             expense_date: expenseForm.date,
-            description: expenseForm.description || null,
-          });
-          if (error) {
+            description: sanitizeText(expenseForm.description) || null,
+            no_receipt_reason:
+              expenseForm.receiptMode === "no_receipt"
+                ? sanitizeText(expenseForm.noReceiptReason)
+                : null,
+          }).select("id").single();
+
+          if (error || !inserted?.id) {
+            setExpenseSaving(false);
             window.alert("Could not save expense. Try again.");
             return;
           }
+
+          if (expenseForm.receiptMode === "receipt" && expenseReceiptFile) {
+            const formData = new FormData();
+            formData.append("file", expenseReceiptFile);
+            formData.append("expenseId", inserted.id);
+
+            const uploadResponse = await fetch("/api/expenses/upload-receipt", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+              await supabase
+                .from("expenses")
+                .delete()
+                .eq("id", inserted.id)
+                .eq("user_id", user.id)
+                .eq("job_id", jobId);
+              setExpenseSaving(false);
+              window.alert("Could not save expense. Try again.");
+              return;
+            }
+          }
+
           triggerHaptic("medium");
+          setExpenseSaving(false);
           setExpenseSheetOpen(false);
+          setExpenseReceiptFile(null);
+          setExpenseForm({
+            category: "fuel",
+            amount: "",
+            date: new Date().toISOString().slice(0, 10),
+            description: "",
+            receiptMode: "receipt",
+            noReceiptReason: "",
+          });
           await refresh();
         }}>Save Expense</TvButton>
       </BottomSheet>
