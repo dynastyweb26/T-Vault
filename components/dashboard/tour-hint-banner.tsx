@@ -1,33 +1,34 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { Compass, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
+import { createClient } from "@/lib/supabase/client";
+import {
+  dismissTourBanner,
+  shouldShowTourBanner,
+} from "@/lib/profile/tour-banner";
 
 export function TourHintBanner() {
-  const { profile, patchProfile } = useAuth();
+  const { user, profile, patchProfile } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
   const dismissingRef = useRef(false);
 
   const dismiss = useCallback(async () => {
-    if (dismissingRef.current || !profile) return;
+    if (dismissingRef.current || !user || !profile) return;
 
     dismissingRef.current = true;
-    try {
-      const response = await fetch("/api/profile/dismiss-tour-hint", {
-        method: "POST",
-      });
+    const result = await dismissTourBanner(supabase, user.id);
 
-      if (!response.ok) {
-        throw new Error("dismiss_failed");
-      }
-
-      patchProfile({ tour_banner_dismissed: true });
-    } catch {
+    if (!result.ok) {
       dismissingRef.current = false;
+      return;
     }
-  }, [patchProfile, profile]);
 
-  if (!profile || profile.tour_banner_dismissed === true) {
+    patchProfile({ tour_banner_dismissed: true });
+  }, [patchProfile, profile, supabase, user]);
+
+  if (!shouldShowTourBanner(profile)) {
     return null;
   }
 
@@ -42,6 +43,9 @@ export function TourHintBanner() {
           void dismiss();
         }
       }}
+      onTouchStart={(event) => event.stopPropagation()}
+      onTouchMove={(event) => event.stopPropagation()}
+      onTouchEnd={(event) => event.stopPropagation()}
       tabIndex={0}
       aria-label="Dismiss tour hint: New here? Find the full App Tour in your Profile."
     >
