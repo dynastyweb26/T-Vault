@@ -57,6 +57,7 @@ export async function fetchLoadsData(
       .select("*")
       .eq("user_id", userId)
       .neq("is_template", true)
+      .is("deleted_at", null)
       .order("updated_at", { ascending: false }),
     supabase.from("documents").select("*").eq("user_id", userId),
     supabase.from("payments").select("*").eq("user_id", userId),

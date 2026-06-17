@@ -119,6 +119,7 @@ export async function updateUserStatsOnComplete(
     .from("jobs")
     .select("load_value, delivery_date, updated_at, status")
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .in("status", ["awaiting_payment", "paid", "complete", "completed"]);
 
   const monthEarnings = (monthJobs ?? []).reduce((sum, job) => {

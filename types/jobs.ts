@@ -45,6 +45,9 @@ export interface Job {
   cross_validation_conflicts: import("@/lib/job-folder/ai-types").CrossValidationConflict[] | null;
   broker_rating: BrokerRatingValue | null;
   broker_rating_notes: string | null;
+  deleted_at: string | null;
+  detention_start_time: string | null;
+  detention_location_type: "pickup" | "delivery" | null;
 }
 
 export interface JobDocument {

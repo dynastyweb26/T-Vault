@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchDashboardData } from "@/lib/dashboard/queries";
 import { useAuth } from "@/components/providers/auth-provider";
+import { onJobsChanged } from "@/lib/loads/job-events";
 import type { DashboardData } from "@/types/jobs";
 
 export function useDashboardData() {
@@ -39,6 +40,12 @@ export function useDashboardData() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    return onJobsChanged(() => {
+      void load(true);
+    });
   }, [load]);
 
   return {

@@ -13,7 +13,8 @@ export async function fetchTaxSummaryData(
       .from("jobs")
       .select("*")
       .eq("user_id", userId)
-      .neq("is_template", true),
+      .neq("is_template", true)
+      .is("deleted_at", null),
     supabase.from("expenses").select("*").eq("user_id", userId),
   ]);
 

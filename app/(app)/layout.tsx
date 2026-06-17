@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { AppShell } from "@/components/shell/app-shell";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { NewJobProvider } from "@/components/providers/new-job-provider";
+import { DeleteUndoProvider } from "@/components/providers/delete-undo-provider";
 import { NewJobSheet } from "@/components/jobs/new-job-sheet";
 
 const AppTourProvider = dynamic(
@@ -22,10 +23,12 @@ export default function AppLayout({
   return (
     <RouteGuard mode="app">
       <NewJobProvider>
-        <AppTourProvider>
-          <AppShell>{children}</AppShell>
-          <NewJobSheet />
-        </AppTourProvider>
+        <DeleteUndoProvider>
+          <AppTourProvider>
+            <AppShell>{children}</AppShell>
+            <NewJobSheet />
+          </AppTourProvider>
+        </DeleteUndoProvider>
       </NewJobProvider>
     </RouteGuard>
   );
