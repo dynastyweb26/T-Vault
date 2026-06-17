@@ -1,12 +1,19 @@
-import { Shield } from "lucide-react";
+import { Shield, WifiOff } from "lucide-react";
 
-export function SessionBanner() {
+export function SessionBanner({ offline = false }: { offline?: boolean }) {
   return (
     <div
       role="status"
-      className="border-b border-[var(--color-warning)]/20 bg-[var(--color-warning-bg)] px-5 py-3 text-[15px] text-[var(--color-warning-text)]"
+      className="flex items-center gap-2 border-b border-[var(--color-warning)]/20 bg-[var(--color-warning-bg)] px-5 py-3 text-[15px] text-[var(--color-warning-text)]"
     >
-      Session expires soon — connect to stay signed in.
+      {offline ? (
+        <WifiOff className="size-4 shrink-0" strokeWidth={2} aria-hidden />
+      ) : (
+        <Shield className="size-4 shrink-0" strokeWidth={2} aria-hidden />
+      )}
+      {offline
+        ? "You are offline — reconnect to sync your latest data."
+        : "Session expires soon — connect to stay signed in."}
     </div>
   );
 }

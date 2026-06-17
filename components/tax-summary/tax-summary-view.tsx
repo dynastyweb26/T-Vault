@@ -39,32 +39,15 @@ export function TaxSummaryView({
   onExportCsv,
 }: TaxSummaryViewProps) {
   const [jobsExpanded, setJobsExpanded] = useState(false);
+  const isEmpty =
+    !data || (data.totalEarned === 0 && data.totalExpenses === 0);
 
   if (loading) {
     return <div className="tv-skeleton mx-5 mt-6 h-64 rounded-2xl" />;
   }
 
-  if (!data || (data.totalEarned === 0 && data.totalExpenses === 0)) {
-    return (
-      <section className="tv-empty-state mx-5 mt-10">
-        <Calendar
-          className="size-12 text-[var(--color-accent)]"
-          strokeWidth={2}
-          aria-hidden
-        />
-        <h2 className="tv-card-title mt-4">No data for this period</h2>
-        <p className="tv-body mt-2 max-w-xs text-[var(--color-text-secondary)]">
-          Complete loads and log expenses to build your tax summary.
-        </p>
-        <Link href={APP_ROUTES.loads} className="mt-6 w-full max-w-xs">
-          <TvButton>View My Loads</TvButton>
-        </Link>
-      </section>
-    );
-  }
-
-  const netPositive = data.netIncome >= 0;
-  const maxExpense = data.expenseBreakdown[0]?.amount ?? 1;
+  const netPositive = (data?.netIncome ?? 0) >= 0;
+  const maxExpense = data?.expenseBreakdown[0]?.amount ?? 1;
 
   return (
     <div className="flex flex-col gap-4 px-5">
@@ -116,6 +99,23 @@ export function TaxSummaryView({
         </div>
       ) : null}
 
+      {isEmpty ? (
+        <section className="tv-empty-state mt-6">
+          <Calendar
+            className="size-12 text-[var(--color-accent)]"
+            strokeWidth={2}
+            aria-hidden
+          />
+          <h2 className="tv-card-title mt-4">No data for this period</h2>
+          <p className="tv-body mt-2 max-w-xs text-[var(--color-text-secondary)]">
+            Complete loads and log expenses to build your tax summary.
+          </p>
+          <Link href={APP_ROUTES.loads} className="mt-6 w-full max-w-xs">
+            <TvButton>View My Loads</TvButton>
+          </Link>
+        </section>
+      ) : data ? (
+        <>
       <div className="grid grid-cols-2 gap-3">
         <article className="tv-glass-card rounded-2xl p-4">
           <p className="tv-caption opacity-80">Total Earned</p>
@@ -281,6 +281,8 @@ export function TaxSummaryView({
       <p className="text-[13px] text-[var(--color-text-muted)]">
         For reference only. Not tax advice. Consult a qualified tax professional.
       </p>
+        </>
+      ) : null}
     </div>
   );
 }

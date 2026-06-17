@@ -85,10 +85,10 @@ export async function markJobAsPaid(
   supabase: SupabaseClient,
   userId: string,
   jobId: string
-): Promise<Job | null> {
+): Promise<{ job: Job | null; error: boolean }> {
   const paidDate = new Date().toISOString().slice(0, 10);
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("jobs")
     .update({
       status: "paid",
@@ -101,5 +101,5 @@ export async function markJobAsPaid(
     .select("*")
     .maybeSingle();
 
-  return (data as Job | null) ?? null;
+  return { job: (data as Job | null) ?? null, error: Boolean(error) };
 }

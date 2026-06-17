@@ -146,7 +146,16 @@ export function NewJobSheet() {
       : null;
 
     setErrors({ jobName: jobNameError, loadValue: loadValueError });
-    if (jobNameError) return;
+    if (jobNameError || loadValueError) return;
+
+    if (form.saveAsTemplate && !form.templateName.trim()) {
+      setErrors({
+        jobName: jobNameError,
+        loadValue: loadValueError,
+        templateName: "Enter a template name to save this load.",
+      });
+      return;
+    }
 
     setLoading(true);
     const supabase = createClient();
@@ -187,7 +196,7 @@ export function NewJobSheet() {
     }
 
     if (form.saveAsTemplate && form.templateName.trim()) {
-      await supabase.from("jobs").insert({
+      const { error: templateError } = await supabase.from("jobs").insert({
         user_id: user.id,
         job_name: sanitizeText(form.templateName),
         template_name: sanitizeText(form.templateName),
@@ -206,6 +215,10 @@ export function NewJobSheet() {
         is_template: true,
         updated_at: new Date().toISOString(),
       });
+
+      if (templateError) {
+        setErrors({ jobName: "Load created, but template save failed." });
+      }
     }
 
     triggerHaptic("medium");
@@ -268,6 +281,38 @@ export function NewJobSheet() {
             }))
           }
           error={errors.loadValue}
+        />
+
+        <TvInput
+          label="Broker"
+          borderVariant="gold"
+          labelVariant="readable"
+          maxLength={TEXT_LIMITS.broker}
+          counter={getTextCounter(form.brokerName, TEXT_LIMITS.broker) ?? undefined}
+          value={form.brokerName}
+          onChange={(e) => setForm((f) => ({ ...f, brokerName: e.target.value }))}
+        />
+
+        <TvInput
+          label="Pickup Location"
+          borderVariant="gold"
+          labelVariant="readable"
+          maxLength={TEXT_LIMITS.location}
+          value={form.pickupLocation}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, pickupLocation: e.target.value }))
+          }
+        />
+
+        <TvInput
+          label="Delivery Location"
+          borderVariant="gold"
+          labelVariant="readable"
+          maxLength={TEXT_LIMITS.location}
+          value={form.deliveryLocation}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, deliveryLocation: e.target.value }))
+          }
         />
 
         <div>
@@ -335,6 +380,7 @@ export function NewJobSheet() {
             onChange={(e) =>
               setForm((f) => ({ ...f, templateName: e.target.value }))
             }
+            error={errors.templateName}
           />
         ) : null}
 

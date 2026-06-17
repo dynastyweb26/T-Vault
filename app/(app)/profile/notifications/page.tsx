@@ -19,15 +19,21 @@ const PREFS: Array<{ key: keyof NotificationPreferences; label: string }> = [
 export default function NotificationPrefsPage() {
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from("notification_preferences")
       .select("*")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    if (loadError) {
+      setError("We could not load your notification settings.");
+      return;
+    }
 
     if (data) {
       setPrefs(data as NotificationPreferences);
@@ -54,21 +60,34 @@ export default function NotificationPrefsPage() {
 
   const toggle = async (key: keyof NotificationPreferences) => {
     if (!user || !prefs) return;
+    const previous = prefs;
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
+    setError(null);
     const supabase = createClient();
-    await supabase.from("notification_preferences").upsert({
+    const { error: saveError } = await supabase.from("notification_preferences").upsert({
       ...next,
       user_id: user.id,
       updated_at: new Date().toISOString(),
     });
+
+    if (saveError) {
+      setPrefs(previous);
+      setError("We could not save that preference. Try again.");
+    }
   };
 
   if (!prefs) {
     return (
       <>
         <AppHeader title="Notifications" />
-        <div className="tv-skeleton mx-5 mt-6 h-48 rounded-2xl" />
+        {error ? (
+          <div className="tv-error-state mx-5 mt-6 px-4 py-3">
+            <p className="text-[14px]">{error}</p>
+          </div>
+        ) : (
+          <div className="tv-skeleton mx-5 mt-6 h-48 rounded-2xl" />
+        )}
       </>
     );
   }
@@ -77,6 +96,11 @@ export default function NotificationPrefsPage() {
     <>
       <AppHeader title="Notification Preferences" />
       <div className="mt-6 flex flex-col gap-2 px-5 pb-8">
+        {error ? (
+          <div className="tv-error-state mt-4 px-4 py-3">
+            <p className="text-[14px]">{error}</p>
+          </div>
+        ) : null}
         {PREFS.map(({ key, label }) => (
           <label
             key={key}

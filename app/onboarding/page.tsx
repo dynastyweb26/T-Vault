@@ -5,9 +5,11 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { TvButton } from "@/components/tv/tv-button";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
+import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
-import { hasCompletedOnboarding } from "@/lib/auth-helpers";
+import { getPostAuthRedirect, hasCompletedOnboarding } from "@/lib/auth-helpers";
+import type { UserProfile } from "@/types/database";
 
 const steps = [
   {
@@ -42,7 +44,7 @@ export default function OnboardingPage() {
     }
 
     if (hasCompletedOnboarding(profile)) {
-      router.replace(APP_ROUTES.dashboard);
+      router.replace(getPostAuthRedirect(profile));
     }
   }, [profile, router, user]);
 
@@ -68,6 +70,10 @@ export default function OnboardingPage() {
 
       if (response.ok) {
         await refreshProfile();
+      } else {
+        setError(
+          "We could not finish setting up your account. Check your connection and try again."
+        );
       }
 
       ensuringProfile.current = false;
@@ -123,10 +129,15 @@ export default function OnboardingPage() {
       return;
     }
 
-    patchProfile({ onboarding_completed: true });
-    await refreshProfile();
+    const { data: updatedProfile } = await createClient()
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    patchProfile({ onboarding_completed: true, ...(updatedProfile ?? {}) });
     setLoading(false);
-    router.push(APP_ROUTES.dashboard);
+    router.push(getPostAuthRedirect(updatedProfile as UserProfile | null));
   };
 
   return (

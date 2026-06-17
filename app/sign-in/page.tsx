@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
@@ -14,12 +14,17 @@ import type { UserProfile } from "@/types/database";
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(
+    searchParams.get("error") === "auth_callback_failed"
+      ? "Sign-in could not be completed. Try again."
+      : null
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSignIn = async () => {
@@ -53,7 +58,12 @@ export default function SignInPage() {
         .eq("id", data.user.id)
         .maybeSingle();
 
-      router.replace(getPostAuthRedirect(profile as UserProfile | null));
+      if (!profile) {
+        router.replace(APP_ROUTES.splash);
+        return;
+      }
+
+      router.replace(getPostAuthRedirect(profile as UserProfile));
     }
   };
 
@@ -62,7 +72,7 @@ export default function SignInPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/splash`,
       },
     });
 

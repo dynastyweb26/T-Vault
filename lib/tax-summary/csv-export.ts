@@ -1,5 +1,6 @@
 import type { Expense, Job } from "@/types/jobs";
 import type { TaxSummaryData } from "@/lib/tax-summary/calculations";
+import { isExpenseInMonth } from "@/lib/dashboard/job-status";
 
 function escapeCsv(value: string | number): string {
   const str = String(value);
@@ -55,7 +56,16 @@ export function generateTaxSummaryCsv(
   lines.push("");
   lines.push("Expenses");
   lines.push("Date,Category,Amount,Description,Job ID");
-  expenses.forEach((expense) => {
+  expenses
+    .filter((expense) =>
+      isExpenseInMonth(
+        expense.expense_date,
+        expense.created_at,
+        data.range.start,
+        data.range.end
+      )
+    )
+    .forEach((expense) => {
     lines.push(
       [
         expense.expense_date ?? expense.created_at?.slice(0, 10) ?? "",

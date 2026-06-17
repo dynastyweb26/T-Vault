@@ -19,6 +19,7 @@ interface AuthContextValue {
   profile: UserProfile | null;
   loading: boolean;
   sessionWarning: boolean;
+  offline: boolean;
   refreshProfile: () => Promise<void>;
   patchProfile: (updates: Partial<UserProfile>) => void;
   recordActivity: () => Promise<void>;
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionWarning, setSessionWarning] = useState(false);
+  const [offline, setOffline] = useState(false);
 
   const refreshProfile = useCallback(async () => {
     if (!user || !supabase) {
@@ -91,6 +93,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (error && !navigator.onLine) {
+        const {
+          data: { session: cachedSession },
+        } = await supabase.auth.getSession();
+        if (cachedSession?.user) {
+          setSession(cachedSession);
+          setUser(cachedSession.user);
+          setOffline(true);
+          setSessionWarning(true);
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (error && navigator.onLine) {
         setSessionWarning(true);
       }
 
@@ -125,8 +141,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const handleOnline = () => setSessionWarning(false);
-    const handleOffline = () => setSessionWarning(true);
+    const handleOnline = () => {
+      setOffline(false);
+      setSessionWarning(false);
+    };
+    const handleOffline = () => {
+      setOffline(true);
+      setSessionWarning(true);
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -154,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       loading,
       sessionWarning,
+      offline,
       refreshProfile,
       patchProfile,
       recordActivity,
@@ -165,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       loading,
       sessionWarning,
+      offline,
       refreshProfile,
       patchProfile,
       recordActivity,

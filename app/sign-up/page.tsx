@@ -79,7 +79,7 @@ export default function SignUpPage() {
           full_name: cleanedName,
           referred_by: cleanedReferral || null,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/splash`,
       },
     });
     setLoading(false);
@@ -92,28 +92,28 @@ export default function SignUpPage() {
     }
 
     if (data.user) {
-      const signupResponse = await fetch("/api/auth/complete-signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: cleanedName,
-          referredBy: cleanedReferral,
-        }),
-      });
+      if (data.session) {
+        const signupResponse = await fetch("/api/auth/complete-signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: cleanedName,
+            referredBy: cleanedReferral,
+          }),
+        });
 
-      if (!signupResponse.ok) {
-        setFormError(
-          "Your account was created but profile setup failed. Sign in and try again."
-        );
+        if (!signupResponse.ok) {
+          setFormError(
+            "Your account was created but profile setup failed. Sign in and try again."
+          );
+          return;
+        }
+
+        router.replace(APP_ROUTES.splash);
         return;
       }
 
-      if (!data.session) {
-        setConfirmationSent(true);
-        return;
-      }
-
-      router.replace(APP_ROUTES.onboarding);
+      setConfirmationSent(true);
     }
   };
 
@@ -122,7 +122,7 @@ export default function SignUpPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/splash`,
       },
     });
 

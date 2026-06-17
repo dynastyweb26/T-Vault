@@ -34,7 +34,17 @@ export default function DeleteAccountPage() {
     }
 
     const result = await response.json();
-    setProgress(result.progress ?? []);
+    const steps = (result.progress ?? []) as Array<{ step: string; ok: boolean }>;
+    setProgress(steps);
+
+    if (steps.some((step) => !step.ok)) {
+      setError(
+        "Account deletion did not finish completely. Contact support before signing in again."
+      );
+      setLoading(false);
+      return;
+    }
+
     router.push(APP_ROUTES.splash);
   };
 

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
+import type { UserProfile } from "@/types/database";
 import { useJobFolder } from "@/hooks/use-job-folder";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { TvButton } from "@/components/tv/tv-button";
@@ -425,6 +426,8 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     } catch (err) {
       if (err instanceof Error && err.message === "ai_review_required") {
         setReviewOpen(true);
+      } else if (err instanceof Error && err.message === "no_invoice_to_regenerate") {
+        window.alert("No invoice exists yet to regenerate.");
       } else {
         window.alert(
           regenerate
@@ -441,7 +444,11 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const markJobAsPaid = async () => {
     if (!user || !job) return;
     const supabase = createClient();
-    const updated = await markJobPaidInDb(supabase, user.id, job.id);
+    const { job: updated } = await markJobPaidInDb(supabase, user.id, job.id);
+    if (!updated) {
+      window.alert("Could not mark this load as paid. Try again.");
+      return;
+    }
     triggerHaptic("medium");
     setPaymentStatusSheetOpen(false);
     await refresh();
@@ -569,9 +576,10 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   };
 
   const handleFileSelect = async (file: File, poorQuality = false) => {
-    if (!uploadType || !user) return;
+    if (!uploadType || !user || uploading) return;
     const docType = uploadType;
     setPendingFile(file);
+    setUploading(true);
     try {
       const { documentId } = await uploadJobDocument(createClient(), {
         userId: user.id,
@@ -595,17 +603,23 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       } else {
         window.alert("Upload failed — check your connection and try again.");
       }
+    } finally {
+      setUploading(false);
     }
   };
 
   const confirmComplete = async () => {
-    if (!user || !checklistComplete) return;
+    if (!user || !checklistComplete || job.status !== "active") return;
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("jobs")
       .update({ status: "awaiting_payment", updated_at: new Date().toISOString() })
       .eq("id", jobId)
       .eq("user_id", user.id);
+    if (error) {
+      window.alert("Could not update load status. Try again.");
+      return;
+    }
     await updateStreak(supabase, user.id);
     await refreshProfile();
     setPaymentSheetOpen(true);
@@ -615,31 +629,59 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const finalizePayment = async () => {
     if (!user || !job) return;
     const supabase = createClient();
-    await supabase.from("payments").insert({
-      user_id: user.id,
-      job_id: jobId,
-      amount: job.load_value,
-      payment_type: job.payment_type,
-      expected_date: paymentDate,
-      status: "pending",
-    });
-    await supabase
+
+    const { data: existingPayment } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("job_id", jobId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!existingPayment) {
+      const { error: paymentError } = await supabase.from("payments").insert({
+        user_id: user.id,
+        job_id: jobId,
+        amount: job.load_value,
+        payment_type: job.payment_type,
+        expected_date: paymentDate,
+        status: "pending",
+      });
+
+      if (paymentError) {
+        window.alert("Could not save payment details. Try again.");
+        return;
+      }
+
+      await updateUserStatsOnComplete(
+        supabase,
+        user.id,
+        job.load_value ?? 0
+      );
+    }
+
+    const { error: jobError } = await supabase
       .from("jobs")
       .update({ payment_expected_date: paymentDate })
       .eq("id", jobId)
       .eq("user_id", user.id);
 
-    const updatedProfile = await updateUserStatsOnComplete(
-      supabase,
-      user.id,
-      job.load_value ?? 0
-    );
+    if (jobError) {
+      window.alert("Could not save payment details. Try again.");
+      return;
+    }
+
     await refreshProfile();
 
+    const { data: updatedProfile } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
     const achieved = await fetchAchievedMilestones(supabase, user.id);
-    const monthEarnings = (updatedProfile?.best_month_earnings ?? 0);
+    const monthEarnings = updatedProfile?.best_month_earnings ?? 0;
     const newMilestones = updatedProfile
-      ? detectNewMilestones(updatedProfile, monthEarnings, achieved)
+      ? detectNewMilestones(updatedProfile as UserProfile, monthEarnings, achieved)
       : [];
 
     if (newMilestones.length > 0) {
@@ -702,7 +744,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                     });
                     setMoreOpen(false);
                   }},
-                  { label: "Mark as Complete", action: confirmComplete, hidden: !checklistComplete },
+                  { label: "Mark as Complete", action: confirmComplete, hidden: !checklistComplete || job.status !== "active" },
                   { label: "Cancel Load", action: async () => {
                     if (window.confirm("Cancel this load? Documents will be preserved.")) {
                       await updateJob({ status: "cancelled" });
@@ -1124,7 +1166,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             onClick={() => {
               if (
                 window.confirm(
-                  "Mark this load as complete? It will move to your completed loads history."
+                  "Mark this load as complete? It will move to Awaiting Payment until you record payment."
                 )
               ) {
                 confirmComplete();
@@ -1147,14 +1189,14 @@ export function JobFolderView({ jobId }: { jobId: string }) {
 
       {/* Modals & sheets */}
       <BottomSheet open={Boolean(uploadType)} onClose={() => setUploadType(null)} ariaLabel="Upload document">
-        <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" id="doc-upload" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+        <input type="file" accept="image/jpeg,image/png,application/pdf" capture="environment" className="hidden" id="doc-upload" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
         <div className="space-y-2">
           <label htmlFor="doc-upload" className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
             <AlertCircle className="size-6 text-[var(--color-accent)]" strokeWidth={2} /> Take a Photo
           </label>
           <label className="flex h-16 cursor-pointer items-center gap-3 rounded-2xl tv-glass-card px-4">
             <FileText className="size-6 text-[var(--color-accent)]" strokeWidth={2} /> Choose from Gallery
-            <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+            <input type="file" accept="image/jpeg,image/png,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
           </label>
           <button type="button" onClick={() => setUploadType(null)} className="w-full py-3 text-center text-[var(--color-text-muted)]">Cancel</button>
         </div>
@@ -1401,14 +1443,27 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         <TvInput label="Date" type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((f) => ({ ...f, date: e.target.value }))} className="mt-4" />
         <TvButton className="mt-4" onClick={async () => {
           if (!user) return;
-          await createClient().from("expenses").insert({
+          const amount = Number(expenseForm.amount);
+          if (!expenseForm.amount.trim() || Number.isNaN(amount) || amount <= 0) {
+            window.alert("Enter a valid expense amount.");
+            return;
+          }
+          if (!expenseForm.date) {
+            window.alert("Select an expense date.");
+            return;
+          }
+          const { error } = await createClient().from("expenses").insert({
             user_id: user.id,
             job_id: jobId,
             category: expenseForm.category,
-            amount: Number(expenseForm.amount),
+            amount,
             expense_date: expenseForm.date,
             description: expenseForm.description || null,
           });
+          if (error) {
+            window.alert("Could not save expense. Try again.");
+            return;
+          }
           triggerHaptic("medium");
           setExpenseSheetOpen(false);
           await refresh();

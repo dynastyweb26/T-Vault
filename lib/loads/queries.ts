@@ -62,6 +62,10 @@ export async function fetchLoadsData(
     supabase.from("payments").select("*").eq("user_id", userId),
   ]);
 
+  if (jobsResult.error || documentsResult.error || paymentsResult.error) {
+    throw new Error("loads_fetch_failed");
+  }
+
   const jobs = (jobsResult.data ?? []) as Job[];
   const docsByJob = groupDocumentsByJob(
     (documentsResult.data ?? []) as JobDocument[]

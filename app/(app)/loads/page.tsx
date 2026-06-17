@@ -26,6 +26,7 @@ export default function LoadsPage() {
   const [tab, setTab] = useState<LoadsTabId>("active");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeJobs, setActiveJobs] = useState<DashboardJobView[]>([]);
   const [awaitingJobs, setAwaitingJobs] = useState<Job[]>([]);
   const [completedJobs, setCompletedJobs] = useState<Job[]>([]);
@@ -42,13 +43,19 @@ export default function LoadsPage() {
   const loadJobs = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const supabase = createClient();
-    const data = await fetchLoadsData(supabase, user.id);
-    setActiveJobs(data.activeJobs);
-    setAwaitingJobs(data.awaitingJobs);
-    setCompletedJobs(data.completedJobs);
-    setDocsByJob(data.docsByJob);
-    setLoading(false);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const data = await fetchLoadsData(supabase, user.id);
+      setActiveJobs(data.activeJobs);
+      setAwaitingJobs(data.awaitingJobs);
+      setCompletedJobs(data.completedJobs);
+      setDocsByJob(data.docsByJob);
+    } catch {
+      setError("We could not load your loads. Pull to refresh and try again.");
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -82,8 +89,18 @@ export default function LoadsPage() {
     if (!user) return;
     setMarkingId(job.id);
     const supabase = createClient();
-    const updated = await markJobAsPaid(supabase, user.id, job.id);
+    const { job: updated, error: markError } = await markJobAsPaid(
+      supabase,
+      user.id,
+      job.id
+    );
     setMarkingId(null);
+
+    if (markError || !updated) {
+      setError("Could not mark this load as paid. Try again.");
+      return;
+    }
+
     await loadJobs();
 
     if (updated && updated.broker_name?.trim() && !updated.broker_rating) {
@@ -111,6 +128,12 @@ export default function LoadsPage() {
           }}
         />
       </div>
+
+      {error ? (
+        <div className="tv-error-state mx-5 mt-4 px-4 py-3">
+          <p className="text-[14px]">{error}</p>
+        </div>
+      ) : null}
 
       <div className="mx-5 mt-4">
         <LoadsSegmentTabs

@@ -5,6 +5,13 @@ export function hasCompletedOnboarding(profile: UserProfile | null): boolean {
   return profile?.onboarding_completed === true;
 }
 
+export function hasCompletedProfileSetup(profile: UserProfile | null): boolean {
+  return (
+    profile?.profile_setup_completed === true ||
+    profile?.profile_setup_skipped === true
+  );
+}
+
 export function getPostAuthRedirect(profile: UserProfile | null): string {
   if (!profile?.onboarding_completed) {
     return APP_ROUTES.onboarding;

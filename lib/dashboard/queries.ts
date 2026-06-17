@@ -96,6 +96,16 @@ export async function fetchDashboardData(
 
   const jobs = (jobsResult.data ?? []) as Job[];
   const expenses = (expensesResult.data ?? []) as Expense[];
+
+  if (
+    jobsResult.error ||
+    expensesResult.error ||
+    paymentsResult.error ||
+    documentsResult.error
+  ) {
+    throw new Error("dashboard_fetch_failed");
+  }
+
   const payments = (paymentsResult.data ?? []) as Payment[];
   const docsByJob = groupDocumentsByJob(
     (documentsResult.data ?? []) as JobDocument[]
@@ -150,7 +160,7 @@ export async function fetchDashboardData(
     projectedAnnual,
     activeLoadsCount: activeJobsRaw.length,
     totalMilesThisMonth: milesThisMonth,
-    streakDays: profile?.streak_days ?? 1,
+    streakDays: profile?.streak_days ?? 0,
     expensesThisMonth,
     netSoFar: earnedThisMonth - expensesThisMonth,
     activeJobs,
