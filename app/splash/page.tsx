@@ -3,18 +3,22 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import { getPostAuthRedirect } from "@/lib/auth-helpers";
 import type { UserProfile } from "@/types/database";
 
 export default function SplashPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [status, setStatus] = useState("Checking your account...");
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
     let active = true;
+    const supabase = createClient();
 
     const boot = async () => {
       const {
@@ -70,7 +74,7 @@ export default function SplashPage() {
       active = false;
       clearTimeout(timer);
     };
-  }, [router, supabase]);
+  }, [router]);
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center bg-[#0A0A0A] px-5 text-center">
