@@ -6,6 +6,7 @@ export const TEXT_LIMITS = {
   description: 500,
   company: 100,
   fullName: 80,
+  truckInfo: 200,
   brokerRatingNotes: 200,
 } as const;
 

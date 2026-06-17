@@ -4,7 +4,7 @@ export function SessionBanner({ offline = false }: { offline?: boolean }) {
   return (
     <div
       role="status"
-      className="flex items-center gap-2 border-b border-[var(--color-warning)]/20 bg-[var(--color-warning-bg)] px-5 py-3 text-[15px] text-[var(--color-warning-text)]"
+      className="flex items-center gap-2 border-b border-[var(--color-warning)]/25 bg-[var(--color-warning-bg)] px-5 py-3 text-[15px] leading-snug text-[var(--color-warning-text)] backdrop-blur-sm"
     >
       {offline ? (
         <WifiOff className="size-4 shrink-0" strokeWidth={2} aria-hidden />
@@ -20,7 +20,7 @@ export function SessionBanner({ offline = false }: { offline?: boolean }) {
 
 export function DataProtectionBanner() {
   return (
-    <div className="tv-glass-card flex items-start gap-3 rounded-2xl px-4 py-3">
+    <div className="tv-glass-card flex items-start gap-3 rounded-2xl border-[var(--color-accent)]/15 px-4 py-3.5">
       <Shield
         className="mt-0.5 size-5 shrink-0 text-[var(--color-accent)]"
         strokeWidth={2}

@@ -3,10 +3,28 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateReferralCode } from "@/lib/referral";
 import { TEXT_LIMITS } from "@/lib/constants";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { sanitizeText, validateReferralCode, validateTextLength } from "@/lib/validation";
+
+const SIGNUP_MAX_ATTEMPTS = 5;
+const SIGNUP_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    const rateLimit = checkRateLimit(
+      `signup:${ip}`,
+      SIGNUP_MAX_ATTEMPTS,
+      SIGNUP_WINDOW_MS
+    );
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.retryAfterMs);
+    }
+
     const supabase = await createClient();
     const {
       data: { user },

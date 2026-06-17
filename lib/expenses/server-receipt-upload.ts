@@ -13,27 +13,37 @@ import { TRUCK_EXPENSE_FOLDER } from "@/lib/expenses/constants";
 export const GENERIC_RECEIPT_UPLOAD_ERROR =
   "Upload could not be completed. Please try again.";
 
-async function assertTruckExpenseOwnership(
+type ExpenseOwnership = {
+  id: string;
+  job_id: string | null;
+};
+
+async function assertExpenseOwnership(
   supabase: SupabaseClient,
   expenseId: string,
   userId: string
-): Promise<boolean> {
+): Promise<ExpenseOwnership | null> {
   const { data, error } = await supabase
     .from("expenses")
-    .select("id")
+    .select("id, job_id")
     .eq("id", expenseId)
     .eq("user_id", userId)
-    .is("job_id", null)
     .maybeSingle();
 
-  return !error && Boolean(data?.id);
+  if (error || !data?.id) return null;
+  return data as ExpenseOwnership;
 }
 
 function buildExpenseReceiptPath(
   userId: string,
   expenseId: string,
+  jobId: string | null,
   extension: "jpg" | "png" | "pdf"
 ): string {
+  if (jobId) {
+    return `${userId}/${jobId}/expense_receipt_${expenseId}_${Date.now()}.${extension}`;
+  }
+
   return `${userId}/${TRUCK_EXPENSE_FOLDER}/${expenseId}/receipt_${Date.now()}.${extension}`;
 }
 
@@ -80,12 +90,8 @@ export async function processExpenseReceiptUpload(
     throw new Error(GENERIC_RECEIPT_UPLOAD_ERROR);
   }
 
-  const ownsExpense = await assertTruckExpenseOwnership(
-    supabase,
-    expenseId,
-    userId
-  );
-  if (!ownsExpense) {
+  const expense = await assertExpenseOwnership(supabase, expenseId, userId);
+  if (!expense) {
     throw new Error(GENERIC_RECEIPT_UPLOAD_ERROR);
   }
 
@@ -103,7 +109,12 @@ export async function processExpenseReceiptUpload(
   }
 
   const extension = extensionForUploadType(validation.contentType, compressedImage);
-  const path = buildExpenseReceiptPath(userId, expenseId, extension);
+  const path = buildExpenseReceiptPath(
+    userId,
+    expenseId,
+    expense.job_id,
+    extension
+  );
 
   const url = await uploadBufferToStorage(
     supabase,
@@ -112,12 +123,19 @@ export async function processExpenseReceiptUpload(
     contentType
   );
 
-  const { error: updateError } = await supabase
+  let updateQuery = supabase
     .from("expenses")
     .update({ receipt_url: url })
     .eq("id", expenseId)
-    .eq("user_id", userId)
-    .is("job_id", null);
+    .eq("user_id", userId);
+
+  if (expense.job_id) {
+    updateQuery = updateQuery.eq("job_id", expense.job_id);
+  } else {
+    updateQuery = updateQuery.is("job_id", null);
+  }
+
+  const { error: updateError } = await updateQuery;
 
   if (updateError) throw new Error("upload_failed");
 

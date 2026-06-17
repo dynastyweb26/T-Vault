@@ -190,7 +190,11 @@ export function NewJobSheet() {
       .single();
 
     if (error || !job) {
-      setErrors({ jobName: "Could not create load. Try again." });
+      if (error?.message?.includes("free_tier_load_limit")) {
+        setShowUpgradeLock(true);
+      } else {
+        setErrors({ jobName: "Could not create load. Try again." });
+      }
       setLoading(false);
       return;
     }

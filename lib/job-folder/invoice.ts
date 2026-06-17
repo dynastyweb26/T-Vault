@@ -17,6 +17,21 @@ const MARGIN = 18;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const RIGHT_X = PAGE_W - MARGIN;
 
+export function getMissingInvoiceFields(job: Job): string[] {
+  const missing: string[] = [];
+  if (!job.broker_name?.trim()) missing.push("broker name");
+  if (job.load_value == null || job.load_value <= 0) missing.push("load value");
+  return missing;
+}
+
+export function formatMissingInvoiceFieldsMessage(missing: string[]): string {
+  if (missing.length === 0) return "";
+  if (missing.length === 1) {
+    return `Add ${missing[0]} before generating an invoice.`;
+  }
+  return `Add ${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]} before generating an invoice.`;
+}
+
 export function buildInvoiceNumber(count: number): string {
   const year = new Date().getFullYear();
   return `INV-${year}-${String(count + 1).padStart(4, "0")}`;
@@ -409,6 +424,11 @@ export async function generateAndSaveLoadInvoice(
   }
 ): Promise<{ url: string; invoiceNumber: string }> {
   const { job, profile, userId, documents = [], regenerate = false } = params;
+
+  const missingFields = getMissingInvoiceFields(job);
+  if (missingFields.length > 0) {
+    throw new Error(`missing_invoice_fields:${missingFields.join(",")}`);
+  }
 
   if (hasPendingAiForInvoice(job, documents)) {
     throw new Error("ai_review_required");

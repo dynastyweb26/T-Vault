@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
+
+const DELETE_MAX_ATTEMPTS = 3;
+const DELETE_WINDOW_MS = 60 * 60 * 1000;
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +18,15 @@ export async function POST(request: Request) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit(
+      `delete-account:${user.id}`,
+      DELETE_MAX_ATTEMPTS,
+      DELETE_WINDOW_MS
+    );
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.retryAfterMs);
     }
 
     const { confirm } = await request.json();

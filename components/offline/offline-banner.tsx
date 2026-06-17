@@ -30,7 +30,7 @@ export function OfflineBanner() {
   if (justOnline) {
     return (
       <div
-        className="tv-online-flash px-5 py-2 text-center text-[16px] font-medium text-[var(--color-success-text)]"
+        className="tv-online-flash border-b border-[var(--color-success)]/20 px-5 py-2.5 text-center text-[15px] font-medium text-[var(--color-success-text)] backdrop-blur-sm"
         role="status"
       >
         Back online
@@ -42,7 +42,7 @@ export function OfflineBanner() {
 
   return (
     <div
-      className="flex items-center justify-center gap-2 bg-[var(--color-warning-bg)] px-5 py-2 text-[16px] text-[var(--color-warning-text)]"
+      className="flex items-center justify-center gap-2 border-b border-[var(--color-warning)]/20 bg-[var(--color-warning-bg)] px-5 py-2.5 text-[15px] font-medium text-[var(--color-warning-text)] backdrop-blur-sm"
       role="status"
     >
       <WifiOff className="size-5 shrink-0" strokeWidth={2} aria-hidden />
