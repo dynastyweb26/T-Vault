@@ -80,14 +80,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const nextProfile = data as UserProfile;
+    let appliedProfile = nextProfile;
     console.info("[auth] refreshProfile applied", {
       userId: user.id,
       onboarding_completed: nextProfile.onboarding_completed,
       profile_setup_completed: nextProfile.profile_setup_completed,
       profile_setup_skipped: nextProfile.profile_setup_skipped,
     });
-    setProfile(nextProfile);
-    return nextProfile;
+    setProfile((current) => {
+      if (
+        current?.has_dismissed_tour_hint === true &&
+        nextProfile.has_dismissed_tour_hint !== true
+      ) {
+        appliedProfile = { ...nextProfile, has_dismissed_tour_hint: true };
+        return appliedProfile;
+      }
+      return nextProfile;
+    });
+    return appliedProfile;
   }, [supabase, user]);
 
   const patchProfile = useCallback((updates: Partial<UserProfile>) => {

@@ -1,27 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Compass, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 
 export function TourHintBanner() {
   const { profile, patchProfile } = useAuth();
-  const [visible, setVisible] = useState(false);
+  const [optimisticallyDismissed, setOptimisticallyDismissed] = useState(false);
   const dismissingRef = useRef(false);
 
-  useEffect(() => {
-    if (profile && profile.has_dismissed_tour_hint !== true) {
-      setVisible(true);
-    } else {
-      setVisible(false);
-    }
-  }, [profile]);
+  const showBanner =
+    !optimisticallyDismissed &&
+    profile != null &&
+    profile.has_dismissed_tour_hint !== true;
 
   const dismiss = useCallback(async () => {
     if (dismissingRef.current || !profile) return;
 
     dismissingRef.current = true;
-    setVisible(false);
+    setOptimisticallyDismissed(true);
     patchProfile({ has_dismissed_tour_hint: true });
 
     try {
@@ -30,18 +27,16 @@ export function TourHintBanner() {
       });
 
       if (!response.ok) {
-        patchProfile({ has_dismissed_tour_hint: false });
-        setVisible(true);
-        dismissingRef.current = false;
+        throw new Error("dismiss_failed");
       }
     } catch {
+      setOptimisticallyDismissed(false);
       patchProfile({ has_dismissed_tour_hint: false });
-      setVisible(true);
       dismissingRef.current = false;
     }
   }, [patchProfile, profile]);
 
-  if (!visible) return null;
+  if (!showBanner) return null;
 
   return (
     <div
