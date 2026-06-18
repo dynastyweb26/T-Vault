@@ -182,6 +182,7 @@ async function ensureUserProfile(admin, tester, userId) {
     onboarding_completed: true,
     profile_setup_completed: true,
     profile_setup_skipped: false,
+    tour_banner_dismissed: false,
     streak_days: 1,
     last_active_date: new Date().toISOString().slice(0, 10),
     pro_tier: "free",

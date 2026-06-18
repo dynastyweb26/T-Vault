@@ -27,6 +27,6 @@ export async function dismissTourBanner(
 export function shouldShowTourBanner(
   profile: { tour_banner_dismissed?: boolean | null } | null
 ): boolean {
-  if (!profile) return false;
-  return profile.tour_banner_dismissed !== true;
+  // Only hide when dismissal is explicitly persisted — not while profile is loading.
+  return profile?.tour_banner_dismissed !== true;
 }
