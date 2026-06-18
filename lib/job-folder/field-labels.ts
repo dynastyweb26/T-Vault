@@ -17,7 +17,6 @@ const FIELD_LABELS: Record<string, string> = {
   factoring_company: "Factoring Company",
   miles: "Miles",
   notes: "Notes",
-  bol_number: "BOL Number",
   shipper_name: "Shipper Name",
   consignee_name: "Consignee Name",
   delivery_address: "Delivery Address",
