@@ -22,7 +22,7 @@ export const metadata = {
   description: "Mobile-first back-office toolkit for truck owner-operators.",
   icons: {
     icon: "/icon.png",
-    apple: "/icon.png",
+    apple: "/apple-touch-icon.png",
     shortcut: "/icon.png",
   },
   appleWebApp: {
