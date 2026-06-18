@@ -18,7 +18,14 @@ export interface Job {
   load_value: number | null;
   broker_name: string | null;
   pickup_location: string | null;
+  pickup_facility: string | null;
   delivery_location: string | null;
+  delivery_facility: string | null;
+  rate_con_number: string | null;
+  bol_number: string | null;
+  fuel_surcharge: number | null;
+  accessorial_charges: number | null;
+  commodity: string | null;
   pickup_date: string | null;
   delivery_date: string | null;
   status: JobStatus | string;

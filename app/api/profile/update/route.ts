@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const fullName = sanitizeText(String(body.fullName ?? ""));
     const mcNumber = formatMcNumber(String(body.mcNumber ?? ""));
+    const ein = sanitizeText(String(body.ein ?? ""));
     const truckInfo = sanitizeText(String(body.truckInfo ?? ""));
 
     const fullNameError = validateTextLength(
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
       .update({
         full_name: fullName,
         mc_number: mcNumber || null,
+        ein: ein || null,
         truck_info: truckInfo || null,
         updated_at: new Date().toISOString(),
       })

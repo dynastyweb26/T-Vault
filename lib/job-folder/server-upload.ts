@@ -112,6 +112,7 @@ export type ProcessDocumentUploadParams = {
   originalFilename?: string | null;
   displayFileName?: string | null;
   aiConfidence?: string;
+  storagePath?: string | null;
 };
 
 export type ProcessDocumentUploadResult = {
@@ -133,6 +134,7 @@ export async function processDocumentUpload(
     originalFilename,
     displayFileName,
     aiConfidence = "unread",
+    storagePath,
   } = params;
 
   const validation = validateUploadBuffer(buffer, originalFilename);
@@ -159,7 +161,9 @@ export async function processDocumentUpload(
   }
 
   const extension = extensionForUploadType(validation.contentType, compressedImage);
-  const path = buildServerStoragePath(userId, jobId, documentType, extension);
+  const path =
+    storagePath?.trim() ||
+    buildServerStoragePath(userId, jobId, documentType, extension);
   const fileName =
     displayFileName?.trim() ||
     buildServerDisplayName(documentType, extension);

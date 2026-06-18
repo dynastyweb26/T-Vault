@@ -19,6 +19,7 @@ export default function EditProfilePage() {
   const { profile, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState("");
   const [mcNumber, setMcNumber] = useState("");
+  const [ein, setEin] = useState("");
   const [truckInfo, setTruckInfo] = useState("");
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export default function EditProfilePage() {
     if (!profile) return;
     setFullName(profile.full_name ?? "");
     setMcNumber(profile.mc_number ?? "");
+    setEin(profile.ein ?? "");
     setTruckInfo(profile.truck_info ?? "");
   }, [profile]);
 
@@ -58,6 +60,7 @@ export default function EditProfilePage() {
       body: JSON.stringify({
         fullName: sanitizeText(fullName),
         mcNumber: formatMcNumber(mcNumber),
+        ein: sanitizeText(ein) || null,
         truckInfo: sanitizeText(truckInfo),
       }),
     });
@@ -104,6 +107,13 @@ export default function EditProfilePage() {
           }
           error={errors.mcNumber}
           helper="Format: MC-123456 or MC-1234567"
+        />
+        <TvInput
+          label="EIN (Tax ID)"
+          value={ein}
+          onChange={(event) => setEin(event.target.value)}
+          onBlur={() => setEin((value) => sanitizeText(value))}
+          placeholder="XX-XXXXXXX"
         />
         <TvTextarea
           label="Truck info"

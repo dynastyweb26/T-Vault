@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const documentType = String(formData.get("documentType") ?? "").trim();
     const displayFileName = formData.get("displayFileName");
     const aiConfidence = String(formData.get("aiConfidence") ?? "unread").trim();
+    const storagePath = formData.get("storagePath");
 
     if (!(file instanceof File) || !jobId || !documentType) {
       return NextResponse.json({ error: GENERIC_UPLOAD_ERROR }, { status: 400 });
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
       displayFileName:
         typeof displayFileName === "string" ? displayFileName : null,
       aiConfidence: aiConfidence || "unread",
+      storagePath: typeof storagePath === "string" ? storagePath : null,
     });
 
     return NextResponse.json(result);

@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       const companyName = sanitizeText(String(body.companyName ?? ""));
       const mcNumber = formatMcNumber(String(body.mcNumber ?? ""));
       const dotNumber = formatDotNumber(String(body.dotNumber ?? ""));
+      const ein = sanitizeText(String(body.ein ?? ""));
 
       const fullNameError = validateTextLength(
         fullName,
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
         company_name: companyName,
         mc_number: mcNumber,
         dot_number: dotNumber,
+        ein: ein || null,
         profile_setup_completed: true,
         profile_setup_skipped: false,
       };

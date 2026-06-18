@@ -30,6 +30,7 @@ export default function ProfileSetupPage() {
   const [companyName, setCompanyName] = useState("");
   const [mcNumber, setMcNumber] = useState("");
   const [dotNumber, setDotNumber] = useState("");
+  const [ein, setEin] = useState("");
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -90,6 +91,7 @@ export default function ProfileSetupPage() {
     setCompanyName(profile.company_name ?? "");
     setMcNumber(profile.mc_number ?? "");
     setDotNumber(profile.dot_number ?? "");
+    setEin(profile.ein ?? "");
   }, [profile]);
 
   const validate = () => {
@@ -133,6 +135,7 @@ export default function ProfileSetupPage() {
               companyName,
               mcNumber,
               dotNumber,
+              ein,
             }
       ),
     });
@@ -204,6 +207,13 @@ export default function ProfileSetupPage() {
           }
           error={errors.dotNumber}
           helper="Format: DOT-1234567"
+        />
+        <TvInput
+          label="EIN (Tax ID)"
+          value={ein}
+          onChange={(event) => setEin(event.target.value)}
+          onBlur={() => setEin((value) => sanitizeText(value))}
+          placeholder="XX-XXXXXXX"
         />
 
         {formError ? (

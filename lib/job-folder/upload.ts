@@ -70,7 +70,7 @@ export async function saveInvoiceDocument(
     blob: Blob;
   }
 ): Promise<string> {
-  const { jobId, invoiceNumber, blob } = params;
+  const { userId, jobId, invoiceNumber, blob } = params;
 
   const formData = new FormData();
   formData.append("file", blob, "invoice.pdf");
@@ -78,6 +78,10 @@ export async function saveInvoiceDocument(
   formData.append("documentType", "invoice");
   formData.append("displayFileName", `${invoiceNumber}.pdf`);
   formData.append("aiConfidence", "high");
+  formData.append(
+    "storagePath",
+    `${userId}/invoices/${invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "") || "invoice"}.pdf`
+  );
 
   const result = await postDocumentUpload(formData);
   return result.url;

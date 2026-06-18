@@ -1,24 +1,51 @@
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 import type { Job } from "@/types/jobs";
 import type { UserProfile } from "@/types/database";
 import { formatCurrencyDetailed } from "@/lib/dashboard/format";
 import { saveInvoiceDocument } from "@/lib/job-folder/upload";
 import { hasPendingAiForInvoice } from "@/lib/job-folder/ai-parsing";
+import { STORAGE_BUCKET } from "@/lib/job-folder/constants";
 import type { JobDocument } from "@/types/jobs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const GOLD = { r: 212, g: 160, b: 23 } as const;
-const GOLD_TINT = { r: 255, g: 248, b: 230 } as const;
-const GREY = { r: 120, g: 120, b: 120 } as const;
-const LIGHT_GREY = { r: 245, g: 245, b: 245 } as const;
-const BLACK = { r: 0, g: 0, b: 0 } as const;
-const PAGE_W = 210;
-const MARGIN = 18;
+const GOLD = { r: 184, g: 150, b: 12 } as const;
+const DARK = { r: 26, g: 26, b: 26 } as const;
+const MID_GREY = { r: 74, g: 74, b: 74 } as const;
+const LIGHT_GREY = { r: 120, g: 120, b: 120 } as const;
+const BORDER_GREY = { r: 224, g: 224, b: 224 } as const;
+const ROW_ALT = { r: 252, g: 252, b: 252 } as const;
+const AMOUNT_BG = { r: 253, g: 249, b: 231 } as const;
+const AMOUNT_BORDER = { r: 230, g: 211, b: 133 } as const;
+const FACTOR_BG = { r: 239, g: 246, b: 255 } as const;
+const FACTOR_BORDER = { r: 191, g: 219, b: 254 } as const;
+const NOTES_BG = { r: 250, g: 250, b: 250 } as const;
+const FOOTER_GREY = { r: 153, g: 153, b: 153 } as const;
+const WHITE = { r: 255, g: 255, b: 255 } as const;
+
+const PAGE_W = 612;
+const PAGE_H = 792;
+const MARGIN = 54;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const RIGHT_X = PAGE_W - MARGIN;
 
-export function getMissingInvoiceFields(job: Job): string[] {
+type Rgb = { r: number; g: number; b: number };
+
+interface PaymentInfoFields {
+  bankName?: string;
+  accountName?: string;
+  routingNo?: string;
+  accountNo?: string;
+}
+
+export function getMissingInvoiceFields(
+  job: Job,
+  profile: UserProfile | null
+): string[] {
   const missing: string[] = [];
+  if (!profile?.company_name?.trim()) missing.push("company name");
+  if (!profile?.mc_number?.trim()) missing.push("MC number");
+  if (!profile?.dot_number?.trim()) missing.push("DOT number");
   if (!job.broker_name?.trim()) missing.push("broker name");
   if (job.load_value == null || job.load_value <= 0) missing.push("load value");
   return missing;
@@ -32,38 +59,46 @@ export function formatMissingInvoiceFieldsMessage(missing: string[]): string {
   return `Add ${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]} before generating an invoice.`;
 }
 
-export function buildInvoiceNumber(count: number): string {
-  const year = new Date().getFullYear();
-  return `INV-${year}-${String(count + 1).padStart(4, "0")}`;
+export function buildInvoiceNumber(userId: string, count: number): string {
+  const now = new Date();
+  const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const userPrefix = userId.replace(/-/g, "").slice(0, 4).toLowerCase();
+  return `INV-${ymd}-${userPrefix}-${String(count + 1).padStart(4, "0")}`;
 }
 
-function setTextColor(
-  doc: jsPDF,
-  color: { r: number; g: number; b: number }
-): void {
+function setTextColor(doc: jsPDF, color: Rgb): void {
   doc.setTextColor(color.r, color.g, color.b);
+}
+
+function setDrawColor(doc: jsPDF, color: Rgb): void {
+  doc.setDrawColor(color.r, color.g, color.b);
+}
+
+function setFillColor(doc: jsPDF, color: Rgb): void {
+  doc.setFillColor(color.r, color.g, color.b);
 }
 
 function textRight(doc: jsPDF, text: string, x: number, y: number): void {
   doc.text(text, x - doc.getTextWidth(text), y);
 }
 
-function drawGoldLine(doc: jsPDF, y: number): void {
-  doc.setDrawColor(GOLD.r, GOLD.g, GOLD.b);
-  doc.setLineWidth(0.6);
-  doc.line(MARGIN, y, RIGHT_X, y);
-}
-
-function formatInvoiceDate(date: Date): string {
+function formatSlashDate(date: Date): string {
   return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     year: "numeric",
   });
 }
 
-function paymentTermsDays(job: Job): number {
-  return job.payment_type === "factoring" ? 2 : 30;
+function formatShortSlashDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const parsed = new Date(`${value.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "2-digit",
+  });
 }
 
 function addDays(date: Date, days: number): Date {
@@ -72,25 +107,35 @@ function addDays(date: Date, days: number): Date {
   return next;
 }
 
-function paymentInstructions(job: Job, profile: UserProfile | null): string {
-  if (job.payment_type === "factoring" && job.factoring_company) {
-    return `Remit payment to ${job.factoring_company} per your factoring agreement.`;
-  }
-  if (profile?.company_name) {
-    return `Please remit payment to ${profile.company_name} by check, ACH, or wire per agreed terms.`;
-  }
-  return "Please remit payment by check, ACH, or wire per agreed terms.";
+function buildInvoicePublicUrl(userId: string, invoiceNumber: string): string {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const safeNumber = invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "") || "invoice";
+  return `${base}/storage/v1/object/public/${STORAGE_BUCKET}/${userId}/invoices/${safeNumber}.pdf`;
 }
 
-function formatShortDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  const parsed = new Date(`${value.slice(0, 10)}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function parsePaymentInfo(raw: string | null | undefined): PaymentInfoFields | null {
+  if (!raw?.trim()) return null;
+  try {
+    const parsed = JSON.parse(raw) as PaymentInfoFields;
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch {
+    // fall through to line parsing
+  }
+  const lines = raw.split("\n").map((line) => line.trim()).filter(Boolean);
+  const fields: PaymentInfoFields = {};
+  for (const line of lines) {
+    const [label, ...rest] = line.split(":");
+    const value = rest.join(":").trim();
+    if (!value) continue;
+    const key = label.trim().toLowerCase();
+    if (key.includes("bank")) fields.bankName = value;
+    else if (key.includes("account name")) fields.accountName = value;
+    else if (key.includes("routing")) fields.routingNo = value;
+    else if (key.includes("account no") || key.includes("account #")) {
+      fields.accountNo = value;
+    }
+  }
+  return Object.keys(fields).length ? fields : null;
 }
 
 const ONES = [
@@ -168,48 +213,42 @@ function integerToWords(n: number): string {
   return parts.join(" ");
 }
 
-function amountInWords(amount: number): string {
-  const safe = Math.max(0, amount);
-  const dollars = Math.floor(safe);
-  const cents = Math.round((safe - dollars) * 100);
-  return `${integerToWords(dollars)} Dollars and ${String(cents).padStart(2, "0")}/100`;
+function invoiceTotal(job: Job): number {
+  return (
+    (job.load_value ?? 0) +
+    (job.fuel_surcharge && job.fuel_surcharge > 0 ? job.fuel_surcharge : 0) +
+    (job.accessorial_charges && job.accessorial_charges > 0
+      ? job.accessorial_charges
+      : 0)
+  );
 }
 
-function drawSectionLabel(doc: jsPDF, label: string, x: number, y: number): number {
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  setTextColor(doc, GOLD);
-  doc.text(label.toUpperCase(), x, y);
-  return y + 5;
-}
-
-function drawDetailLine(
+function drawSectionHeader(
   doc: jsPDF,
   label: string,
-  value: string,
   x: number,
-  y: number
+  y: number,
+  width: number
 ): number {
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  setTextColor(doc, GREY);
-  doc.text(`${label}:`, x, y);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  setTextColor(doc, BLACK);
-  doc.text(value, x + 28, y);
-  return y + 6;
+  doc.setFontSize(8);
+  setTextColor(doc, DARK);
+  doc.text(label.toUpperCase(), x, y);
+  setDrawColor(doc, GOLD);
+  doc.setLineWidth(0.5);
+  doc.line(x, y + 2, x + width, y + 2);
+  return y + 10;
 }
 
-function drawWrappedLines(
+function drawWrapped(
   doc: jsPDF,
-  lines: string[],
+  text: string,
   x: number,
-  startY: number,
-  lineHeight = 5
+  y: number,
+  maxWidth: number,
+  lineHeight = 11
 ): number {
-  let y = startY;
+  const lines = doc.splitTextToSize(text, maxWidth);
   for (const line of lines) {
     doc.text(line, x, y);
     y += lineHeight;
@@ -217,198 +256,528 @@ function drawWrappedLines(
   return y;
 }
 
-export function buildLoadInvoicePdf(params: {
+function drawOptionalLine(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  fontSize = 9
+): number {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(fontSize);
+  setTextColor(doc, MID_GREY);
+  doc.text(text, x, y);
+  return y + 11;
+}
+
+function drawCarrierColumn(
+  doc: jsPDF,
+  profile: UserProfile | null,
+  userEmail: string | null,
+  job: Job,
+  x: number,
+  startY: number,
+  width: number
+): number {
+  let y = drawSectionHeader(doc, "FROM (CARRIER)", x, startY, width);
+
+  if (profile?.company_name?.trim()) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    setTextColor(doc, GOLD);
+    y = drawWrapped(doc, profile.company_name.trim(), x, y, width, 14);
+    y += 2;
+  }
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  setTextColor(doc, DARK);
+
+  const addressLines: string[] = [];
+  if (profile?.address?.trim()) addressLines.push(profile.address.trim());
+  const cityStateZip = [profile?.city, profile?.state, profile?.zip]
+    .filter((part) => part?.trim())
+    .join(", ")
+    .replace(/,\s*,/g, ",");
+  if (cityStateZip.trim()) addressLines.push(cityStateZip.trim());
+
+  for (const line of addressLines) {
+    y = drawWrapped(doc, line, x, y, width, 11);
+  }
+
+  const contactParts: string[] = [];
+  if (profile?.phone?.trim()) contactParts.push(profile.phone.trim());
+  if (userEmail?.trim()) contactParts.push(userEmail.trim());
+  if (contactParts.length) {
+    y = drawWrapped(doc, contactParts.join(" | "), x, y, width, 11);
+  }
+
+  const authorityParts: string[] = [];
+  if (profile?.mc_number?.trim()) {
+    authorityParts.push(`MC #: ${profile.mc_number.trim()}`);
+  }
+  if (profile?.dot_number?.trim()) {
+    authorityParts.push(`DOT #: ${profile.dot_number.trim()}`);
+  }
+  if (authorityParts.length) {
+    y = drawWrapped(doc, authorityParts.join(" | "), x, y, width, 11);
+  }
+
+  if (profile?.ein?.trim()) {
+    y = drawOptionalLine(doc, `EIN: ${profile.ein.trim()}`, x, y);
+  }
+
+  y += 6;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  setTextColor(doc, DARK);
+  doc.text("REMIT PAYMENT TO", x, y);
+  y += 10;
+
+  const paymentInfo = parsePaymentInfo(profile?.payment_info);
+  const remitLines: Array<[string, string | undefined]> = [
+    ["Bank Name:", paymentInfo?.bankName],
+    ["Account Name:", paymentInfo?.accountName],
+    ["Routing No:", paymentInfo?.routingNo],
+    ["Account No:", paymentInfo?.accountNo],
+  ];
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  setTextColor(doc, DARK);
+  for (const [label, value] of remitLines) {
+    if (!value?.trim()) continue;
+    doc.text(`${label} ${value.trim()}`, x, y);
+    y += 11;
+  }
+
+  if (job.payment_type === "factoring" && job.factoring_company?.trim()) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8.5);
+    setTextColor(doc, LIGHT_GREY);
+    const note = `* Payment assigned to ${job.factoring_company.trim()}. Direct all remittance to factoring company.`;
+    y = drawWrapped(doc, note, x, y + 2, width, 10);
+  }
+
+  return y;
+}
+
+function drawBillToColumn(
+  doc: jsPDF,
+  job: Job,
+  x: number,
+  startY: number,
+  width: number
+): number {
+  let y = drawSectionHeader(doc, "TO (BROKER / FACTORING CO)", x, startY, width);
+  const isFactoring = job.payment_type === "factoring";
+
+  const primaryName = isFactoring
+    ? job.factoring_company?.trim()
+    : job.broker_name?.trim();
+
+  if (primaryName) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    setTextColor(doc, GOLD);
+    y = drawWrapped(doc, primaryName, x, y, width, 14);
+    y += 2;
+  }
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  setTextColor(doc, DARK);
+  y = drawOptionalLine(doc, "Attention: Accounts Payable", x, y);
+
+  if (isFactoring && job.broker_name?.trim()) {
+    doc.setFontSize(9);
+    setTextColor(doc, MID_GREY);
+    y = drawWrapped(
+      doc,
+      `Original Broker: ${job.broker_name.trim()}`,
+      x,
+      y,
+      width,
+      11
+    );
+  }
+
+  return y;
+}
+
+function drawLoadTable(
+  doc: jsPDF,
+  job: Job,
+  startY: number
+): number {
+  const colWidths = [
+    CONTENT_W * 0.25,
+    CONTENT_W * 0.2,
+    CONTENT_W * 0.2,
+    CONTENT_W * 0.13,
+    CONTENT_W * 0.08,
+    CONTENT_W * 0.14,
+  ];
+  const colX = [MARGIN];
+  for (let i = 0; i < colWidths.length - 1; i++) {
+    colX.push(colX[i] + colWidths[i]);
+  }
+
+  const headerH = 18;
+  setFillColor(doc, DARK);
+  doc.rect(MARGIN, startY, CONTENT_W, headerH, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  setTextColor(doc, WHITE);
+  const headers = ["Description", "Pickup", "Delivery", "Dates", "Load", "Amount"];
+  headers.forEach((header, index) => {
+    doc.text(header.toUpperCase(), colX[index] + 4, startY + 12);
+  });
+
+  let y = startY + headerH;
+  const rows: Array<{
+    description: string;
+    descriptionSub?: string;
+    pickup: string;
+    pickupSub?: string;
+    delivery: string;
+    deliverySub?: string;
+    dates: string[];
+    load: string;
+    amount: string;
+  }> = [
+    {
+      description: "Primary Freight Charge",
+      descriptionSub: job.commodity?.trim()
+        ? `Commodity: ${job.commodity.trim()}`
+        : undefined,
+      pickup: job.pickup_location?.trim() || "—",
+      pickupSub: job.pickup_facility?.trim() || undefined,
+      delivery: job.delivery_location?.trim() || "—",
+      deliverySub: job.delivery_facility?.trim() || undefined,
+      dates: [
+        `P: ${formatShortSlashDate(job.pickup_date)}`,
+        `D: ${formatShortSlashDate(job.delivery_date)}`,
+      ],
+      load: job.miles ? String(job.miles) : "—",
+      amount: formatCurrencyDetailed(job.load_value ?? 0),
+    },
+  ];
+
+  if (job.fuel_surcharge != null && job.fuel_surcharge > 0) {
+    rows.push({
+      description: "Fuel Surcharge (FSC)",
+      pickup: "--",
+      delivery: "--",
+      dates: ["--"],
+      load: "--",
+      amount: formatCurrencyDetailed(job.fuel_surcharge),
+    });
+  }
+
+  if (job.accessorial_charges != null && job.accessorial_charges > 0) {
+    rows.push({
+      description: "Detention",
+      descriptionSub: "e.g. Detention / Layover / Tarping",
+      pickup: "--",
+      delivery: "--",
+      dates: ["--"],
+      load: "--",
+      amount: formatCurrencyDetailed(job.accessorial_charges),
+    });
+  }
+
+  rows.forEach((row, rowIndex) => {
+    const rowTop = y;
+    const rowH = 42;
+    if (rowIndex % 2 === 1) {
+      setFillColor(doc, ROW_ALT);
+      doc.rect(MARGIN, rowTop, CONTENT_W, rowH, "F");
+    }
+    setDrawColor(doc, BORDER_GREY);
+    doc.setLineWidth(0.75);
+    doc.rect(MARGIN, rowTop, CONTENT_W, rowH);
+
+    let cellY = rowTop + 12;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    setTextColor(doc, DARK);
+    doc.text(row.description, colX[0] + 4, cellY);
+    if (row.descriptionSub) {
+      doc.setFontSize(8.5);
+      setTextColor(doc, LIGHT_GREY);
+      doc.text(row.descriptionSub, colX[0] + 4, cellY + 10);
+    }
+
+    doc.setFontSize(9);
+    setTextColor(doc, DARK);
+    doc.text(row.pickup, colX[1] + 4, cellY);
+    if (row.pickupSub) {
+      doc.setFontSize(8.5);
+      setTextColor(doc, LIGHT_GREY);
+      doc.text(row.pickupSub, colX[1] + 4, cellY + 10);
+    }
+
+    doc.setFontSize(9);
+    setTextColor(doc, DARK);
+    doc.text(row.delivery, colX[2] + 4, cellY);
+    if (row.deliverySub) {
+      doc.setFontSize(8.5);
+      setTextColor(doc, LIGHT_GREY);
+      doc.text(row.deliverySub, colX[2] + 4, cellY + 10);
+    }
+
+    row.dates.forEach((line, index) => {
+      doc.setFontSize(9);
+      setTextColor(doc, DARK);
+      doc.text(line, colX[3] + 4, cellY + index * 10);
+    });
+
+    doc.text(row.load, colX[4] + 4, cellY);
+    doc.text(row.amount, colX[5] + 4, cellY);
+
+    y += rowH;
+  });
+
+  return y + 8;
+}
+
+function drawAmountDueBox(doc: jsPDF, total: number, startY: number): number {
+  const boxH = 88;
+  setFillColor(doc, AMOUNT_BG);
+  setDrawColor(doc, AMOUNT_BORDER);
+  doc.setLineWidth(1);
+  doc.rect(MARGIN, startY, CONTENT_W, boxH, "FD");
+  setFillColor(doc, GOLD);
+  doc.rect(MARGIN, startY, 5, boxH, "F");
+
+  const centerX = PAGE_W / 2;
+  let y = startY + 22;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  setTextColor(doc, { r: 85, g: 85, b: 85 });
+  const label = "TOTAL AMOUNT DUE";
+  doc.text(label, centerX - doc.getTextWidth(label) / 2, y);
+
+  y += 24;
+  doc.setFontSize(24);
+  setTextColor(doc, GOLD);
+  const amountText = formatCurrencyDetailed(total);
+  doc.text(amountText, centerX - doc.getTextWidth(amountText) / 2, y);
+
+  y += 20;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9.5);
+  setTextColor(doc, { r: 85, g: 85, b: 85 });
+  const dollars = Math.floor(Math.max(0, total));
+  const words = `*** ${integerToWords(dollars).toUpperCase()} DOLLARS AND ZERO CENTS ***`;
+  const wordLines = doc.splitTextToSize(words, CONTENT_W - 40);
+  for (const line of wordLines) {
+    doc.text(line, centerX - doc.getTextWidth(line) / 2, y);
+    y += 11;
+  }
+
+  return startY + boxH + 12;
+}
+
+function drawFactoringNotice(doc: jsPDF, job: Job, startY: number): number {
+  const body = `This invoice has been assigned to ${job.factoring_company?.trim()}. All payments must be remitted directly to the factoring company. Do not pay the carrier directly.`;
+  const lines = doc.splitTextToSize(body, CONTENT_W - 24);
+  const boxH = 24 + lines.length * 11;
+  setFillColor(doc, FACTOR_BG);
+  setDrawColor(doc, FACTOR_BORDER);
+  doc.setLineWidth(1);
+  doc.rect(MARGIN, startY, CONTENT_W, boxH, "FD");
+
+  let y = startY + 14;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  setTextColor(doc, DARK);
+  doc.text("NOTICE OF INVOICE ASSIGNMENT", MARGIN + 12, y);
+  y += 14;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  setTextColor(doc, DARK);
+  for (const line of lines) {
+    doc.text(line, MARGIN + 12, y);
+    y += 11;
+  }
+  return startY + boxH + 12;
+}
+
+function drawNotesSection(
+  doc: jsPDF,
+  job: Job,
+  profile: UserProfile | null,
+  startY: number
+): number {
+  const contentLines: string[] = [];
+  if (job.notes?.trim()) contentLines.push(job.notes.trim());
+  contentLines.push(
+    "1. Please include Invoice Number and Load/Reference Number on all check remittances or ACH payment advices.",
+    "2. Signed BOL and Rate Confirmation are attached to this submission.",
+    profile?.phone?.trim()
+      ? `3. For quick-pay or factoring verification contact: ${profile.phone.trim()}`
+      : "3. For quick-pay or factoring verification contact."
+  );
+
+  const content = contentLines.join("\n");
+  const bodyLines = doc.splitTextToSize(content, CONTENT_W - 24);
+  const boxH = 28 + bodyLines.length * 11;
+  setFillColor(doc, NOTES_BG);
+  setDrawColor(doc, BORDER_GREY);
+  doc.setLineWidth(1);
+  doc.rect(MARGIN, startY, CONTENT_W, boxH, "FD");
+
+  let y = startY + 14;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  setTextColor(doc, DARK);
+  doc.text("NOTES & INSTRUCTIONS", MARGIN + 10, y);
+  y += 14;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  setTextColor(doc, DARK);
+  for (const line of bodyLines) {
+    doc.text(line, MARGIN + 10, y);
+    y += 11;
+  }
+
+  return startY + boxH + 12;
+}
+
+function drawFooter(doc: jsPDF, qrDataUrl: string | null, footerY: number): void {
+  setDrawColor(doc, BORDER_GREY);
+  doc.setLineWidth(1);
+  doc.line(MARGIN, footerY, RIGHT_X, footerY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  setTextColor(doc, DARK);
+  doc.text("Thank you for your business.", MARGIN, footerY + 16);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  setTextColor(doc, FOOTER_GREY);
+  textRight(doc, "Designed by Dynasty Web", RIGHT_X, footerY + 16);
+
+  if (qrDataUrl) {
+    const qrSize = 64;
+    const qrX = RIGHT_X - qrSize;
+    const qrY = footerY - qrSize - 18;
+    doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+    doc.setFontSize(7);
+    setTextColor(doc, LIGHT_GREY);
+    const qrLabel = "Scan to verify invoice";
+    textRight(doc, qrLabel, RIGHT_X, qrY + qrSize + 10);
+  }
+}
+
+export async function buildLoadInvoicePdf(params: {
   job: Job;
   profile: UserProfile | null;
   invoiceNumber: string;
+  userId: string;
+  userEmail?: string | null;
   invoiceDate?: Date;
-}): jsPDF {
-  const { job, profile, invoiceNumber } = params;
+}): Promise<jsPDF> {
+  const { job, profile, invoiceNumber, userId, userEmail } = params;
   const invoiceDate = params.invoiceDate ?? new Date();
-  const dueDate = addDays(invoiceDate, paymentTermsDays(job));
-  const amount = job.load_value ?? 0;
-  const termsDays = paymentTermsDays(job);
-  const amountText = formatCurrencyDetailed(amount);
-  const words = amountInWords(amount);
+  const dueDate = addDays(invoiceDate, 30);
+  const total = invoiceTotal(job);
+  const columnGap = 16;
+  const columnW = (CONTENT_W - columnGap) / 2;
 
-  const route = `${job.pickup_location?.trim() || "Pickup"} → ${job.delivery_location?.trim() || "Delivery"}`;
-  const dateRange = `${formatShortDate(job.pickup_date)} → ${formatShortDate(job.delivery_date)}`;
-  const milesText =
-    job.miles && job.miles > 0
-      ? `${job.miles.toLocaleString("en-US")} miles`
-      : "—";
-
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  let y = 22;
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  let y = MARGIN;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(26);
+  setTextColor(doc, DARK);
+  doc.text("INVOICE", MARGIN, y);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
   setTextColor(doc, GOLD);
-  doc.text("T-VAULT", MARGIN, y);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  setTextColor(doc, GREY);
-  doc.text("FREIGHT INVOICE", MARGIN, y + 7);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  setTextColor(doc, BLACK);
-  textRight(doc, invoiceNumber, RIGHT_X, y);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  setTextColor(doc, GREY);
-  textRight(doc, `Date: ${formatInvoiceDate(invoiceDate)}`, RIGHT_X, y + 7);
-  textRight(doc, `Due Date: ${formatInvoiceDate(dueDate)}`, RIGHT_X, y + 13);
-
-  y += 22;
-  drawGoldLine(doc, y);
-  y += 10;
-
-  const columnGap = 8;
-  const columnW = (CONTENT_W - columnGap) / 2;
-  const leftX = MARGIN;
-  const rightX = MARGIN + columnW + columnGap;
-
-  let leftY = drawSectionLabel(doc, "From", leftX, y);
-  const fromLines: string[] = [];
-
-  if (profile?.full_name?.trim()) fromLines.push(profile.full_name.trim());
-  if (profile?.company_name?.trim()) fromLines.push(profile.company_name.trim());
-  if (profile?.mc_number?.trim()) fromLines.push(`MC# ${profile.mc_number.trim()}`);
-  if (profile?.dot_number?.trim()) fromLines.push(`DOT# ${profile.dot_number.trim()}`);
-  if (profile?.phone?.trim()) fromLines.push(profile.phone.trim());
-  if (fromLines.length === 0) fromLines.push("Carrier");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  setTextColor(doc, BLACK);
-  doc.text(fromLines[0], leftX, leftY);
-  leftY += 5.5;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  for (const line of fromLines.slice(1)) {
-    doc.text(line, leftX, leftY);
-    leftY += 5;
+  const subtitle = "T-VAULT OWNER-OPERATOR NETWORK";
+  let subtitleX = MARGIN;
+  for (const char of subtitle) {
+    doc.text(char, subtitleX, y + 16);
+    subtitleX += doc.getTextWidth(char) + 1.2;
   }
 
-  leftY += 2;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  setTextColor(doc, GREY);
-  doc.text("PAYMENT INSTRUCTIONS", leftX, leftY);
-  leftY += 4.5;
-
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  setTextColor(doc, BLACK);
-  const instructionLines = doc.splitTextToSize(
-    paymentInstructions(job, profile),
+  doc.setFontSize(10);
+  setTextColor(doc, MID_GREY);
+  const headerLines: string[] = [
+    `Invoice No: ${invoiceNumber}`,
+    `Date: ${formatSlashDate(invoiceDate)}`,
+    "Payment Terms: NET 30",
+    `Due Date: ${formatSlashDate(dueDate)}`,
+    `Load / Reference No: ${job.id}`,
+  ];
+  if (job.rate_con_number?.trim()) {
+    headerLines.push(`Rate Con #: ${job.rate_con_number.trim()}`);
+  }
+  if (job.bol_number?.trim()) {
+    headerLines.push(`BOL #: ${job.bol_number.trim()}`);
+  }
+  headerLines.forEach((line, index) => {
+    textRight(doc, line, RIGHT_X, y + index * 12);
+  });
+
+  y += 52;
+  setDrawColor(doc, GOLD);
+  doc.setLineWidth(3);
+  doc.line(MARGIN, y, RIGHT_X, y);
+  y += 18;
+
+  const leftY = drawCarrierColumn(
+    doc,
+    profile,
+    userEmail ?? profile?.email ?? null,
+    job,
+    MARGIN,
+    y,
     columnW
   );
-  leftY = drawWrappedLines(doc, instructionLines, leftX, leftY, 4.5);
+  const rightY = drawBillToColumn(
+    doc,
+    job,
+    MARGIN + columnW + columnGap,
+    y,
+    columnW
+  );
+  y = Math.max(leftY, rightY) + 10;
 
-  let rightY = drawSectionLabel(doc, "Bill To", rightX, y);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  setTextColor(doc, BLACK);
-  doc.text(job.broker_name?.trim() || "Broker", rightX, rightY);
-  rightY += 6;
+  setDrawColor(doc, GOLD);
+  doc.setLineWidth(2);
+  doc.line(MARGIN, y, RIGHT_X, y);
+  y += 14;
+
+  y = drawLoadTable(doc, job, y);
+  y = drawAmountDueBox(doc, total, y);
 
   if (job.payment_type === "factoring" && job.factoring_company?.trim()) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    setTextColor(doc, GREY);
-    doc.text("Factoring Company", rightX, rightY);
-    rightY += 4.5;
-    setTextColor(doc, BLACK);
-    const factoringLines = doc.splitTextToSize(job.factoring_company.trim(), columnW);
-    rightY = drawWrappedLines(doc, factoringLines, rightX, rightY);
+    y = drawFactoringNotice(doc, job, y);
   }
 
-  y = Math.max(leftY, rightY) + 8;
+  y = drawNotesSection(doc, job, profile, y);
 
-  const loadPadding = 6;
-  const loadInnerW = CONTENT_W - loadPadding * 2;
-  const jobNameLines = doc.splitTextToSize(
-    job.job_name?.trim() || "Load",
-    loadInnerW
-  );
-  const loadBoxH =
-    loadPadding * 2 + jobNameLines.length * 7 + 4 + 6 * 3;
+  const publicUrl = buildInvoicePublicUrl(userId, invoiceNumber);
+  let qrDataUrl: string | null = null;
+  try {
+    qrDataUrl = await QRCode.toDataURL(publicUrl, {
+      width: 128,
+      margin: 0,
+      color: { dark: "#1a1a1a", light: "#ffffff" },
+    });
+  } catch {
+    qrDataUrl = null;
+  }
 
-  doc.setFillColor(LIGHT_GREY.r, LIGHT_GREY.g, LIGHT_GREY.b);
-  doc.rect(MARGIN, y, CONTENT_W, loadBoxH, "F");
-
-  let loadY = y + loadPadding + 2;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  setTextColor(doc, BLACK);
-  loadY = drawWrappedLines(doc, jobNameLines, MARGIN + loadPadding, loadY, 7);
-  loadY += 1;
-  loadY = drawDetailLine(doc, "Route", route, MARGIN + loadPadding, loadY);
-  loadY = drawDetailLine(doc, "Dates", dateRange, MARGIN + loadPadding, loadY);
-  drawDetailLine(doc, "Miles", milesText, MARGIN + loadPadding, loadY);
-
-  y += loadBoxH + 10;
-
-  const amountPadding = 8;
-  const amountInnerW = CONTENT_W - amountPadding * 2;
-  const wordLines = doc.splitTextToSize(words, amountInnerW);
-  const amountBoxH =
-    amountPadding * 2 + 4 + 10 + 10 + wordLines.length * 5 + 2 + 5;
-
-  doc.setFillColor(GOLD_TINT.r, GOLD_TINT.g, GOLD_TINT.b);
-  doc.rect(MARGIN, y, CONTENT_W, amountBoxH, "F");
-
-  let amountY = y + amountPadding + 2;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  setTextColor(doc, GOLD);
-  doc.text("AMOUNT DUE", MARGIN + amountPadding, amountY);
-  amountY += 10;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(28);
-  setTextColor(doc, BLACK);
-  doc.text(amountText, MARGIN + amountPadding, amountY);
-  amountY += 10;
-
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(10);
-  setTextColor(doc, GREY);
-  amountY = drawWrappedLines(
-    doc,
-    wordLines,
-    MARGIN + amountPadding,
-    amountY,
-    5
-  );
-
-  amountY += 2;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  setTextColor(doc, GREY);
-  doc.text(
-    `Payment due within ${termsDays} days`,
-    MARGIN + amountPadding,
-    amountY
-  );
-
-  const footerY = 268;
-  drawGoldLine(doc, footerY);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  setTextColor(doc, BLACK);
-  const thanks = "Thank you for your business.";
-  doc.text(thanks, PAGE_W / 2 - doc.getTextWidth(thanks) / 2, footerY + 10);
-
-  doc.setFontSize(8);
-  setTextColor(doc, GREY);
-  textRight(doc, "Designed by Dynasty Web", RIGHT_X, footerY + 18);
+  const footerY = PAGE_H - MARGIN - 24;
+  drawFooter(doc, qrDataUrl, footerY);
 
   return doc;
 }
@@ -419,13 +788,21 @@ export async function generateAndSaveLoadInvoice(
     job: Job;
     profile: UserProfile | null;
     userId: string;
+    userEmail?: string | null;
     documents?: JobDocument[];
     regenerate?: boolean;
   }
 ): Promise<{ url: string; invoiceNumber: string }> {
-  const { job, profile, userId, documents = [], regenerate = false } = params;
+  const {
+    job,
+    profile,
+    userId,
+    userEmail,
+    documents = [],
+    regenerate = false,
+  } = params;
 
-  const missingFields = getMissingInvoiceFields(job);
+  const missingFields = getMissingInvoiceFields(job, profile);
   if (missingFields.length > 0) {
     throw new Error(`missing_invoice_fields:${missingFields.join(",")}`);
   }
@@ -443,9 +820,15 @@ export async function generateAndSaveLoadInvoice(
   }
 
   const invoiceNumber =
-    job.invoice_number || buildInvoiceNumber(profile?.invoice_count ?? 0);
+    job.invoice_number || buildInvoiceNumber(userId, profile?.invoice_count ?? 0);
 
-  const doc = buildLoadInvoicePdf({ job, profile, invoiceNumber });
+  const doc = await buildLoadInvoicePdf({
+    job,
+    profile,
+    invoiceNumber,
+    userId,
+    userEmail,
+  });
   const blob = doc.output("blob");
   const url = await saveInvoiceDocument(supabase, {
     userId,
