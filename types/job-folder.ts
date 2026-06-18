@@ -69,7 +69,11 @@ export interface LoadTemplate {
   broker_name: string | null;
   load_value: number | null;
   pickup_location: string | null;
+  pickup_facility: string | null;
   delivery_location: string | null;
+  delivery_facility: string | null;
+  rate_con_number: string | null;
+  bol_number: string | null;
   payment_type: string | null;
   factoring_company: string | null;
   miles: number | null;

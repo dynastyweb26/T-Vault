@@ -119,6 +119,16 @@ export default function ProfilePage() {
                   MC {profile.mc_number}
                 </p>
               ) : null}
+              {profile?.dot_number ? (
+                <p className="text-[15px] text-[var(--color-text-muted)]">
+                  DOT {profile.dot_number}
+                </p>
+              ) : null}
+              {profile?.ein ? (
+                <p className="text-[15px] text-[var(--color-text-muted)]">
+                  EIN {profile.ein}
+                </p>
+              ) : null}
             </div>
           </div>
         </section>

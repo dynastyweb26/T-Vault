@@ -73,6 +73,14 @@ export function buildServerStoragePath(
   return `${userId}/${jobId}/${safeDocType}_${Date.now()}.${extension}`;
 }
 
+export function buildInvoiceStoragePath(
+  userId: string,
+  invoiceNumber: string
+): string {
+  const safeNumber = invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "") || "invoice";
+  return `${userId}/invoices/${safeNumber}.pdf`;
+}
+
 export function buildServerDisplayName(
   documentType: string,
   extension: "jpg" | "png" | "pdf"

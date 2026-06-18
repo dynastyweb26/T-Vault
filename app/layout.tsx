@@ -20,11 +20,6 @@ const dmMono = DM_Mono({
 export const metadata = {
   title: "T-Vault",
   description: "Mobile-first back-office toolkit for truck owner-operators.",
-  icons: {
-    icon: "/icon.png",
-    apple: "/apple-touch-icon.png",
-    shortcut: "/icon.png",
-  },
   appleWebApp: {
     capable: true,
     title: "T-Vault",
@@ -56,6 +51,16 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link
+          rel="apple-touch-icon"
+          href="/apple-touch-icon.png"
+          sizes="180x180"
+        />
+        <link
+          rel="apple-touch-icon-precomposed"
+          href="/apple-touch-icon.png"
+          sizes="180x180"
+        />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full font-sans">

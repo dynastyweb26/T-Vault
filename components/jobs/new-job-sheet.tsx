@@ -25,10 +25,14 @@ import type { PaymentType } from "@/types/jobs";
 
 interface NewJobForm {
   jobName: string;
+  rateConNumber: string;
+  bolNumber: string;
   loadValue: string;
   brokerName: string;
   pickupLocation: string;
+  pickupFacility: string;
   deliveryLocation: string;
+  deliveryFacility: string;
   paymentType: PaymentType;
   factoringCompany: string;
   saveAsTemplate: boolean;
@@ -39,10 +43,14 @@ interface NewJobForm {
 
 const emptyForm: NewJobForm = {
   jobName: "",
+  rateConNumber: "",
+  bolNumber: "",
   loadValue: "",
   brokerName: "",
   pickupLocation: "",
+  pickupFacility: "",
   deliveryLocation: "",
+  deliveryFacility: "",
   paymentType: "direct",
   factoringCompany: "",
   saveAsTemplate: false,
@@ -68,7 +76,7 @@ export function NewJobSheet() {
     const { data } = await supabase
       .from("jobs")
       .select(
-        "id, job_name, broker_name, load_value, pickup_location, delivery_location, payment_type, factoring_company, miles, notes, template_name"
+        "id, job_name, broker_name, load_value, pickup_location, pickup_facility, delivery_location, delivery_facility, rate_con_number, bol_number, payment_type, factoring_company, miles, notes, template_name"
       )
       .eq("user_id", user.id)
       .eq("is_template", true)
@@ -115,10 +123,14 @@ export function NewJobSheet() {
   const applyTemplate = (template: LoadTemplate) => {
     setForm({
       jobName: template.job_name,
+      rateConNumber: template.rate_con_number ?? "",
+      bolNumber: template.bol_number ?? "",
       loadValue: template.load_value?.toString() ?? "",
       brokerName: template.broker_name ?? "",
       pickupLocation: template.pickup_location ?? "",
+      pickupFacility: template.pickup_facility ?? "",
       deliveryLocation: template.delivery_location ?? "",
+      deliveryFacility: template.delivery_facility ?? "",
       paymentType: (template.payment_type as PaymentType) ?? "direct",
       factoringCompany: template.factoring_company ?? "",
       saveAsTemplate: false,
@@ -173,8 +185,12 @@ export function NewJobSheet() {
         status: "active",
         broker_name: sanitizeText(form.brokerName) || null,
         load_value: loadValue,
+        rate_con_number: sanitizeText(form.rateConNumber) || null,
+        bol_number: sanitizeText(form.bolNumber) || null,
         pickup_location: sanitizeText(form.pickupLocation) || null,
+        pickup_facility: sanitizeText(form.pickupFacility) || null,
         delivery_location: sanitizeText(form.deliveryLocation) || null,
+        delivery_facility: sanitizeText(form.deliveryFacility) || null,
         payment_type: form.paymentType,
         factoring_company:
           form.paymentType === "factoring"
@@ -207,8 +223,12 @@ export function NewJobSheet() {
         status: "active",
         broker_name: sanitizeText(form.brokerName) || null,
         load_value: loadValue,
+        rate_con_number: sanitizeText(form.rateConNumber) || null,
+        bol_number: sanitizeText(form.bolNumber) || null,
         pickup_location: sanitizeText(form.pickupLocation) || null,
+        pickup_facility: sanitizeText(form.pickupFacility) || null,
         delivery_location: sanitizeText(form.deliveryLocation) || null,
+        delivery_facility: sanitizeText(form.deliveryFacility) || null,
         payment_type: form.paymentType,
         factoring_company:
           form.paymentType === "factoring"
@@ -271,6 +291,31 @@ export function NewJobSheet() {
           error={errors.jobName}
         />
 
+        <div className="grid grid-cols-2 gap-3">
+          <TvInput
+            label="Rate Con #"
+            borderVariant="gold"
+            labelVariant="readable"
+            placeholder="e.g. RC-123456"
+            maxLength={TEXT_LIMITS.broker}
+            value={form.rateConNumber}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, rateConNumber: e.target.value }))
+            }
+          />
+          <TvInput
+            label="BOL #"
+            borderVariant="gold"
+            labelVariant="readable"
+            placeholder="e.g. BOL-789012"
+            maxLength={TEXT_LIMITS.broker}
+            value={form.bolNumber}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, bolNumber: e.target.value }))
+            }
+          />
+        </div>
+
         <TvInput
           label="Load Value"
           borderVariant="gold"
@@ -309,6 +354,18 @@ export function NewJobSheet() {
         />
 
         <TvInput
+          label="Pickup Facility"
+          borderVariant="gold"
+          labelVariant="readable"
+          placeholder="e.g. Atlanta Produce Terminal"
+          maxLength={TEXT_LIMITS.location}
+          value={form.pickupFacility}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, pickupFacility: e.target.value }))
+          }
+        />
+
+        <TvInput
           label="Delivery Location"
           borderVariant="gold"
           labelVariant="readable"
@@ -316,6 +373,18 @@ export function NewJobSheet() {
           value={form.deliveryLocation}
           onChange={(e) =>
             setForm((f) => ({ ...f, deliveryLocation: e.target.value }))
+          }
+        />
+
+        <TvInput
+          label="Delivery Facility"
+          borderVariant="gold"
+          labelVariant="readable"
+          placeholder="e.g. Miami Cool Storage"
+          maxLength={TEXT_LIMITS.location}
+          value={form.deliveryFacility}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, deliveryFacility: e.target.value }))
           }
         />
 

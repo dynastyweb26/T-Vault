@@ -417,6 +417,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         job,
         profile,
         userId: user.id,
+        userEmail: user.email,
         documents,
         regenerate,
       });
@@ -955,6 +956,31 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           <div>
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1">
+                <p className="tv-label">Reference Numbers</p>
+                <div className="mt-1 grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[13px] text-[var(--color-text-muted)]">Rate Con #</p>
+                    <p className="text-[15px] font-bold">
+                      {job.rate_con_number || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[13px] text-[var(--color-text-muted)]">BOL #</p>
+                    <p className="text-[15px] font-bold">
+                      {job.bol_number || "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-1">
+                {renderEditPencil("rate_con_number", job.rate_con_number, "Rate Con #")}
+                {renderEditPencil("bol_number", job.bol_number, "BOL #")}
+              </div>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
                 <p className="tv-label">Broker Name</p>
                 <div className="flex items-center gap-2">
                   <p className="text-[17px] font-bold">{job.broker_name || "Tap to add"}</p>
@@ -996,6 +1022,16 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                 <p className="text-[17px] font-bold">
                   {job.pickup_location || "Pickup"} → {job.delivery_location || "Delivery"}
                 </p>
+                {job.pickup_facility ? (
+                  <p className="mt-1 text-[14px] text-[var(--color-text-muted)]">
+                    Pickup: {job.pickup_facility}
+                  </p>
+                ) : null}
+                {job.delivery_facility ? (
+                  <p className="text-[14px] text-[var(--color-text-muted)]">
+                    Delivery: {job.delivery_facility}
+                  </p>
+                ) : null}
                 {estMiles ? (
                   <button
                     type="button"
@@ -1008,7 +1044,9 @@ export function JobFolderView({ jobId }: { jobId: string }) {
               </div>
               <div className="flex shrink-0 gap-1">
                 {renderEditPencil("pickup_location", job.pickup_location, "Pickup Location")}
+                {renderEditPencil("pickup_facility", job.pickup_facility, "Pickup Facility")}
                 {renderEditPencil("delivery_location", job.delivery_location, "Delivery Location")}
+                {renderEditPencil("delivery_facility", job.delivery_facility, "Delivery Facility")}
               </div>
             </div>
           </div>
@@ -1710,6 +1748,17 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             fieldKey={editField}
             value={editValue}
             onChange={setEditValue}
+            placeholder={
+              editField === "rate_con_number"
+                ? "e.g. RC-123456"
+                : editField === "bol_number"
+                  ? "e.g. BOL-789012"
+                  : editField === "pickup_facility"
+                    ? "e.g. Atlanta Produce Terminal"
+                    : editField === "delivery_facility"
+                      ? "e.g. Miami Cool Storage"
+                      : undefined
+            }
           />
         ) : null}
         <TvButton className="mt-4" onClick={async () => {
