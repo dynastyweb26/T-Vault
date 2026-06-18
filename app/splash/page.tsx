@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { TvButton } from "@/components/tv/tv-button";
+import { SplashTruckAnimation } from "@/components/splash/splash-truck-animation";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import { getPostAuthRedirect } from "@/lib/auth-helpers";
@@ -78,42 +78,24 @@ export default function SplashPage() {
   }, [boot]);
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-5 text-center">
-      <div className="flex flex-col items-center">
-        <Image
-          src="/icon.png"
-          alt=""
-          width={120}
-          height={120}
-          className="mx-auto mb-8 block size-[120px] rounded-[28px]"
-          priority
-        />
+    <div
+      className="relative min-h-dvh overflow-hidden"
+      style={{ backgroundColor: "#0a0a0a" }}
+    >
+      <SplashTruckAnimation />
 
-        <h1
-          className="w-[200px] text-[32px] font-extrabold leading-none tracking-tight"
-          style={{
-            background: "var(--gold-gradient)",
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            color: "transparent",
-          }}
-        >
-          T-Vault
-        </h1>
-
-        <p className="tv-body mt-4 max-w-[280px] text-[15px] leading-relaxed text-[var(--color-text-secondary)]">
-          Your business command center for the road.
+      <div className="pointer-events-none relative z-10 flex min-h-dvh flex-col items-center justify-end px-5 pb-[max(10.5rem,calc(env(safe-area-inset-bottom)+9rem))] text-center">
+        <p className="tv-caption pointer-events-auto text-[#aaaaaa]">
+          {status}
         </p>
-      </div>
-
-      <div className="absolute inset-x-0 bottom-[max(3rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-4">
-        <p className="tv-caption">{status}</p>
         {failed ? (
-          <TvButton variant="secondary" onClick={() => void boot()}>
-            Try again
-          </TvButton>
+          <div className="pointer-events-auto mt-4">
+            <TvButton variant="secondary" onClick={() => void boot()}>
+              Try again
+            </TvButton>
+          </div>
         ) : (
-          <div className="tv-skeleton h-1 w-20 rounded-full" />
+          <div className="tv-skeleton pointer-events-none mt-4 h-1 w-20 rounded-full" />
         )}
       </div>
     </div>

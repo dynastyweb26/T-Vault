@@ -1,0 +1,269 @@
+.scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+.logoBlock {
+  position: absolute;
+  top: max(3.5rem, calc(env(safe-area-inset-top) + 2.5rem));
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+  animation: logoFadeIn 0.6s ease-out forwards;
+}
+
+.logoIcon {
+  display: block;
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+}
+
+.wordmark {
+  margin-top: 1rem;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #b8960c;
+}
+
+.road {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: 140px;
+  opacity: 0;
+  background: #1a1a1a;
+  animation: roadAppear 0.5s ease-out 0.3s forwards;
+}
+
+.roadDashTrack {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 3px;
+  overflow: hidden;
+  transform: translateY(-50%);
+}
+
+.roadDash {
+  width: 200%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    #b8960c 0,
+    #b8960c 28px,
+    transparent 28px,
+    transparent 56px
+  );
+  animation: dashScroll 0.55s linear infinite;
+}
+
+.curb {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: #b8960c;
+}
+
+.truckLane {
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  left: 0;
+  z-index: 3;
+  height: 90px;
+  pointer-events: none;
+}
+
+.truckWrap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: min(300px, 78vw);
+  opacity: 0;
+  transform: translateX(-110%);
+  animation: truckDrive 2.2s cubic-bezier(0.25, 0.1, 0.25, 1) 0.8s forwards;
+}
+
+.truckSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.wheelSpin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wheelRotate 0.42s linear 0.8s 5;
+}
+
+.exhaust {
+  position: absolute;
+  top: 6px;
+  left: 34px;
+  width: 40px;
+  height: 48px;
+  opacity: 0;
+  animation: exhaustVisible 2.2s linear 0.8s forwards;
+}
+
+.puff {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #aaaaaa;
+  opacity: 0;
+  animation: puffRise 1.1s ease-out 0.8s infinite;
+}
+
+.puff:nth-child(2) {
+  left: 10px;
+  animation-delay: 1.15s;
+}
+
+.puff:nth-child(3) {
+  left: 20px;
+  animation-delay: 1.5s;
+}
+
+.wipeOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: #0a0a0a;
+  transform: translateX(0);
+  animation: screenWipe 0.4s cubic-bezier(0.25, 0.1, 0.25, 1) 3.3s forwards;
+  pointer-events: none;
+}
+
+@keyframes logoFadeIn {
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes roadAppear {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dashScroll {
+  to {
+    transform: translateX(-56px);
+  }
+}
+
+@keyframes truckDrive {
+  0% {
+    opacity: 1;
+    transform: translateX(-110%);
+  }
+
+  6% {
+    opacity: 1;
+    transform: translateX(-8%);
+  }
+
+  94% {
+    opacity: 1;
+    transform: translateX(calc(100vw + 8%));
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(calc(100vw + 110%));
+  }
+}
+
+@keyframes exhaustVisible {
+  0%,
+  99% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes wheelRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes puffRise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+
+  20% {
+    opacity: 0.55;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-28px) scale(1.15);
+  }
+}
+
+@keyframes screenWipe {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logoBlock,
+  .road,
+  .truckWrap,
+  .roadDash,
+  .wheelSpin,
+  .puff,
+  .wipeOverlay {
+    animation: none;
+  }
+
+  .logoBlock {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .truckWrap {
+    left: 50%;
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+
+  .wipeOverlay {
+    transform: translateX(100%);
+  }
+}
