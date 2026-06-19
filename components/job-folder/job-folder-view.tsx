@@ -434,6 +434,12 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         const missing = err.message.replace("missing_invoice_fields:", "").split(",");
         window.alert(formatMissingInvoiceFieldsMessage(missing));
       } else {
+        console.error("[TEMP DEBUG invoice] runInvoiceGeneration:failed", {
+          err,
+          regenerate,
+          message: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+        });
         window.alert(
           regenerate
             ? "Could not regenerate invoice. Try again."
