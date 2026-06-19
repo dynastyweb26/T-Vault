@@ -8,9 +8,11 @@ import { TvTextarea } from "@/components/tv/tv-textarea";
 import { useAuth } from "@/components/providers/auth-provider";
 import { TEXT_LIMITS } from "@/lib/constants";
 import {
+  formatDotNumber,
   formatMcNumber,
   getTextCounter,
   sanitizeText,
+  validateDotNumber,
   validateMcNumber,
   validateTextLength,
 } from "@/lib/validation";
@@ -20,6 +22,7 @@ export default function EditProfilePage() {
   const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [mcNumber, setMcNumber] = useState("");
+  const [dotNumber, setDotNumber] = useState("");
   const [ein, setEin] = useState("");
   const [truckInfo, setTruckInfo] = useState("");
   const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -32,6 +35,7 @@ export default function EditProfilePage() {
     setFullName(profile.full_name ?? "");
     setCompanyName(profile.company_name ?? "");
     setMcNumber(profile.mc_number ?? "");
+    setDotNumber(profile.dot_number ?? "");
     setEin(profile.ein ?? "");
     setTruckInfo(profile.truck_info ?? "");
   }, [profile]);
@@ -43,6 +47,7 @@ export default function EditProfilePage() {
         ? validateTextLength(companyName, TEXT_LIMITS.company, "Company name")
         : null,
       mcNumber: mcNumber.trim() ? validateMcNumber(mcNumber) : null,
+      dotNumber: dotNumber.trim() ? validateDotNumber(dotNumber) : null,
       truckInfo:
         truckInfo.length > TEXT_LIMITS.truckInfo
           ? `Truck info must be ${TEXT_LIMITS.truckInfo} characters or fewer.`
@@ -66,6 +71,7 @@ export default function EditProfilePage() {
         fullName: sanitizeText(fullName),
         companyName: sanitizeText(companyName),
         mcNumber: formatMcNumber(mcNumber),
+        dotNumber: formatDotNumber(dotNumber),
         ein: sanitizeText(ein) || null,
         truckInfo: sanitizeText(truckInfo),
       }),
@@ -128,6 +134,18 @@ export default function EditProfilePage() {
           error={errors.mcNumber}
           helper="Format: MC-123456 or MC-1234567"
         />
+        <TvInput
+          label="DOT Number"
+          value={dotNumber}
+          onChange={(event) =>
+            setDotNumber(formatDotNumber(event.target.value))
+          }
+          placeholder="e.g. 1234567"
+          error={errors.dotNumber}
+        />
+        <p className="-mt-2 text-[12px] text-[var(--color-text-muted)]">
+          Required to generate invoices
+        </p>
         <TvInput
           label="EIN (Tax ID)"
           value={ein}

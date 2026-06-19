@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { TEXT_LIMITS } from "@/lib/constants";
 import {
+  formatDotNumber,
   formatMcNumber,
   sanitizeText,
+  validateDotNumber,
   validateMcNumber,
   validateTextLength,
 } from "@/lib/validation";
@@ -24,6 +26,7 @@ export async function POST(request: Request) {
     const fullName = sanitizeText(String(body.fullName ?? ""));
     const companyName = sanitizeText(String(body.companyName ?? ""));
     const mcNumber = formatMcNumber(String(body.mcNumber ?? ""));
+    const dotNumber = formatDotNumber(String(body.dotNumber ?? ""));
     const ein = sanitizeText(String(body.ein ?? ""));
     const truckInfo = sanitizeText(String(body.truckInfo ?? ""));
 
@@ -36,14 +39,22 @@ export async function POST(request: Request) {
       ? validateTextLength(companyName, TEXT_LIMITS.company, "Company name")
       : null;
     const mcError = mcNumber ? validateMcNumber(mcNumber) : null;
+    const dotError = dotNumber ? validateDotNumber(dotNumber) : null;
     const truckInfoError =
       truckInfo.length > TEXT_LIMITS.truckInfo
         ? `Truck info must be ${TEXT_LIMITS.truckInfo} characters or fewer.`
         : null;
 
-    if (fullNameError || companyNameError || mcError || truckInfoError) {
+    if (fullNameError || companyNameError || mcError || dotError || truckInfoError) {
       return NextResponse.json(
-        { error: fullNameError || companyNameError || mcError || truckInfoError },
+        {
+          error:
+            fullNameError ||
+            companyNameError ||
+            mcError ||
+            dotError ||
+            truckInfoError,
+        },
         { status: 400 }
       );
     }
@@ -54,6 +65,7 @@ export async function POST(request: Request) {
         full_name: fullName,
         company_name: companyName || null,
         mc_number: mcNumber || null,
+        dot_number: dotNumber || null,
         ein: ein || null,
         truck_info: truckInfo || null,
         updated_at: new Date().toISOString(),
