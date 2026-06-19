@@ -4,7 +4,10 @@ import Image from "next/image";
 
 export function RouteGuardLoading() {
   return (
-    <div className="tv-page-canvas flex min-h-dvh flex-col items-center justify-center px-5">
+    <div
+      className="flex min-h-dvh flex-col items-center justify-center px-5"
+      style={{ backgroundColor: "#0a0a0a" }}
+    >
       <Image
         src="/icon.png"
         alt=""
@@ -13,7 +16,7 @@ export function RouteGuardLoading() {
         className="tv-loading-pulse mb-8 size-16 rounded-2xl shadow-[var(--shadow-gold)]"
         aria-hidden
       />
-      <div className="tv-skeleton h-1 w-28 rounded-full" />
+      <div className="tv-skeleton h-1 w-20 rounded-full opacity-60" />
     </div>
   );
 }

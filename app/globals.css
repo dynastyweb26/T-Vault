@@ -136,12 +136,17 @@
 
   html {
     @apply font-sans antialiased;
-    background-color: var(--color-bg);
+    background-color: #0a0a0a;
     color: var(--color-text-primary);
     transition: background-color var(--transition-smooth),
       color var(--transition-base);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+  }
+
+  html.light,
+  html.dark {
+    background-color: var(--color-bg);
   }
 
   body {
