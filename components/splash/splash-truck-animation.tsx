@@ -1,4 +1,3 @@
-import Image from "next/image";
 import styles from "./splash-truck-animation.module.css";
 
 function SplashTruckSvg() {
@@ -12,14 +11,7 @@ function SplashTruckSvg() {
     >
       <rect x="0" y="52" width="300" height="38" fill="transparent" />
 
-      <rect
-        x="8"
-        y="28"
-        width="78"
-        height="34"
-        rx="6"
-        fill="#B8960C"
-      />
+      <rect x="8" y="28" width="78" height="34" rx="6" fill="#B8960C" />
       <path
         d="M8 34C8 30.6863 10.6863 28 14 28H72C75.3137 28 78 30.6863 78 34V62H8V34Z"
         fill="#B8960C"
@@ -63,13 +55,14 @@ export function SplashTruckAnimation() {
   return (
     <div className={styles.scene} aria-hidden>
       <div className={styles.logoBlock}>
-        <Image
+        <img
           src="/icon.png"
           alt=""
           width={88}
           height={88}
           className={styles.logoIcon}
-          priority
+          decoding="async"
+          fetchPriority="high"
         />
         <p className={styles.wordmark}>T-Vault</p>
         <p className={styles.subtitle}>Owner-Operator Network</p>

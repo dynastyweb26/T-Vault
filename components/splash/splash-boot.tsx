@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TvButton } from "@/components/tv/tv-button";
-import { SplashTruckAnimation } from "@/components/splash/splash-truck-animation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { APP_ROUTES } from "@/lib/constants";
 import { getPostAuthRedirect } from "@/lib/auth-helpers";
 import {
+  getSplashAnimationStartedAt,
   markSplashNavigation,
   waitForSplashMinimum,
 } from "@/lib/splash-flow";
@@ -19,13 +19,8 @@ export function SplashBoot() {
   const [status, setStatus] = useState("Checking your account...");
   const [failed, setFailed] = useState(false);
   const [bootAttempt, setBootAttempt] = useState(0);
-  const startedAtRef = useRef<number | null>(null);
   const navigatingRef = useRef(false);
   const bootInFlightRef = useRef(false);
-
-  useEffect(() => {
-    startedAtRef.current = Date.now();
-  }, []);
 
   const boot = useCallback(async () => {
     if (authLoading || navigatingRef.current || bootInFlightRef.current) {
@@ -33,7 +28,6 @@ export function SplashBoot() {
     }
 
     bootInFlightRef.current = true;
-    const animationStartedAt = startedAtRef.current ?? Date.now();
 
     try {
       setFailed(false);
@@ -77,7 +71,7 @@ export function SplashBoot() {
       }
 
       setStatus("Loading your command center...");
-      await waitForSplashMinimum(animationStartedAt);
+      await waitForSplashMinimum(getSplashAnimationStartedAt());
       navigatingRef.current = true;
       markSplashNavigation();
       router.replace(getPostAuthRedirect(resolvedProfile as UserProfile));
@@ -97,23 +91,17 @@ export function SplashBoot() {
   };
 
   return (
-    <>
-      <SplashTruckAnimation />
-
-      <div className="pointer-events-none relative z-10 flex min-h-dvh flex-col items-center justify-end px-5 pb-[max(10.5rem,calc(env(safe-area-inset-bottom)+9rem))] text-center">
-        <p className="tv-caption pointer-events-auto text-[#aaaaaa]">
-          {status}
-        </p>
-        {failed ? (
-          <div className="pointer-events-auto mt-4">
-            <TvButton variant="secondary" onClick={handleRetry}>
-              Try again
-            </TvButton>
-          </div>
-        ) : (
-          <div className="tv-skeleton pointer-events-none mt-4 h-1 w-20 rounded-full" />
-        )}
-      </div>
-    </>
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-center px-5 pb-[max(10.5rem,calc(env(safe-area-inset-bottom)+9rem))] text-center">
+      <p className="tv-caption pointer-events-auto text-[#aaaaaa]">{status}</p>
+      {failed ? (
+        <div className="pointer-events-auto mt-4">
+          <TvButton variant="secondary" onClick={handleRetry}>
+            Try again
+          </TvButton>
+        </div>
+      ) : (
+        <div className="tv-skeleton pointer-events-none mt-4 h-1 w-20 rounded-full" />
+      )}
+    </div>
   );
 }
