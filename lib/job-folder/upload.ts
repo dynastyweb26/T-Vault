@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+﻿import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkImageQuality } from "@/lib/job-folder/image-quality";
 import { triggerHaptic } from "@/lib/haptics";
 import type { DocumentType } from "@/types/job-folder";
@@ -26,12 +26,6 @@ async function postDocumentUpload(formData: FormData): Promise<{
   });
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => null);
-    console.error("[TEMP DEBUG invoice] upload:failed", {
-      status: response.status,
-      statusText: response.statusText,
-      errorBody,
-    });
     throw new Error(GENERIC_UPLOAD_ERROR);
   }
 
