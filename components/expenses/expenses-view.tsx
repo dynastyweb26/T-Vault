@@ -39,7 +39,8 @@ export function ExpensesView() {
   const { user } = useAuth();
   const { expenseSheetOpen, isRunning } = useAppTour();
   const searchParams = useSearchParams();
-  const { data, loading, refreshing, error, refresh } = useExpenses();
+  const { summary, truckExpenses, hasMore, loading, loadingMore, refreshing, error, refresh, loadMore } =
+    useExpenses();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<ExpenseFilterId>("all");
   const [previewExpense, setPreviewExpense] = useState<Expense | null>(null);
@@ -73,11 +74,10 @@ export function ExpensesView() {
   });
 
   const filteredExpenses = useMemo(() => {
-    if (!data) return [];
-    return data.truckExpenses.filter((expense) =>
+    return truckExpenses.filter((expense) =>
       matchesExpenseFilter(expense.category, activeFilter)
     );
-  }, [activeFilter, data]);
+  }, [activeFilter, truckExpenses]);
 
   const handleDelete = async (expenseId: string) => {
     if (!user) return;
@@ -115,10 +115,10 @@ export function ExpensesView() {
           <div className="tv-error-state">
             <p className="tv-body text-[15px]">{error}</p>
           </div>
-        ) : data ? (
+        ) : summary ? (
           <>
             <div data-tour="expenses-summary" className="flex flex-col gap-4">
-              <ExpenseSummaryCard summary={data.summary} />
+              <ExpenseSummaryCard summary={summary} />
 
               <TvButton onClick={() => setSheetOpen(true)}>
                 <Plus className="size-5" strokeWidth={2} aria-hidden />
@@ -143,6 +143,16 @@ export function ExpensesView() {
                     tourTarget={index === 0}
                   />
                 ))}
+                {hasMore ? (
+                  <TvButton
+                    variant="secondary"
+                    disabled={loadingMore}
+                    onClick={() => void loadMore()}
+                    className="mt-2 w-full"
+                  >
+                    {loadingMore ? "Loading..." : "Load more"}
+                  </TvButton>
+                ) : null}
               </div>
             ) : (
               <section className="tv-empty-state mt-6 pb-8" data-tour="expenses-row">

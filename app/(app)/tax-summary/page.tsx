@@ -35,19 +35,11 @@ export default function TaxSummaryPage() {
     const supabase = createClient();
     const range = getTaxDateRange(rangeId, customStart, customEnd);
 
-    const [summary, jobsResult, expensesResult] = await Promise.all([
-      fetchTaxSummaryData(supabase, user.id, range),
-      supabase
-        .from("jobs")
-        .select("*")
-        .eq("user_id", user.id)
-        .neq("is_template", true),
-      supabase.from("expenses").select("*").eq("user_id", user.id),
-    ]);
+    const result = await fetchTaxSummaryData(supabase, user.id, range);
 
-    setData(summary);
-    setRawJobs((jobsResult.data ?? []) as Job[]);
-    setRawExpenses((expensesResult.data ?? []) as Expense[]);
+    setData(result.summary);
+    setRawJobs(result.jobs);
+    setRawExpenses(result.expenses);
     setLoading(false);
   }, [user, rangeId, customStart, customEnd]);
 

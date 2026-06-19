@@ -1,8 +1,26 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { VoiceNote, VoiceNoteResult } from "@/types/database";
 import { VOICE_NOTES_ENABLED } from "@/lib/features";
+import {
+  decodeVoiceNoteCursor,
+  DEFAULT_PAGE_SIZE,
+  encodeVoiceNoteCursor,
+} from "@/lib/pagination/cursor";
 
 const STORAGE_BUCKET = "game1-documents";
+
+export const VOICE_NOTES_PAGE_SIZE = DEFAULT_PAGE_SIZE;
+
+export interface FetchVoiceNotesPageOptions {
+  cursor?: string | null;
+  limit?: number;
+  includeProcessed?: boolean;
+}
+
+export interface VoiceNotesPageResult {
+  notes: VoiceNote[];
+  nextCursor: string | null;
+}
 
 export async function createVoiceNoteRecord(
   supabase: SupabaseClient,
@@ -83,25 +101,70 @@ export async function processVoiceNote(
   return result as VoiceNoteResult;
 }
 
-export async function fetchVoiceNotes(
+export async function fetchVoiceNotesPage(
   supabase: SupabaseClient,
   userId: string,
-  includeProcessed = false
-): Promise<VoiceNote[]> {
-  if (!VOICE_NOTES_ENABLED) return [];
+  options: FetchVoiceNotesPageOptions = {}
+): Promise<VoiceNotesPageResult> {
+  if (!VOICE_NOTES_ENABLED) {
+    return { notes: [], nextCursor: null };
+  }
+
+  const limit = options.limit ?? VOICE_NOTES_PAGE_SIZE;
+  const includeProcessed = options.includeProcessed ?? false;
 
   let query = supabase
     .from("voice_notes")
     .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .eq("user_id", userId);
 
   if (!includeProcessed) {
     query = query.eq("processed", false);
   }
 
-  const { data } = await query;
-  return (data as VoiceNote[]) ?? [];
+  if (options.cursor) {
+    const decoded = decodeVoiceNoteCursor(options.cursor);
+    if (decoded) {
+      query = query.or(
+        `created_at.lt.${decoded.createdAt},and(created_at.eq.${decoded.createdAt},id.lt.${decoded.id})`
+      );
+    }
+  }
+
+  query = query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit + 1);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("voice notes fetch failed:", error.message);
+    return { notes: [], nextCursor: null };
+  }
+
+  const rows = (data ?? []) as VoiceNote[];
+  const hasMore = rows.length > limit;
+  const notes = hasMore ? rows.slice(0, limit) : rows;
+  const last = notes[notes.length - 1];
+  const nextCursor =
+    hasMore && last?.created_at
+      ? encodeVoiceNoteCursor(last.created_at, last.id)
+      : null;
+
+  return { notes, nextCursor };
+}
+
+/** @deprecated Use fetchVoiceNotesPage for paginated access */
+export async function fetchVoiceNotes(
+  supabase: SupabaseClient,
+  userId: string,
+  includeProcessed = false
+): Promise<VoiceNote[]> {
+  const { notes } = await fetchVoiceNotesPage(supabase, userId, {
+    includeProcessed,
+    limit: 1000,
+  });
+  return notes;
 }
 
 export async function markVoiceNoteProcessed(

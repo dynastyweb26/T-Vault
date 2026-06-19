@@ -17,6 +17,19 @@ import { countRequiredDocs } from "@/lib/job-folder/documents";
 import type { JobDocument } from "@/types/jobs";
 import { APP_ROUTES } from "@/lib/constants";
 
+/** Columns used by dashboard aggregates, attention items, and awaiting payments. */
+const DASHBOARD_JOBS_SELECT =
+  "id, job_name, status, load_value, miles, delivery_date, payment_received_date, updated_at, payment_received, payment_expected_date, invoice_sent_date";
+
+const DASHBOARD_EXPENSES_SELECT = "amount, expense_date, created_at";
+
+const DASHBOARD_PAYMENTS_SELECT =
+  "id, job_id, status, received_date, expected_date, amount";
+
+/** Columns used by countRequiredDocs / isInvoiceGenerated on the dashboard. */
+const DASHBOARD_DOCUMENTS_SELECT =
+  "job_id, document_type, file_url, ai_confidence, manual_fields, parsed_data, upload_status";
+
 function sumLoadValues(jobs: Job[]): number {
   return jobs.reduce((sum, job) => sum + (job.load_value ?? 0), 0);
 }
@@ -81,18 +94,36 @@ export async function fetchDashboardData(
   const { start, end } = getMonthRange();
   const lastYear = getSameMonthLastYear();
 
-  const [jobsResult, expensesResult, paymentsResult, documentsResult] =
+  const [jobsResult, expensesResult, paymentsResult, documentsResult, activeJobsDisplayResult] =
     await Promise.all([
+      supabase
+        .from("jobs")
+        .select(DASHBOARD_JOBS_SELECT)
+        .eq("user_id", userId)
+        .neq("is_template", true)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false }),
+      supabase
+        .from("expenses")
+        .select(DASHBOARD_EXPENSES_SELECT)
+        .eq("user_id", userId),
+      supabase
+        .from("payments")
+        .select(DASHBOARD_PAYMENTS_SELECT)
+        .eq("user_id", userId),
+      supabase
+        .from("documents")
+        .select(DASHBOARD_DOCUMENTS_SELECT)
+        .eq("user_id", userId),
       supabase
         .from("jobs")
         .select("*")
         .eq("user_id", userId)
         .neq("is_template", true)
         .is("deleted_at", null)
-        .order("updated_at", { ascending: false }),
-      supabase.from("expenses").select("*").eq("user_id", userId),
-      supabase.from("payments").select("*").eq("user_id", userId),
-      supabase.from("documents").select("*").eq("user_id", userId),
+        .in("status", ["active", "awaiting_payment"])
+        .order("updated_at", { ascending: false })
+        .limit(5),
     ]);
 
   const jobs = (jobsResult.data ?? []) as Job[];
@@ -102,7 +133,8 @@ export async function fetchDashboardData(
     jobsResult.error ||
     expensesResult.error ||
     paymentsResult.error ||
-    documentsResult.error
+    documentsResult.error ||
+    activeJobsDisplayResult.error
   ) {
     throw new Error("dashboard_fetch_failed");
   }
@@ -139,9 +171,9 @@ export async function fetchDashboardData(
   const activeJobsRaw = jobs.filter(
     (job) => job.status === "active" || job.status === "awaiting_payment"
   );
-  const activeJobs = activeJobsRaw
-    .slice(0, 5)
-    .map((job) => toDashboardJob(job, docsByJob[job.id] ?? []));
+  const activeJobs = (activeJobsDisplayResult.data ?? []).map((job) =>
+    toDashboardJob(job as Job, docsByJob[job.id] ?? [])
+  );
 
   const milesThisMonth = jobs
     .filter((job) => isJobCompletedInMonth(job, start, end))

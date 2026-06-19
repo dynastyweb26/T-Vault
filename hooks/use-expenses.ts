@@ -1,24 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import {
-  fetchExpensesPageData,
-  type ExpensesPageData,
+  fetchExpensesSummary,
+  fetchTruckExpensesPage,
+  type ExpenseSummary,
 } from "@/lib/expenses/queries";
+import type { Expense } from "@/types/jobs";
 
 export function useExpenses() {
   const { user } = useAuth();
-  const [data, setData] = useState<ExpensesPageData | null>(null);
+  const [summary, setSummary] = useState<ExpenseSummary | null>(null);
+  const [truckExpenses, setTruckExpenses] = useState<Expense[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(
+  const loadInitial = useCallback(
     async (isRefresh = false) => {
       if (!user) {
-        setData(null);
+        setSummary(null);
+        setTruckExpenses([]);
+        setNextCursor(null);
         setLoading(false);
         return;
       }
@@ -30,8 +37,14 @@ export function useExpenses() {
 
       try {
         const supabase = createClient();
-        const next = await fetchExpensesPageData(supabase, user.id);
-        setData(next);
+        const [summaryResult, pageResult] = await Promise.all([
+          fetchExpensesSummary(supabase, user.id),
+          fetchTruckExpensesPage(supabase, user.id),
+        ]);
+
+        setSummary(summaryResult);
+        setTruckExpenses(pageResult.expenses);
+        setNextCursor(pageResult.nextCursor);
       } catch {
         setError("Could not load expenses. Pull to refresh and try again.");
       } finally {
@@ -43,18 +56,44 @@ export function useExpenses() {
   );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadInitial();
+  }, [loadInitial]);
 
   const refresh = useCallback(async () => {
-    await load(true);
-  }, [load]);
+    await loadInitial(true);
+  }, [loadInitial]);
+
+  const loadMore = useCallback(async () => {
+    if (!user || !nextCursor || loadingMore) return;
+
+    setLoadingMore(true);
+    setError(null);
+
+    try {
+      const supabase = createClient();
+      const pageResult = await fetchTruckExpensesPage(supabase, user.id, {
+        cursor: nextCursor,
+      });
+
+      setTruckExpenses((current) => [...current, ...pageResult.expenses]);
+      setNextCursor(pageResult.nextCursor);
+    } catch {
+      setError("Could not load more expenses. Try again.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, nextCursor, user]);
 
   return {
-    data,
+    summary,
+    truckExpenses,
+    nextCursor,
+    hasMore: nextCursor !== null,
     loading,
+    loadingMore,
     refreshing,
     error,
     refresh,
+    loadMore,
   };
 }

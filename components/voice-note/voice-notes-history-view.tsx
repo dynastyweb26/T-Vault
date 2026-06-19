@@ -8,7 +8,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import {
   deleteVoiceNote,
-  fetchVoiceNotes,
+  fetchVoiceNotesPage,
   markVoiceNoteProcessed,
 } from "@/lib/voice-notes/queries";
 import type { VoiceNote } from "@/types/database";
@@ -99,17 +99,34 @@ export function VoiceNotesHistoryView() {
   const [notes, setNotes] = useState<VoiceNote[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    const supabase = createClient();
-    const data = await fetchVoiceNotes(supabase, user.id, showArchived);
-    setNotes(data);
-    setLoading(false);
-  }, [showArchived, user]);
+  const load = useCallback(
+    async (cursor?: string | null, append = false) => {
+      if (!user) return;
+
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+
+      const supabase = createClient();
+      const result = await fetchVoiceNotesPage(supabase, user.id, {
+        cursor: cursor ?? null,
+        includeProcessed: showArchived,
+      });
+
+      setNotes((current) =>
+        append ? [...current, ...result.notes] : result.notes
+      );
+      setNextCursor(result.nextCursor);
+      setLoading(false);
+      setLoadingMore(false);
+    },
+    [showArchived, user]
+  );
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   if (loading) {
@@ -153,14 +170,27 @@ export function VoiceNotesHistoryView() {
       <AppHeader title="Voice Notes" subtitle="Unprocessed notes" />
       <div className="mt-6 flex flex-col gap-3 px-5 pb-8">
         {notes.map((note) => (
-          <NoteRow key={note.id} note={note} onRefresh={load} />
+          <NoteRow key={note.id} note={note} onRefresh={() => void load()} />
         ))}
+
+        {nextCursor ? (
+          <TvButton
+            variant="secondary"
+            disabled={loadingMore}
+            onClick={() => void load(nextCursor, true)}
+            className="mt-2"
+          >
+            {loadingMore ? "Loading..." : "Load more"}
+          </TvButton>
+        ) : null}
+
         <button
           type="button"
           className="mt-2 text-center text-[16px] text-[var(--color-accent)]"
           onClick={() => {
             setShowArchived(!showArchived);
-            setLoading(true);
+            setNotes([]);
+            setNextCursor(null);
           }}
         >
           {showArchived ? "Hide archived" : "Show archived"}
