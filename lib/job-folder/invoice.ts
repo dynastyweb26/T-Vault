@@ -692,7 +692,7 @@ export async function buildLoadInvoicePdf(params: {
   });
 
   let JsPDF: typeof import("jspdf").jsPDF;
-  let QRCode: typeof import("qrcode").default;
+  let QRCode: { toDataURL: typeof import("qrcode").toDataURL };
   try {
     const jspdfModule = await import("jspdf");
     JsPDF = jspdfModule.jsPDF;

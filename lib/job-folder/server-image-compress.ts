@@ -1,4 +1,3 @@
-import sharp from "sharp";
 import { MAX_COMPRESSED_IMAGE_BYTES } from "@/lib/job-folder/file-validation";
 import type { AllowedUploadType } from "@/lib/job-folder/file-validation";
 
@@ -6,6 +5,8 @@ export async function compressImageBuffer(
   buffer: Buffer,
   sourceType: Extract<AllowedUploadType, "image/jpeg" | "image/png">
 ): Promise<Buffer> {
+  const sharp = (await import("sharp")).default;
+
   let quality = 85;
   let width = 1600;
 
