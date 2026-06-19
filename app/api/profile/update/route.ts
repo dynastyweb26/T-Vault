@@ -22,6 +22,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const fullName = sanitizeText(String(body.fullName ?? ""));
+    const companyName = sanitizeText(String(body.companyName ?? ""));
     const mcNumber = formatMcNumber(String(body.mcNumber ?? ""));
     const ein = sanitizeText(String(body.ein ?? ""));
     const truckInfo = sanitizeText(String(body.truckInfo ?? ""));
@@ -31,15 +32,18 @@ export async function POST(request: Request) {
       TEXT_LIMITS.fullName,
       "Full name"
     );
+    const companyNameError = companyName
+      ? validateTextLength(companyName, TEXT_LIMITS.company, "Company name")
+      : null;
     const mcError = mcNumber ? validateMcNumber(mcNumber) : null;
     const truckInfoError =
       truckInfo.length > TEXT_LIMITS.truckInfo
         ? `Truck info must be ${TEXT_LIMITS.truckInfo} characters or fewer.`
         : null;
 
-    if (fullNameError || mcError || truckInfoError) {
+    if (fullNameError || companyNameError || mcError || truckInfoError) {
       return NextResponse.json(
-        { error: fullNameError || mcError || truckInfoError },
+        { error: fullNameError || companyNameError || mcError || truckInfoError },
         { status: 400 }
       );
     }
@@ -48,6 +52,7 @@ export async function POST(request: Request) {
       .from("users")
       .update({
         full_name: fullName,
+        company_name: companyName || null,
         mc_number: mcNumber || null,
         ein: ein || null,
         truck_info: truckInfo || null,

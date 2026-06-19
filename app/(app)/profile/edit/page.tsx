@@ -18,6 +18,7 @@ import {
 export default function EditProfilePage() {
   const { profile, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [mcNumber, setMcNumber] = useState("");
   const [ein, setEin] = useState("");
   const [truckInfo, setTruckInfo] = useState("");
@@ -29,6 +30,7 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (!profile) return;
     setFullName(profile.full_name ?? "");
+    setCompanyName(profile.company_name ?? "");
     setMcNumber(profile.mc_number ?? "");
     setEin(profile.ein ?? "");
     setTruckInfo(profile.truck_info ?? "");
@@ -37,6 +39,9 @@ export default function EditProfilePage() {
   const validate = () => {
     const nextErrors = {
       fullName: validateTextLength(fullName, TEXT_LIMITS.fullName, "Full name"),
+      companyName: companyName.trim()
+        ? validateTextLength(companyName, TEXT_LIMITS.company, "Company name")
+        : null,
       mcNumber: mcNumber.trim() ? validateMcNumber(mcNumber) : null,
       truckInfo:
         truckInfo.length > TEXT_LIMITS.truckInfo
@@ -59,6 +64,7 @@ export default function EditProfilePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         fullName: sanitizeText(fullName),
+        companyName: sanitizeText(companyName),
         mcNumber: formatMcNumber(mcNumber),
         ein: sanitizeText(ein) || null,
         truckInfo: sanitizeText(truckInfo),
@@ -99,6 +105,20 @@ export default function EditProfilePage() {
           error={errors.fullName}
           counter={getTextCounter(fullName, TEXT_LIMITS.fullName) ?? undefined}
         />
+        <TvInput
+          label="Company Name"
+          value={companyName}
+          onChange={(event) => setCompanyName(event.target.value)}
+          onBlur={() => setCompanyName((value) => sanitizeText(value))}
+          placeholder="e.g. Brandon Trucking LLC"
+          error={errors.companyName}
+          counter={
+            getTextCounter(companyName, TEXT_LIMITS.company) ?? undefined
+          }
+        />
+        <p className="-mt-2 text-[12px] text-[var(--color-text-muted)]">
+          Required to generate invoices
+        </p>
         <TvInput
           label="MC Number"
           value={mcNumber}
