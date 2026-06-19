@@ -14,9 +14,7 @@ export function formatMcNumber(value: string): string {
 }
 
 export function formatDotNumber(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 7);
-  if (!digits) return "";
-  return `DOT-${digits}`;
+  return value.replace(/\D/g, "").slice(0, 7);
 }
 
 export function validateMcNumber(value: string): string | null {
@@ -28,11 +26,16 @@ export function validateMcNumber(value: string): string | null {
   return null;
 }
 
-export function validateDotNumber(value: string): string | null {
+export function validateDotNumber(
+  value: string,
+  { required = true }: { required?: boolean } = {}
+): string | null {
   const formatted = formatDotNumber(value);
-  if (!formatted) return "DOT Number is required.";
-  if (!/^DOT-\d{7}$/.test(formatted)) {
-    return "DOT Number must be DOT- followed by exactly 7 digits.";
+  if (!formatted) {
+    return required ? "DOT Number is required." : null;
+  }
+  if (!/^\d{1,7}$/.test(formatted)) {
+    return "DOT Number format is invalid — enter 1 to 7 digits only.";
   }
   return null;
 }

@@ -6,6 +6,10 @@ import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
 import { TvTextarea } from "@/components/tv/tv-textarea";
 import { useAuth } from "@/components/providers/auth-provider";
+import {
+  getProfileFieldErrorKey,
+  resolveProfileUpdateError,
+} from "@/lib/profile-update-errors";
 import { TEXT_LIMITS } from "@/lib/constants";
 import {
   formatDotNumber,
@@ -35,7 +39,7 @@ export default function EditProfilePage() {
     setFullName(profile.full_name ?? "");
     setCompanyName(profile.company_name ?? "");
     setMcNumber(profile.mc_number ?? "");
-    setDotNumber(profile.dot_number ?? "");
+    setDotNumber(formatDotNumber(profile.dot_number ?? ""));
     setEin(profile.ein ?? "");
     setTruckInfo(profile.truck_info ?? "");
   }, [profile]);
@@ -47,7 +51,9 @@ export default function EditProfilePage() {
         ? validateTextLength(companyName, TEXT_LIMITS.company, "Company name")
         : null,
       mcNumber: mcNumber.trim() ? validateMcNumber(mcNumber) : null,
-      dotNumber: dotNumber.trim() ? validateDotNumber(dotNumber) : null,
+      dotNumber: dotNumber.trim()
+        ? validateDotNumber(dotNumber, { required: false })
+        : null,
       truckInfo:
         truckInfo.length > TEXT_LIMITS.truckInfo
           ? `Truck info must be ${TEXT_LIMITS.truckInfo} characters or fewer.`
@@ -79,19 +85,20 @@ export default function EditProfilePage() {
 
     setLoading(false);
 
-    if (response.status === 429) {
-      setFormError("Too many attempts. Please wait a few minutes and try again.");
-      return;
-    }
-
     if (!response.ok) {
       const data = (await response.json().catch(() => null)) as {
         error?: string;
       } | null;
-      setFormError(
-        data?.error ||
-          "We could not save your profile. Check your connection and try again."
-      );
+      const message = resolveProfileUpdateError(data?.error, response.status);
+      const fieldKey = getProfileFieldErrorKey(data?.error);
+
+      if (fieldKey) {
+        setErrors((current) => ({ ...current, [fieldKey]: message }));
+        setFormError(null);
+        return;
+      }
+
+      setFormError(message);
       return;
     }
 
@@ -142,6 +149,7 @@ export default function EditProfilePage() {
           }
           placeholder="e.g. 1234567"
           error={errors.dotNumber}
+          helper="1 to 7 digits"
         />
         <p className="-mt-2 text-[12px] text-[var(--color-text-muted)]">
           Required to generate invoices

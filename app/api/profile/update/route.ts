@@ -19,7 +19,10 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Please sign in to update your profile." },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
@@ -39,7 +42,9 @@ export async function POST(request: Request) {
       ? validateTextLength(companyName, TEXT_LIMITS.company, "Company name")
       : null;
     const mcError = mcNumber ? validateMcNumber(mcNumber) : null;
-    const dotError = dotNumber ? validateDotNumber(dotNumber) : null;
+    const dotError = dotNumber
+      ? validateDotNumber(dotNumber, { required: false })
+      : null;
     const truckInfoError =
       truckInfo.length > TEXT_LIMITS.truckInfo
         ? `Truck info must be ${TEXT_LIMITS.truckInfo} characters or fewer.`
@@ -76,16 +81,34 @@ export async function POST(request: Request) {
 
     if (updateError) {
       console.error("profile update failed:", updateError.message);
-      return NextResponse.json({ error: "profile_save_failed" }, { status: 500 });
+      return NextResponse.json(
+        {
+          error:
+            "We could not save your profile. Check your connection and try again.",
+        },
+        { status: 500 }
+      );
     }
 
     if (!updated) {
-      return NextResponse.json({ error: "profile_missing" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error:
+            "We could not find your profile. Try signing out and back in.",
+        },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("profile update error:", err);
-    return NextResponse.json({ error: "profile_save_failed" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error:
+          "We could not save your profile. Check your connection and try again.",
+      },
+      { status: 500 }
+    );
   }
 }

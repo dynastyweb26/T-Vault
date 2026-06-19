@@ -90,7 +90,7 @@ export default function ProfileSetupPage() {
     setFullName(profile.full_name ?? "");
     setCompanyName(profile.company_name ?? "");
     setMcNumber(profile.mc_number ?? "");
-    setDotNumber(profile.dot_number ?? "");
+    setDotNumber(formatDotNumber(profile.dot_number ?? ""));
     setEin(profile.ein ?? "");
   }, [profile]);
 
@@ -206,7 +206,7 @@ export default function ProfileSetupPage() {
             setDotNumber(formatDotNumber(event.target.value))
           }
           error={errors.dotNumber}
-          helper="Format: DOT-1234567"
+          helper="1 to 7 digits"
         />
         <TvInput
           label="EIN (Tax ID)"
