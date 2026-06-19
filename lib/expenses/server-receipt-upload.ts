@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  detectFileTypeFromBuffer,
   extensionForUploadType,
+  isSuspiciousFilename,
+  MAX_UPLOAD_BYTES,
   validateUploadBuffer,
 } from "@/lib/job-folder/file-validation";
 import { compressImageBuffer } from "@/lib/job-folder/server-image-compress";
@@ -9,6 +12,46 @@ import {
   SIGNED_URL_TTL_SECONDS,
 } from "@/lib/job-folder/constants";
 import { TRUCK_EXPENSE_FOLDER } from "@/lib/expenses/constants";
+
+// TEMP DEBUG (remove after diagnosing expense receipt upload failures)
+function debugReceiptUpload(label: string, payload: unknown) {
+  console.error(`[TEMP DEBUG expense-receipt] ${label}`, payload);
+}
+
+function describeUploadValidationFailure(
+  buffer: Buffer,
+  originalFilename?: string | null
+) {
+  if (buffer.length === 0) {
+    return { reason: "empty_buffer" as const, size: buffer.length };
+  }
+
+  if (buffer.length > MAX_UPLOAD_BYTES) {
+    return {
+      reason: "file_too_large" as const,
+      size: buffer.length,
+      maxBytes: MAX_UPLOAD_BYTES,
+    };
+  }
+
+  if (originalFilename && isSuspiciousFilename(originalFilename)) {
+    return {
+      reason: "suspicious_filename" as const,
+      originalFilename,
+    };
+  }
+
+  const detectedType = detectFileTypeFromBuffer(buffer);
+  if (!detectedType) {
+    return {
+      reason: "invalid_magic_bytes" as const,
+      size: buffer.length,
+      magicHexPrefix: buffer.subarray(0, Math.min(buffer.length, 16)).toString("hex"),
+    };
+  }
+
+  return null;
+}
 
 export const GENERIC_RECEIPT_UPLOAD_ERROR =
   "Upload could not be completed. Please try again.";
@@ -85,15 +128,41 @@ export async function processExpenseReceiptUpload(
 ): Promise<ProcessExpenseReceiptUploadResult> {
   const { supabase, userId, expenseId, buffer, originalFilename } = params;
 
+  debugReceiptUpload("process:start", {
+    userId,
+    expenseId,
+    originalFilename,
+    bufferSize: buffer.length,
+    detectedType: detectFileTypeFromBuffer(buffer),
+  });
+
   const validation = validateUploadBuffer(buffer, originalFilename);
   if (!validation.ok) {
+    debugReceiptUpload("process:validation:failed", {
+      ...describeUploadValidationFailure(buffer, originalFilename),
+    });
     throw new Error(GENERIC_RECEIPT_UPLOAD_ERROR);
   }
 
+  debugReceiptUpload("process:validation:ok", {
+    contentType: validation.contentType,
+    originalFilename,
+    bufferSize: buffer.length,
+  });
+
   const expense = await assertExpenseOwnership(supabase, expenseId, userId);
   if (!expense) {
+    debugReceiptUpload("process:expense-ownership:failed", {
+      expenseId,
+      userId,
+    });
     throw new Error(GENERIC_RECEIPT_UPLOAD_ERROR);
   }
+
+  debugReceiptUpload("process:expense-ownership:ok", {
+    expenseId: expense.id,
+    jobId: expense.job_id,
+  });
 
   let uploadBuffer = buffer;
   let contentType = validation.contentType;
@@ -103,7 +172,27 @@ export async function processExpenseReceiptUpload(
     validation.contentType === "image/jpeg" ||
     validation.contentType === "image/png"
   ) {
-    uploadBuffer = await compressImageBuffer(buffer, validation.contentType);
+    debugReceiptUpload("process:compress:before", {
+      sourceType: validation.contentType,
+      inputSize: buffer.length,
+    });
+    try {
+      uploadBuffer = await compressImageBuffer(buffer, validation.contentType);
+      debugReceiptUpload("process:compress:ok", {
+        sourceType: validation.contentType,
+        outputSize: uploadBuffer.length,
+        outputType: contentType,
+      });
+    } catch (err) {
+      debugReceiptUpload("process:compress:failed", {
+        sourceType: validation.contentType,
+        inputSize: buffer.length,
+        err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+      throw err;
+    }
     contentType = "image/jpeg";
     compressedImage = true;
   }
@@ -116,12 +205,33 @@ export async function processExpenseReceiptUpload(
     extension
   );
 
-  const url = await uploadBufferToStorage(
-    supabase,
+  debugReceiptUpload("process:storage-upload:before", {
     path,
-    uploadBuffer,
-    contentType
-  );
+    contentType,
+    bufferSize: uploadBuffer.length,
+    extension,
+  });
+
+  let url: string;
+  try {
+    url = await uploadBufferToStorage(
+      supabase,
+      path,
+      uploadBuffer,
+      contentType
+    );
+    debugReceiptUpload("process:storage-upload:ok", { path, url });
+  } catch (err) {
+    debugReceiptUpload("process:storage-upload:failed", {
+      path,
+      contentType,
+      bufferSize: uploadBuffer.length,
+      err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    throw err;
+  }
 
   let updateQuery = supabase
     .from("expenses")
@@ -135,9 +245,31 @@ export async function processExpenseReceiptUpload(
     updateQuery = updateQuery.is("job_id", null);
   }
 
+  debugReceiptUpload("process:expense-update:before", {
+    expenseId,
+    userId,
+    jobId: expense.job_id,
+    url,
+  });
+
   const { error: updateError } = await updateQuery;
 
-  if (updateError) throw new Error("upload_failed");
+  if (updateError) {
+    debugReceiptUpload("process:expense-update:failed", {
+      expenseId,
+      userId,
+      jobId: expense.job_id,
+      updateError,
+      updateErrorDetails: {
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+        code: updateError.code,
+      },
+    });
+    throw new Error("upload_failed");
+  }
 
+  debugReceiptUpload("process:success", { expenseId, url, path });
   return { url, path };
 }
