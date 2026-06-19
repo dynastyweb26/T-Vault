@@ -62,7 +62,9 @@ export default function TaxSummaryPage() {
         onRangeChange={setRangeId}
         onCustomStartChange={setCustomStart}
         onCustomEndChange={setCustomEnd}
-        onExportPdf={() => data && generateTaxSummaryPdf(data)}
+        onExportPdf={() => {
+          if (data) void generateTaxSummaryPdf(data);
+        }}
         onExportCsv={() =>
           data && generateTaxSummaryCsv(data, rawJobs, rawExpenses)
         }

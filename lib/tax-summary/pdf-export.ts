@@ -1,4 +1,4 @@
-import { jsPDF } from "jspdf";
+import type { jsPDF } from "jspdf";
 import type { TaxSummaryData } from "@/lib/tax-summary/calculations";
 import { formatCurrency, formatCurrencyDetailed } from "@/lib/dashboard/format";
 
@@ -14,7 +14,8 @@ function addFooter(doc: jsPDF, page: number, totalPages: number): void {
   doc.text(`Page ${page} of ${totalPages}`, RIGHT_X - 20, 285, { align: "right" });
 }
 
-export function generateTaxSummaryPdf(data: TaxSummaryData): void {
+export async function generateTaxSummaryPdf(data: TaxSummaryData): Promise<void> {
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF();
   const jobPages = Math.max(1, Math.ceil(data.jobSummary.length / ROWS_PER_PAGE));
   const totalPages = jobPages + 1;

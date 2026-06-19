@@ -1,5 +1,4 @@
-import { jsPDF } from "jspdf";
-import QRCode from "qrcode";
+import type { jsPDF } from "jspdf";
 import type { Job } from "@/types/jobs";
 import type { UserProfile } from "@/types/database";
 import { formatCurrencyDetailed } from "@/lib/dashboard/format";
@@ -681,6 +680,9 @@ export async function buildLoadInvoicePdf(params: {
   userEmail?: string | null;
   invoiceDate?: Date;
 }): Promise<jsPDF> {
+  const { jsPDF: JsPDF } = await import("jspdf");
+  const QRCode = (await import("qrcode")).default;
+
   const { job, profile, invoiceNumber, userId, userEmail } = params;
   const invoiceDate = params.invoiceDate ?? new Date();
   const dueDate = addDays(invoiceDate, 30);
@@ -688,7 +690,7 @@ export async function buildLoadInvoicePdf(params: {
   const columnGap = 16;
   const columnW = (CONTENT_W - columnGap) / 2;
 
-  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const doc = new JsPDF({ unit: "pt", format: "letter" });
   let y = MARGIN;
 
   doc.setFont("helvetica", "bold");

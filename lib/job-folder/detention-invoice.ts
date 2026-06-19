@@ -1,4 +1,3 @@
-import { jsPDF } from "jspdf";
 import type { Job } from "@/types/jobs";
 import type { UserProfile } from "@/types/database";
 import { formatDuration } from "@/lib/job-folder/detention";
@@ -16,6 +15,7 @@ export async function generateDetentionInvoicePdf(params: {
   const { job, profile, totalMinutes, billableMinutes, hourlyRate, amountOwed, rateConNumber } =
     params;
 
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF();
   doc.setFontSize(18);
   doc.setTextColor(201, 168, 76);
