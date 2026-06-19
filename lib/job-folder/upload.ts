@@ -26,6 +26,12 @@ async function postDocumentUpload(formData: FormData): Promise<{
   });
 
   if (!response.ok) {
+    const errorBody = await response.text().catch(() => null);
+    console.error("[TEMP DEBUG invoice] upload:failed", {
+      status: response.status,
+      statusText: response.statusText,
+      errorBody,
+    });
     throw new Error(GENERIC_UPLOAD_ERROR);
   }
 

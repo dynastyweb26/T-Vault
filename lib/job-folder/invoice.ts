@@ -8,6 +8,11 @@ import { STORAGE_BUCKET } from "@/lib/job-folder/constants";
 import type { JobDocument } from "@/types/jobs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+// TEMP DEBUG (remove after diagnosing invoice generation failures)
+function debugInvoice(label: string, payload: unknown) {
+  console.error(`[TEMP DEBUG invoice] ${label}`, payload);
+}
+
 const GOLD = { r: 184, g: 150, b: 12 } as const;
 const DARK = { r: 26, g: 26, b: 26 } as const;
 const MID_GREY = { r: 74, g: 74, b: 74 } as const;
@@ -680,8 +685,32 @@ export async function buildLoadInvoicePdf(params: {
   userEmail?: string | null;
   invoiceDate?: Date;
 }): Promise<jsPDF> {
-  const { jsPDF: JsPDF } = await import("jspdf");
-  const QRCode = (await import("qrcode")).default;
+  debugInvoice("buildLoadInvoicePdf:start", {
+    invoiceNumber: params.invoiceNumber,
+    jobId: params.job.id,
+    userId: params.userId,
+  });
+
+  let JsPDF: typeof import("jspdf").jsPDF;
+  let QRCode: typeof import("qrcode").default;
+  try {
+    const jspdfModule = await import("jspdf");
+    JsPDF = jspdfModule.jsPDF;
+    const qrcodeModule = await import("qrcode");
+    QRCode = qrcodeModule.default;
+    debugInvoice("buildLoadInvoicePdf:imports:ok", {
+      jspdfKeys: Object.keys(jspdfModule),
+      hasJsPDF: typeof jspdfModule.jsPDF,
+      hasQrcodeDefault: typeof qrcodeModule.default,
+    });
+  } catch (err) {
+    debugInvoice("buildLoadInvoicePdf:imports:failed", {
+      err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    throw err;
+  }
 
   const { job, profile, invoiceNumber, userId, userEmail } = params;
   const invoiceDate = params.invoiceDate ?? new Date();
@@ -690,7 +719,25 @@ export async function buildLoadInvoicePdf(params: {
   const columnGap = 16;
   const columnW = (CONTENT_W - columnGap) / 2;
 
-  const doc = new JsPDF({ unit: "pt", format: "letter" });
+  debugInvoice("buildLoadInvoicePdf:jspdf:before-construct", {
+    JsPDFType: typeof JsPDF,
+  });
+
+  let doc: jsPDF;
+  try {
+    doc = new JsPDF({ unit: "pt", format: "letter" });
+    debugInvoice("buildLoadInvoicePdf:jspdf:constructed", {
+      pageCount: doc.getNumberOfPages(),
+    });
+  } catch (err) {
+    debugInvoice("buildLoadInvoicePdf:jspdf:construct-failed", {
+      err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    throw err;
+  }
+
   let y = MARGIN;
 
   doc.setFont("helvetica", "bold");
@@ -768,19 +815,29 @@ export async function buildLoadInvoicePdf(params: {
 
   const publicUrl = buildInvoicePublicUrl(userId, invoiceNumber);
   let qrDataUrl: string | null = null;
+  debugInvoice("buildLoadInvoicePdf:qrcode:before", { publicUrl });
   try {
     qrDataUrl = await QRCode.toDataURL(publicUrl, {
       width: 128,
       margin: 0,
       color: { dark: "#1a1a1a", light: "#ffffff" },
     });
-  } catch {
+    debugInvoice("buildLoadInvoicePdf:qrcode:ok", {
+      dataUrlLength: qrDataUrl?.length ?? 0,
+    });
+  } catch (err) {
+    debugInvoice("buildLoadInvoicePdf:qrcode:failed", {
+      err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     qrDataUrl = null;
   }
 
   const footerY = PAGE_H - MARGIN - 24;
   drawFooter(doc, qrDataUrl, footerY);
 
+  debugInvoice("buildLoadInvoicePdf:complete", { invoiceNumber });
   return doc;
 }
 
@@ -795,71 +852,146 @@ export async function generateAndSaveLoadInvoice(
     regenerate?: boolean;
   }
 ): Promise<{ url: string; invoiceNumber: string }> {
-  const {
-    job,
-    profile,
-    userId,
-    userEmail,
-    documents = [],
-    regenerate = false,
-  } = params;
+  try {
+    const {
+      job,
+      profile,
+      userId,
+      userEmail,
+      documents = [],
+      regenerate = false,
+    } = params;
 
-  const missingFields = getMissingInvoiceFields(job, profile);
-  if (missingFields.length > 0) {
-    throw new Error(`missing_invoice_fields:${missingFields.join(",")}`);
+    debugInvoice("generateAndSaveLoadInvoice:start", {
+      jobId: job.id,
+      userId,
+      regenerate,
+      documentCount: documents.length,
+      hasProfile: Boolean(profile),
+    });
+
+    const missingFields = getMissingInvoiceFields(job, profile);
+    if (missingFields.length > 0) {
+      debugInvoice("generateAndSaveLoadInvoice:missing-fields", { missingFields });
+      throw new Error(`missing_invoice_fields:${missingFields.join(",")}`);
+    }
+
+    if (hasPendingAiForInvoice(job, documents)) {
+      debugInvoice("generateAndSaveLoadInvoice:ai-review-required", { jobId: job.id });
+      throw new Error("ai_review_required");
+    }
+
+    const hasExistingInvoice = Boolean(
+      job.invoice_number || job.invoice_generated || job.invoice_url
+    );
+
+    if (regenerate && !hasExistingInvoice) {
+      debugInvoice("generateAndSaveLoadInvoice:no-invoice-to-regenerate", {
+        jobId: job.id,
+      });
+      throw new Error("no_invoice_to_regenerate");
+    }
+
+    const invoiceNumber =
+      job.invoice_number || buildInvoiceNumber(userId, profile?.invoice_count ?? 0);
+
+    debugInvoice("generateAndSaveLoadInvoice:build-pdf:before", { invoiceNumber });
+
+    const doc = await buildLoadInvoicePdf({
+      job,
+      profile,
+      invoiceNumber,
+      userId,
+      userEmail,
+    });
+
+    debugInvoice("generateAndSaveLoadInvoice:build-pdf:ok", { invoiceNumber });
+
+    debugInvoice("generateAndSaveLoadInvoice:blob:before", { invoiceNumber });
+    const blob = doc.output("blob");
+    debugInvoice("generateAndSaveLoadInvoice:blob:ok", {
+      invoiceNumber,
+      blobSize: blob.size,
+      blobType: blob.type,
+    });
+
+    debugInvoice("generateAndSaveLoadInvoice:upload:before", {
+      invoiceNumber,
+      jobId: job.id,
+      userId,
+    });
+    const url = await saveInvoiceDocument(supabase, {
+      userId,
+      jobId: job.id,
+      invoiceNumber,
+      blob,
+    });
+    debugInvoice("generateAndSaveLoadInvoice:upload:ok", { invoiceNumber, url });
+
+    debugInvoice("generateAndSaveLoadInvoice:jobs-update:before", {
+      jobId: job.id,
+      userId,
+      invoiceNumber,
+      url,
+    });
+    const { error: jobUpdateError } = await supabase
+      .from("jobs")
+      .update({
+        invoice_generated: true,
+        invoice_number: invoiceNumber,
+        invoice_url: url,
+        invoice_sent_date:
+          regenerate && job.invoice_sent_date
+            ? job.invoice_sent_date
+            : new Date().toISOString().slice(0, 10),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", job.id)
+      .eq("user_id", userId);
+
+    debugInvoice("generateAndSaveLoadInvoice:jobs-update:result", {
+      jobUpdateError,
+      jobUpdateErrorDetails: jobUpdateError
+        ? {
+            message: jobUpdateError.message,
+            details: jobUpdateError.details,
+            hint: jobUpdateError.hint,
+            code: jobUpdateError.code,
+          }
+        : null,
+    });
+
+    if (!regenerate && !hasExistingInvoice) {
+      debugInvoice("generateAndSaveLoadInvoice:users-update:before", {
+        userId,
+        nextInvoiceCount: (profile?.invoice_count ?? 0) + 1,
+      });
+      const { error: userUpdateError } = await supabase
+        .from("users")
+        .update({ invoice_count: (profile?.invoice_count ?? 0) + 1 })
+        .eq("id", userId);
+
+      debugInvoice("generateAndSaveLoadInvoice:users-update:result", {
+        userUpdateError,
+        userUpdateErrorDetails: userUpdateError
+          ? {
+              message: userUpdateError.message,
+              details: userUpdateError.details,
+              hint: userUpdateError.hint,
+              code: userUpdateError.code,
+            }
+          : null,
+      });
+    }
+
+    debugInvoice("generateAndSaveLoadInvoice:success", { invoiceNumber, url });
+    return { url, invoiceNumber };
+  } catch (err) {
+    debugInvoice("generateAndSaveLoadInvoice:exception", {
+      err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    throw err;
   }
-
-  if (hasPendingAiForInvoice(job, documents)) {
-    throw new Error("ai_review_required");
-  }
-
-  const hasExistingInvoice = Boolean(
-    job.invoice_number || job.invoice_generated || job.invoice_url
-  );
-
-  if (regenerate && !hasExistingInvoice) {
-    throw new Error("no_invoice_to_regenerate");
-  }
-
-  const invoiceNumber =
-    job.invoice_number || buildInvoiceNumber(userId, profile?.invoice_count ?? 0);
-
-  const doc = await buildLoadInvoicePdf({
-    job,
-    profile,
-    invoiceNumber,
-    userId,
-    userEmail,
-  });
-  const blob = doc.output("blob");
-  const url = await saveInvoiceDocument(supabase, {
-    userId,
-    jobId: job.id,
-    invoiceNumber,
-    blob,
-  });
-
-  await supabase
-    .from("jobs")
-    .update({
-      invoice_generated: true,
-      invoice_number: invoiceNumber,
-      invoice_url: url,
-      invoice_sent_date:
-        regenerate && job.invoice_sent_date
-          ? job.invoice_sent_date
-          : new Date().toISOString().slice(0, 10),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", job.id)
-    .eq("user_id", userId);
-
-  if (!regenerate && !hasExistingInvoice) {
-    await supabase
-      .from("users")
-      .update({ invoice_count: (profile?.invoice_count ?? 0) + 1 })
-      .eq("id", userId);
-  }
-
-  return { url, invoiceNumber };
 }
