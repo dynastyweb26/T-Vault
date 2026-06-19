@@ -64,6 +64,25 @@ function jobInRange(job: Job, start: string, end: string): boolean {
   return date >= start && date <= end;
 }
 
+function hasGeneratedInvoice(job: Job): boolean {
+  return Boolean(
+    job.invoice_generated || job.invoice_url || job.invoice_number
+  );
+}
+
+/** Invoice counts ignore job status; date uses invoice_sent_date, then updated_at. */
+function invoiceGeneratedInRange(
+  job: Job,
+  start: string,
+  end: string
+): boolean {
+  if (!hasGeneratedInvoice(job)) return false;
+  const date =
+    job.invoice_sent_date || job.updated_at?.slice(0, 10) || null;
+  if (!date) return false;
+  return date >= start && date <= end;
+}
+
 function formatMonthLabel(yearMonth: string): string {
   const [year, month] = yearMonth.split("-");
   const date = new Date(Number(year), Number(month) - 1, 1);
@@ -199,10 +218,8 @@ export function countTaxSummarySupportingDocs(
       isExpenseInMonth(expense.expense_date, expense.created_at, start, end)
   ).length;
 
-  const invoicesGenerated = jobs.filter(
-    (job) =>
-      Boolean(job.invoice_generated || job.invoice_url || job.invoice_number) &&
-      jobInRange(job, start, end)
+  const invoicesGenerated = jobs.filter((job) =>
+    invoiceGeneratedInRange(job, start, end)
   ).length;
 
   return { receiptsOnFile, invoicesGenerated };
