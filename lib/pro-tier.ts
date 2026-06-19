@@ -1,12 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UserProfile } from "@/types/database";
 
+/** TEMP: disabled during beta (2025-06-19). Flip to true with DB trigger re-enabled. */
+export const FREE_TIER_LIMIT_ENABLED = false;
+
 export const FREE_LOAD_LIMIT = 1;
 
 export function canCreateJob(
   profile: UserProfile | null,
   jobCount: number
 ): boolean {
+  if (!FREE_TIER_LIMIT_ENABLED) {
+    return profile !== null;
+  }
+
   if (!profile) return false;
   if (profile.pro_tier === "pro" || profile.pro_tier === "waitlist") {
     return true;
