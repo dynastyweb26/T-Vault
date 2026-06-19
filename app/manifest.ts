@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "T-Vault",
     short_name: "T-Vault",
     description: "Mobile-first back-office toolkit for truck owner-operators.",
-    start_url: "/dashboard",
+    start_url: "/splash",
     display: "standalone",
     background_color: "#000000",
     theme_color: "#000000",

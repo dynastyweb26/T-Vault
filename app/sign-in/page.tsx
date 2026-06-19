@@ -8,9 +8,7 @@ import { TvInput } from "@/components/tv/tv-input";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
-import { getPostAuthRedirect } from "@/lib/auth-helpers";
 import { validateEmail } from "@/lib/validation";
-import type { UserProfile } from "@/types/database";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -52,18 +50,7 @@ export default function SignInPage() {
     }
 
     if (data.user) {
-      const { data: profile } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", data.user.id)
-        .maybeSingle();
-
-      if (!profile) {
-        router.replace(APP_ROUTES.splash);
-        return;
-      }
-
-      router.replace(getPostAuthRedirect(profile as UserProfile));
+      router.replace(APP_ROUTES.splash);
     }
   };
 

@@ -1,20 +1,46 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { RouteGuardLoading } from "@/components/shell/route-guard-loading";
 import { APP_ROUTES } from "@/lib/constants";
 import { hasCompletedOnboarding } from "@/lib/auth-helpers";
+import {
+  clearSplashNavigation,
+  hasPendingSplashNavigation,
+} from "@/lib/splash-flow";
 
 interface RouteGuardProps {
   children: React.ReactNode;
   mode?: "app" | "auth";
 }
 
+function SplashTransitionHold() {
+  return (
+    <div
+      className="min-h-dvh"
+      style={{ backgroundColor: "#0a0a0a" }}
+      aria-hidden
+    />
+  );
+}
+
 export function RouteGuard({ children, mode = "auth" }: RouteGuardProps) {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
+  const [fromSplash, setFromSplash] = useState(false);
+
+  useEffect(() => {
+    setFromSplash(hasPendingSplashNavigation());
+  }, []);
+
+  useEffect(() => {
+    if (!loading && fromSplash) {
+      clearSplashNavigation();
+      setFromSplash(false);
+    }
+  }, [fromSplash, loading]);
 
   useEffect(() => {
     if (loading) return;
@@ -37,6 +63,9 @@ export function RouteGuard({ children, mode = "auth" }: RouteGuardProps) {
   }, [loading, mode, profile, router, user]);
 
   if (loading) {
+    if (mode === "app" && (fromSplash || hasPendingSplashNavigation())) {
+      return <SplashTransitionHold />;
+    }
     return <RouteGuardLoading />;
   }
 
