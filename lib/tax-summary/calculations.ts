@@ -1,9 +1,16 @@
 import type { Expense, Job } from "@/types/jobs";
 import { isExpenseInMonth } from "@/lib/dashboard/job-status";
 import type { TaxDateRange } from "@/lib/tax-summary/date-ranges";
+import { TRUCK_EXPENSE_CATEGORIES } from "@/lib/expenses/constants";
+import { JOB_EXPENSE_CATEGORIES } from "@/lib/job-folder/constants";
 
 export interface ExpenseCategoryTotal {
   category: string;
+  amount: number;
+}
+
+export interface MonthlyIncomeTotal {
+  label: string;
   amount: number;
 }
 
@@ -23,6 +30,7 @@ export interface TaxSummaryData {
   netIncome: number;
   milesDriven: number;
   bestMonth: { label: string; amount: number } | null;
+  monthlyIncome: MonthlyIncomeTotal[];
   expenseBreakdown: ExpenseCategoryTotal[];
   jobSummary: JobSummaryRow[];
   costPerMile: {
@@ -38,6 +46,11 @@ const COMPLETED_STATUSES = new Set([
   "complete",
   "completed",
   "awaiting_payment",
+]);
+
+const KNOWN_TAX_EXPENSE_CATEGORIES = new Set<string>([
+  ...TRUCK_EXPENSE_CATEGORIES.map((category) => category.id),
+  ...JOB_EXPENSE_CATEGORIES.map((category) => category.id),
 ]);
 
 function jobInRange(job: Job, start: string, end: string): boolean {
@@ -89,11 +102,13 @@ export function computeTaxSummaryData(
     )
     .forEach((expense) => {
       const key = expense.category || "other";
+      if (!KNOWN_TAX_EXPENSE_CATEGORIES.has(key)) return;
       categoryMap.set(key, (categoryMap.get(key) ?? 0) + expense.amount);
     });
 
   const expenseBreakdown = Array.from(categoryMap.entries())
     .map(([category, amount]) => ({ category, amount }))
+    .filter((item) => item.amount > 0)
     .sort((a, b) => b.amount - a.amount);
 
   const monthlyEarnings = new Map<string, number>();
@@ -116,6 +131,13 @@ export function computeTaxSummaryData(
       bestMonth = { label: formatMonthLabel(key), amount };
     }
   });
+
+  const monthlyIncome = Array.from(monthlyEarnings.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, amount]) => ({
+      label: formatMonthLabel(key),
+      amount,
+    }));
 
   const jobSummary: JobSummaryRow[] = jobsInRange
     .map((job) => {
@@ -152,6 +174,7 @@ export function computeTaxSummaryData(
     netIncome: totalEarned - totalExpenses,
     milesDriven,
     bestMonth,
+    monthlyIncome,
     expenseBreakdown,
     jobSummary,
     costPerMile: {
@@ -161,4 +184,26 @@ export function computeTaxSummaryData(
       totalMiles: milesDriven,
     },
   };
+}
+
+export function countTaxSummarySupportingDocs(
+  jobs: Job[],
+  expenses: Expense[],
+  range: TaxDateRange
+): { receiptsOnFile: number; invoicesGenerated: number } {
+  const { start, end } = range;
+
+  const receiptsOnFile = expenses.filter(
+    (expense) =>
+      Boolean(expense.receipt_url?.trim()) &&
+      isExpenseInMonth(expense.expense_date, expense.created_at, start, end)
+  ).length;
+
+  const invoicesGenerated = jobs.filter(
+    (job) =>
+      Boolean(job.invoice_generated || job.invoice_url || job.invoice_number) &&
+      jobInRange(job, start, end)
+  ).length;
+
+  return { receiptsOnFile, invoicesGenerated };
 }

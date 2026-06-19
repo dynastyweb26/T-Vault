@@ -11,12 +11,15 @@ import {
   type TaxRangeId,
 } from "@/lib/tax-summary/date-ranges";
 import type { TaxSummaryData } from "@/lib/tax-summary/calculations";
+import {
+  countTaxSummarySupportingDocs,
+} from "@/lib/tax-summary/calculations";
 import { generateTaxSummaryPdf } from "@/lib/tax-summary/pdf-export";
 import { generateTaxSummaryCsv } from "@/lib/tax-summary/csv-export";
 import type { Expense, Job } from "@/types/jobs";
 
 export default function TaxSummaryPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [rangeId, setRangeId] = useState<TaxRangeId>("this_year");
   const [customStart, setCustomStart] = useState(
     `${new Date().getFullYear()}-01-01`
@@ -63,7 +66,19 @@ export default function TaxSummaryPage() {
         onCustomStartChange={setCustomStart}
         onCustomEndChange={setCustomEnd}
         onExportPdf={() => {
-          if (data) void generateTaxSummaryPdf(data);
+          if (!data) return;
+          const range = getTaxDateRange(rangeId, customStart, customEnd);
+          const supportingDocs = countTaxSummarySupportingDocs(
+            rawJobs,
+            rawExpenses,
+            range
+          );
+          void generateTaxSummaryPdf({
+            data,
+            profile,
+            receiptsOnFile: supportingDocs.receiptsOnFile,
+            invoicesGenerated: supportingDocs.invoicesGenerated,
+          });
         }}
         onExportCsv={() =>
           data && generateTaxSummaryCsv(data, rawJobs, rawExpenses)
