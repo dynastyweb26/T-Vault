@@ -224,13 +224,43 @@ Deno.serve(async (req) => {
       }
     }
 
+    const failedSteps = progress.filter((p) => !p.ok).map((p) => p.step);
+
+    if (failedSteps.length > 0) {
+      await admin.from("cleanup_queue").insert({
+        user_id: user.id,
+        step: "account_deletion_partial",
+        error_message: JSON.stringify({ failedSteps }),
+      });
+
+      return jsonResponse(req, {
+        success: false,
+        partialFailure: true,
+        failedSteps,
+        progress,
+      });
+    }
+
     try {
       await admin.auth.admin.deleteUser(user.id);
     } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown";
       console.error("auth_delete_failed:", err);
+      await admin.from("cleanup_queue").insert({
+        user_id: user.id,
+        step: "auth_delete",
+        error_message: message,
+      });
+
+      return jsonResponse(req, {
+        success: false,
+        partialFailure: true,
+        failedSteps: ["auth_delete"],
+        progress: [...progress, { step: "auth_delete", ok: false }],
+      });
     }
 
-    return jsonResponse(req, { deleted: true, progress });
+    return jsonResponse(req, { success: true, deleted: true, progress });
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown_error";
     console.error("delete-account error:", message);

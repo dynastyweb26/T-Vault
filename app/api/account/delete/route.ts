@@ -57,6 +57,11 @@ export async function POST(request: Request) {
     }
 
     const result = await response.json();
+
+    if (result.partialFailure) {
+      return NextResponse.json(result);
+    }
+
     await supabase.auth.signOut();
 
     return NextResponse.json(result);

@@ -37,9 +37,9 @@ export default function DeleteAccountPage() {
     const steps = (result.progress ?? []) as Array<{ step: string; ok: boolean }>;
     setProgress(steps);
 
-    if (steps.some((step) => !step.ok)) {
+    if (result.partialFailure || steps.some((step) => !step.ok)) {
       setError(
-        "Account deletion did not finish completely. Contact support before signing in again."
+        "We hit an issue deleting some of your data. Your account has not been deleted yet — please try again or contact support."
       );
       setLoading(false);
       return;
