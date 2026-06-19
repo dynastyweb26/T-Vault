@@ -4,7 +4,7 @@ import type { UserProfile } from "@/types/database";
 import { formatCurrencyDetailed } from "@/lib/dashboard/format";
 import { saveInvoiceDocument } from "@/lib/job-folder/upload";
 import { hasPendingAiForInvoice } from "@/lib/job-folder/ai-parsing";
-import { STORAGE_BUCKET } from "@/lib/job-folder/constants";
+import { buildInvoiceVerificationUrl } from "@/lib/app-url";
 import type { JobDocument } from "@/types/jobs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -111,10 +111,8 @@ function addDays(date: Date, days: number): Date {
   return next;
 }
 
-function buildInvoicePublicUrl(userId: string, invoiceNumber: string): string {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const safeNumber = invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "") || "invoice";
-  return `${base}/storage/v1/object/public/${STORAGE_BUCKET}/${userId}/invoices/${safeNumber}.pdf`;
+function buildInvoiceQrUrl(invoiceNumber: string): string {
+  return buildInvoiceVerificationUrl(invoiceNumber);
 }
 
 function parsePaymentInfo(raw: string | null | undefined): PaymentInfoFields | null {
@@ -813,11 +811,11 @@ export async function buildLoadInvoicePdf(params: {
 
   y = drawNotesSection(doc, job, profile, y);
 
-  const publicUrl = buildInvoicePublicUrl(userId, invoiceNumber);
+  const verificationUrl = buildInvoiceQrUrl(invoiceNumber);
   let qrDataUrl: string | null = null;
-  debugInvoice("buildLoadInvoicePdf:qrcode:before", { publicUrl });
+  debugInvoice("buildLoadInvoicePdf:qrcode:before", { verificationUrl });
   try {
-    qrDataUrl = await QRCode.toDataURL(publicUrl, {
+    qrDataUrl = await QRCode.toDataURL(verificationUrl, {
       width: 128,
       margin: 0,
       color: { dark: "#1a1a1a", light: "#ffffff" },
