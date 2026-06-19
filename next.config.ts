@@ -34,7 +34,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["sharp"],
+  serverExternalPackages: [
+    "sharp",
+    "@img/sharp-linux-x64",
+    "@img/sharp-libvips-linux-x64",
+  ],
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+  },
   async headers() {
     return [
       {
