@@ -22,7 +22,8 @@ const MARGIN = 54;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const RIGHT_X = PAGE_W - MARGIN;
 const FOOTER_Y = PAGE_H - MARGIN - 8;
-const ROWS_PER_PAGE = 22;
+const FOOTER_RESERVE = 36;
+const CONTENT_MAX_Y = FOOTER_Y - FOOTER_RESERVE;
 
 const RECORDKEEPING_BADGE =
   "RECORDKEEPING SUMMARY — NOT A TAX FILING DOCUMENT";
@@ -163,6 +164,66 @@ function drawDocumentHeader(
   doc.line(MARGIN, y, RIGHT_X, y);
 
   return y + 16;
+}
+
+function estimateIncomeSectionHeight(data: TaxSummaryData): number {
+  if (data.monthlyIncome.length === 0) return 60;
+  return 46 + 18 + data.monthlyIncome.length * 18 + 12;
+}
+
+function estimateExpenseSectionHeight(data: TaxSummaryData): number {
+  const rowCount = data.expenseBreakdown.filter((item) =>
+    Boolean(getTaxSummaryExpenseLabel(item.category))
+  ).length;
+  if (rowCount === 0) return 40;
+  return 30 + 18 + rowCount * 20 + 18;
+}
+
+function estimateCostPerMileSectionHeight(): number {
+  return 76;
+}
+
+function estimateSupportingDocsHeight(): number {
+  return 70;
+}
+
+interface PdfLayoutContext {
+  doc: jsPDF;
+  y: number;
+  pageCount: number;
+  rangeLabel: string;
+  generatedDate: string;
+}
+
+function startNewPage(ctx: PdfLayoutContext, condensed: boolean): void {
+  if (ctx.pageCount > 0) {
+    ctx.doc.addPage();
+  }
+  ctx.y = drawDocumentHeader(
+    ctx.doc,
+    ctx.rangeLabel,
+    ctx.generatedDate,
+    condensed
+  );
+  ctx.pageCount += 1;
+}
+
+function ensureSpace(
+  ctx: PdfLayoutContext,
+  neededHeight: number,
+  condensed: boolean
+): void {
+  if (ctx.y + neededHeight > CONTENT_MAX_Y) {
+    startNewPage(ctx, condensed);
+  }
+}
+
+function finalizeFooters(doc: jsPDF): void {
+  const totalPages = doc.getNumberOfPages();
+  for (let page = 1; page <= totalPages; page += 1) {
+    doc.setPage(page);
+    drawFooter(doc, page, totalPages);
+  }
 }
 
 function drawFooter(doc: jsPDF, page: number, totalPages: number): void {
@@ -461,22 +522,23 @@ function drawCostPerMileSection(doc: jsPDF, data: TaxSummaryData, startY: number
   return y;
 }
 
-function drawJobSummaryPage(
+function drawJobSummaryRows(
   doc: jsPDF,
   rows: TaxSummaryData["jobSummary"],
-  pageIndex: number
-): void {
-  let y = drawSectionHeader(doc, "Load by Load Summary", MARGIN, MARGIN + 8, CONTENT_W);
+  startY: number,
+  includeSectionHeader: boolean
+): { endY: number; rowsDrawn: number } {
+  let y = includeSectionHeader
+    ? drawSectionHeader(doc, "Load by Load Summary", MARGIN, startY, CONTENT_W)
+    : startY;
 
-  const slice = rows.slice(
-    pageIndex * ROWS_PER_PAGE,
-    (pageIndex + 1) * ROWS_PER_PAGE
-  );
+  let rowsDrawn = 0;
+  for (const row of rows) {
+    if (y + 16 > CONTENT_MAX_Y) break;
 
-  slice.forEach((row, index) => {
-    if (index % 2 === 1) {
+    if (rowsDrawn % 2 === 1) {
       setFillColor(doc, ROW_ALT);
-      doc.rect(MARGIN, y - 2, CONTENT_W, 16, "F");
+      doc.rect(MARGIN, y, CONTENT_W, 16, "F");
     }
 
     doc.setFont("helvetica", "normal");
@@ -485,10 +547,13 @@ function drawJobSummaryPage(
     doc.text(
       `${row.jobName} | ${row.completionDate || "—"} | Rev ${formatCurrency(row.revenue)} | Exp ${formatCurrency(row.expenses)} | Net ${formatCurrency(row.net)}`,
       MARGIN,
-      y + 8
+      y + 11
     );
     y += 16;
-  });
+    rowsDrawn += 1;
+  }
+
+  return { endY: y, rowsDrawn };
 }
 
 export async function generateTaxSummaryPdf(
@@ -497,31 +562,69 @@ export async function generateTaxSummaryPdf(
   const { jsPDF } = await import("jspdf");
   const { data, profile, receiptsOnFile, invoicesGenerated } = options;
   const generatedDate = formatSlashDate(new Date());
-  const jobPages = Math.max(1, Math.ceil(data.jobSummary.length / ROWS_PER_PAGE));
-  const totalPages = 2 + jobPages;
 
   const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const ctx: PdfLayoutContext = {
+    doc,
+    y: 0,
+    pageCount: 0,
+    rangeLabel: data.range.label,
+    generatedDate,
+  };
 
-  let y = drawDocumentHeader(doc, data.range.label, generatedDate, false);
-  y = drawBusinessInfo(doc, profile, y);
-  y = drawIncomeSection(doc, data, y);
-  y = drawExpenseTable(doc, data, y);
-  y = drawNetProfitBox(doc, data, y);
-  y = drawTaxProfessionalLine(doc, y + 8);
-  drawSupportingDocs(doc, receiptsOnFile, invoicesGenerated, y);
-  drawFooter(doc, 1, totalPages);
+  startNewPage(ctx, false);
+  ctx.y = drawBusinessInfo(doc, profile, ctx.y);
 
-  doc.addPage();
-  drawDocumentHeader(doc, data.range.label, generatedDate, true);
-  drawCostPerMileSection(doc, data, MARGIN + 72);
-  drawFooter(doc, 2, totalPages);
+  ensureSpace(ctx, estimateIncomeSectionHeight(data), ctx.pageCount > 0);
+  ctx.y = drawIncomeSection(doc, data, ctx.y);
 
-  for (let page = 0; page < jobPages; page++) {
-    doc.addPage();
-    drawDocumentHeader(doc, data.range.label, generatedDate, true);
-    drawJobSummaryPage(doc, data.jobSummary, page);
-    drawFooter(doc, page + 3, totalPages);
+  ensureSpace(ctx, estimateExpenseSectionHeight(data), ctx.pageCount > 0);
+  ctx.y = drawExpenseTable(doc, data, ctx.y);
+
+  ensureSpace(ctx, 102, ctx.pageCount > 0);
+  ctx.y = drawNetProfitBox(doc, data, ctx.y);
+
+  ensureSpace(ctx, 24, ctx.pageCount > 0);
+  ctx.y = drawTaxProfessionalLine(doc, ctx.y + 8);
+
+  ensureSpace(ctx, estimateSupportingDocsHeight(), ctx.pageCount > 0);
+  ctx.y = drawSupportingDocs(doc, receiptsOnFile, invoicesGenerated, ctx.y);
+
+  ensureSpace(ctx, estimateCostPerMileSectionHeight(), ctx.pageCount > 0);
+  ctx.y = drawCostPerMileSection(doc, data, ctx.y + 12);
+
+  if (data.jobSummary.length > 0) {
+    let jobIndex = 0;
+    let includeJobHeader = true;
+
+    while (jobIndex < data.jobSummary.length) {
+      const remainingRows = data.jobSummary.length - jobIndex;
+      const headerHeight = includeJobHeader ? 28 : 0;
+      ensureSpace(
+        ctx,
+        headerHeight + Math.min(remainingRows, 1) * 16,
+        ctx.pageCount > 0
+      );
+
+      const { endY, rowsDrawn } = drawJobSummaryRows(
+        doc,
+        data.jobSummary.slice(jobIndex),
+        ctx.y,
+        includeJobHeader
+      );
+
+      if (rowsDrawn === 0) {
+        startNewPage(ctx, true);
+        includeJobHeader = true;
+        continue;
+      }
+
+      ctx.y = endY;
+      jobIndex += rowsDrawn;
+      includeJobHeader = false;
+    }
   }
 
+  finalizeFooters(doc);
   doc.save(`tvault-tax-summary-${data.range.start}.pdf`);
 }
