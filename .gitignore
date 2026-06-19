@@ -40,6 +40,9 @@ yarn-error.log*
 # supabase local CLI artifacts
 supabase/.temp/
 
+# accidental nested clone / worktree copy
+/T-Vault/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
