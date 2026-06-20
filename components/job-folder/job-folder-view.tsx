@@ -71,6 +71,7 @@ import {
 import { AiParsingBanner } from "@/components/job-folder/ai-parsing-banner";
 import { AiReviewSheet } from "@/components/job-folder/ai-review-sheet";
 import { CelebrationOverlayLazy } from "@/components/celebration/celebration-overlay-lazy";
+import { preloadCelebrationAssets } from "@/lib/celebration/preload";
 import { CrossValidationBanner } from "@/components/job-folder/cross-validation-banner";
 import { DocumentManualEntrySheet } from "@/components/job-folder/document-manual-entry-sheet";
 import { DocumentPreviewModal } from "@/components/job-folder/document-preview-modal";
@@ -260,6 +261,11 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   };
 
   useEffect(() => {
+    preloadCelebrationAssets();
+    void import("@/components/celebration/celebration-overlay");
+  }, []);
+
+  useEffect(() => {
     if (!job?.broker_name || !user) return;
     (async () => {
       const supabase = createClient();
@@ -413,6 +419,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       setReviewOpen(true);
       return;
     }
+    preloadCelebrationAssets();
     setUploading(true);
     try {
       await generateAndSaveLoadInvoice(createClient(), {
@@ -725,6 +732,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
 
   const confirmComplete = async () => {
     if (!user || !checklistComplete || job.status !== "active") return;
+    preloadCelebrationAssets();
     const supabase = createClient();
     const { error } = await supabase
       .from("jobs")
@@ -1320,6 +1328,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                   "Mark this load as complete? It will move to Awaiting Payment until you record payment."
                 )
               ) {
+                preloadCelebrationAssets();
                 confirmComplete();
               }
             }}
