@@ -12,6 +12,7 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { updateStreak } from "@/lib/streak";
+import { prefersReducedMotion } from "@/lib/motion";
 import type { UserProfile } from "@/types/database";
 
 interface AuthContextValue {
@@ -21,9 +22,12 @@ interface AuthContextValue {
   loading: boolean;
   sessionWarning: boolean;
   offline: boolean;
+  streakMilestone: number | null;
   refreshProfile: () => Promise<UserProfile | null>;
   patchProfile: (updates: Partial<UserProfile>) => void;
   recordActivity: () => Promise<void>;
+  notifyStreakMilestone: (days: number) => void;
+  dismissStreakMilestone: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -43,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [sessionWarning, setSessionWarning] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [streakMilestone, setStreakMilestone] = useState<number | null>(null);
   const profileFetchGeneration = useRef(0);
 
   const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
@@ -119,9 +124,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const recordActivity = useCallback(async () => {
     if (!user || !supabase) return;
-    await updateStreak(supabase, user.id);
+    const { milestoneReached } = await updateStreak(supabase, user.id);
+    if (milestoneReached && !prefersReducedMotion()) {
+      setStreakMilestone(milestoneReached);
+    }
     await refreshProfile();
   }, [refreshProfile, supabase, user]);
+
+  const notifyStreakMilestone = useCallback((days: number) => {
+    setStreakMilestone(days);
+  }, []);
+
+  const dismissStreakMilestone = useCallback(() => {
+    setStreakMilestone(null);
+  }, []);
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
@@ -230,9 +246,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       sessionWarning,
       offline,
+      streakMilestone,
       refreshProfile,
       patchProfile,
       recordActivity,
+      notifyStreakMilestone,
+      dismissStreakMilestone,
       signOut,
     }),
     [
@@ -242,9 +261,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       sessionWarning,
       offline,
+      streakMilestone,
       refreshProfile,
       patchProfile,
       recordActivity,
+      notifyStreakMilestone,
+      dismissStreakMilestone,
       signOut,
     ]
   );

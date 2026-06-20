@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  getStreakMilestoneCrossed,
+  type StreakMilestone,
+} from "@/lib/streak-milestones";
 
 function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -10,10 +14,15 @@ function daysBetween(a: string, b: string): number {
   return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+export type StreakUpdateResult = {
+  nextStreak: number;
+  milestoneReached: StreakMilestone | null;
+};
+
 export async function updateStreak(
   supabase: SupabaseClient,
   userId: string
-): Promise<number> {
+): Promise<StreakUpdateResult> {
   const today = toDateString(new Date());
 
   const { data: profile, error } = await supabase
@@ -22,7 +31,9 @@ export async function updateStreak(
     .eq("id", userId)
     .single();
 
-  if (error || !profile) return 0;
+  if (error || !profile) {
+    return { nextStreak: 0, milestoneReached: null };
+  }
 
   const lastActive = profile.last_active_date as string | null;
   const currentStreak = profile.streak_days ?? 0;
@@ -63,5 +74,8 @@ export async function updateStreak(
     }
   }
 
-  return nextStreak;
+  return {
+    nextStreak,
+    milestoneReached: getStreakMilestoneCrossed(currentStreak, nextStreak),
+  };
 }

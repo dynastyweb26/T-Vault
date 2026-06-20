@@ -1,6 +1,8 @@
 "use client";
 
 import { Flame } from "lucide-react";
+import { StreakBadgePop } from "@/components/celebration/streak-badge-pop";
+import { useAuth } from "@/components/providers/auth-provider";
 import type { DashboardData } from "@/types/jobs";
 
 interface StreakBannerProps {
@@ -8,6 +10,7 @@ interface StreakBannerProps {
 }
 
 export function StreakCard({ streakDays }: StreakBannerProps) {
+  const { streakMilestone, dismissStreakMilestone } = useAuth();
   const hot = streakDays >= 7;
   const message =
     streakDays === 0
@@ -18,7 +21,7 @@ export function StreakCard({ streakDays }: StreakBannerProps) {
 
   return (
     <section className="flex flex-col gap-2">
-      <article className="tv-glass-card rounded-2xl p-4">
+      <article className="relative overflow-hidden rounded-2xl tv-glass-card p-4">
         <p className="tv-caption flex items-center gap-1 opacity-80">
           Streak
           {hot ? (
@@ -39,6 +42,12 @@ export function StreakCard({ streakDays }: StreakBannerProps) {
         >
           {streakDays}
         </p>
+        {streakMilestone !== null ? (
+          <StreakBadgePop
+            streakDays={streakMilestone}
+            onDismiss={dismissStreakMilestone}
+          />
+        ) : null}
       </article>
       {message ? (
         <div

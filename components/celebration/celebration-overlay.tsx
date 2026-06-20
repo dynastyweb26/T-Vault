@@ -12,6 +12,7 @@ import {
   isCelebrationReady,
   type CelebrationDotLottieReact,
 } from "@/lib/celebration/preload";
+import { prefersReducedMotion } from "@/lib/motion";
 
 type CelebrationMode = "lottie" | "css";
 
@@ -63,6 +64,11 @@ export function CelebrationOverlay({ trigger, onComplete }: CelebrationOverlayPr
   useEffect(() => {
     if (!trigger) return;
 
+    if (prefersReducedMotion()) {
+      onComplete();
+      return;
+    }
+
     dismissedRef.current = false;
 
     if (isCelebrationReady()) {
@@ -80,7 +86,7 @@ export function CelebrationOverlay({ trigger, onComplete }: CelebrationOverlayPr
     }
 
     setVisible(true);
-  }, [trigger]);
+  }, [trigger, onComplete]);
 
   useEffect(() => {
     if (!visible) return;

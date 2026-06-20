@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -71,7 +71,13 @@ import {
 import { AiParsingBanner } from "@/components/job-folder/ai-parsing-banner";
 import { AiReviewSheet } from "@/components/job-folder/ai-review-sheet";
 import { CelebrationOverlayLazy } from "@/components/celebration/celebration-overlay-lazy";
+import { SaveTickButton } from "@/components/celebration/save-tick";
+import {
+  hasChecklistCelebrationPlayed,
+  markChecklistCelebrationPlayed,
+} from "@/lib/celebration/checklist-celebration";
 import { preloadCelebrationAssets } from "@/lib/celebration/preload";
+import { motionDelayMs, prefersReducedMotion } from "@/lib/motion";
 import { CrossValidationBanner } from "@/components/job-folder/cross-validation-banner";
 import { DocumentManualEntrySheet } from "@/components/job-folder/document-manual-entry-sheet";
 import { DocumentPreviewModal } from "@/components/job-folder/document-preview-modal";
@@ -188,7 +194,7 @@ function fieldConfidence(
 
 export function JobFolderView({ jobId }: { jobId: string }) {
   const router = useRouter();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, notifyStreakMilestone } = useAuth();
   const { deleteJobWithUndo } = useDeleteUndo();
   const {
     job,
@@ -239,6 +245,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   });
   const [expenseReceiptFile, setExpenseReceiptFile] = useState<File | null>(null);
   const [expenseSaving, setExpenseSaving] = useState(false);
+  const [expenseSaveSuccess, setExpenseSaveSuccess] = useState(false);
   const [aiBanner, setAiBanner] = useState<"rate_limited" | "parse_failed" | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [failedParseDoc, setFailedParseDoc] = useState<{
@@ -254,6 +261,14 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const [ratingPromptOpen, setRatingPromptOpen] = useState(false);
   const [ratingPromptJob, setRatingPromptJob] = useState<typeof job>(null);
   const [celebrateTrigger, setCelebrateTrigger] = useState(false);
+  const prevChecklistCompleteRef = useRef<boolean | null>(null);
+  const checklistInitializedRef = useRef(false);
+
+  const triggerCelebration = useCallback(() => {
+    if (prefersReducedMotion()) return;
+    preloadCelebrationAssets();
+    setCelebrateTrigger(true);
+  }, []);
 
   const openEditField = (key: string, rawValue: unknown) => {
     setEditField(key);
@@ -264,6 +279,39 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     preloadCelebrationAssets();
     void import("@/components/celebration/celebration-overlay");
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const nowComplete = isChecklistComplete(documents);
+
+    if (!checklistInitializedRef.current) {
+      checklistInitializedRef.current = true;
+      prevChecklistCompleteRef.current = nowComplete;
+      if (nowComplete) {
+        markChecklistCelebrationPlayed(jobId);
+      }
+      return;
+    }
+
+    const wasComplete = prevChecklistCompleteRef.current ?? false;
+    prevChecklistCompleteRef.current = nowComplete;
+
+    if (
+      !wasComplete &&
+      nowComplete &&
+      !hasChecklistCelebrationPlayed(jobId)
+    ) {
+      markChecklistCelebrationPlayed(jobId);
+      triggerCelebration();
+    }
+  }, [documents, jobId, loading, triggerCelebration]);
+
+  useEffect(() => {
+    if (!expenseSheetOpen) {
+      setExpenseSaveSuccess(false);
+    }
+  }, [expenseSheetOpen]);
 
   useEffect(() => {
     if (!job?.broker_name || !user) return;
@@ -431,9 +479,6 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         regenerate,
       });
       await refresh();
-      if (!regenerate) {
-        setCelebrateTrigger(true);
-      }
     } catch (err) {
       if (err instanceof Error && err.message === "ai_review_required") {
         setReviewOpen(true);
@@ -743,9 +788,12 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       window.alert("Could not update load status. Try again.");
       return;
     }
-    await updateStreak(supabase, user.id);
+    const { milestoneReached } = await updateStreak(supabase, user.id);
+    if (milestoneReached && !prefersReducedMotion()) {
+      notifyStreakMilestone(milestoneReached);
+    }
     await refreshProfile();
-    setCelebrateTrigger(true);
+    triggerCelebration();
     setPaymentSheetOpen(true);
     await refresh();
   };
@@ -1682,90 +1730,104 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             className="mt-4"
           />
         )}
-        <TvButton
+        <SaveTickButton
           className="mt-4"
           loading={expenseSaving}
+          success={expenseSaveSuccess}
           onClick={async () => {
-          if (!user) return;
-          const amount = Number(expenseForm.amount);
-          if (!expenseForm.amount.trim() || Number.isNaN(amount) || amount <= 0) {
-            window.alert("Enter a valid expense amount.");
-            return;
-          }
-          if (!expenseForm.date) {
-            window.alert("Select an expense date.");
-            return;
-          }
-          if (
-            expenseForm.receiptMode === "no_receipt" &&
-            validateTextLength(
-              expenseForm.noReceiptReason,
-              TEXT_LIMITS.description,
-              "Note"
-            )
-          ) {
-            window.alert("Explain why there is no receipt.");
-            return;
-          }
+            if (!user || expenseSaving || expenseSaveSuccess) return;
+            const amount = Number(expenseForm.amount);
+            if (!expenseForm.amount.trim() || Number.isNaN(amount) || amount <= 0) {
+              window.alert("Enter a valid expense amount.");
+              return;
+            }
+            if (!expenseForm.date) {
+              window.alert("Select an expense date.");
+              return;
+            }
+            if (
+              expenseForm.receiptMode === "no_receipt" &&
+              validateTextLength(
+                expenseForm.noReceiptReason,
+                TEXT_LIMITS.description,
+                "Note"
+              )
+            ) {
+              window.alert("Explain why there is no receipt.");
+              return;
+            }
 
-          setExpenseSaving(true);
-          const supabase = createClient();
-          const { data: inserted, error } = await supabase.from("expenses").insert({
-            user_id: user.id,
-            job_id: jobId,
-            category: expenseForm.category,
-            amount,
-            expense_date: expenseForm.date,
-            description: sanitizeText(expenseForm.description) || null,
-            no_receipt_reason:
-              expenseForm.receiptMode === "no_receipt"
-                ? sanitizeText(expenseForm.noReceiptReason)
-                : null,
-          }).select("id").single();
+            setExpenseSaving(true);
+            const supabase = createClient();
+            const { data: inserted, error } = await supabase.from("expenses").insert({
+              user_id: user.id,
+              job_id: jobId,
+              category: expenseForm.category,
+              amount,
+              expense_date: expenseForm.date,
+              description: sanitizeText(expenseForm.description) || null,
+              no_receipt_reason:
+                expenseForm.receiptMode === "no_receipt"
+                  ? sanitizeText(expenseForm.noReceiptReason)
+                  : null,
+            }).select("id").single();
 
-          if (error || !inserted?.id) {
-            setExpenseSaving(false);
-            window.alert("Could not save expense. Try again.");
-            return;
-          }
-
-          if (expenseForm.receiptMode === "receipt" && expenseReceiptFile) {
-            const formData = new FormData();
-            formData.append("file", expenseReceiptFile);
-            formData.append("expenseId", inserted.id);
-
-            const uploadResponse = await fetch("/api/expenses/upload-receipt", {
-              method: "POST",
-              body: formData,
-            });
-
-            if (!uploadResponse.ok) {
-              await supabase
-                .from("expenses")
-                .delete()
-                .eq("id", inserted.id)
-                .eq("user_id", user.id)
-                .eq("job_id", jobId);
+            if (error || !inserted?.id) {
               setExpenseSaving(false);
               window.alert("Could not save expense. Try again.");
               return;
             }
-          }
 
-          triggerHaptic("medium");
-          setExpenseSaving(false);
-          setExpenseSheetOpen(false);
-          setExpenseReceiptFile(null);
-          setExpenseForm({
-            category: "fuel",
-            amount: "",
-            date: new Date().toISOString().slice(0, 10),
-            description: "",
-            receiptMode: "receipt",
-            noReceiptReason: "",
-          });
-          await refresh();
-        }}>Save Expense</TvButton>
+            if (expenseForm.receiptMode === "receipt" && expenseReceiptFile) {
+              const formData = new FormData();
+              formData.append("file", expenseReceiptFile);
+              formData.append("expenseId", inserted.id);
+
+              const uploadResponse = await fetch("/api/expenses/upload-receipt", {
+                method: "POST",
+                body: formData,
+              });
+
+              if (!uploadResponse.ok) {
+                await supabase
+                  .from("expenses")
+                  .delete()
+                  .eq("id", inserted.id)
+                  .eq("user_id", user.id)
+                  .eq("job_id", jobId);
+                setExpenseSaving(false);
+                window.alert("Could not save expense. Try again.");
+                return;
+              }
+            }
+
+            triggerHaptic("medium");
+            setExpenseSaving(false);
+            await refresh();
+
+            const closeSheet = () => {
+              setExpenseSheetOpen(false);
+              setExpenseSaveSuccess(false);
+              setExpenseReceiptFile(null);
+              setExpenseForm({
+                category: "fuel",
+                amount: "",
+                date: new Date().toISOString().slice(0, 10),
+                description: "",
+                receiptMode: "receipt",
+                noReceiptReason: "",
+              });
+            };
+
+            if (prefersReducedMotion()) {
+              closeSheet();
+              return;
+            }
+
+            setExpenseSaveSuccess(true);
+            window.setTimeout(closeSheet, motionDelayMs(0, 700));
+          }}
+        />
       </BottomSheet>
 
       <BottomSheet open={Boolean(editField)} onClose={() => setEditField(null)} title="Edit Field" ariaLabel="Edit field">

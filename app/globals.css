@@ -857,6 +857,81 @@
     }
   }
 
+  .tv-save-tick-btn--success {
+    background: var(--color-success);
+    color: var(--color-success-text);
+    will-change: transform, opacity;
+    animation: tv-save-tick-flash 700ms ease-out forwards;
+  }
+
+  .tv-save-tick-icon {
+    will-change: transform, opacity;
+    animation: tv-save-tick-pop 420ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+  }
+
+  @keyframes tv-save-tick-flash {
+    0% {
+      opacity: 0.92;
+      transform: scale3d(0.98, 0.98, 1);
+    }
+    35% {
+      opacity: 1;
+      transform: scale3d(1.02, 1.02, 1);
+    }
+    100% {
+      opacity: 1;
+      transform: scale3d(1, 1, 1);
+    }
+  }
+
+  @keyframes tv-save-tick-pop {
+    0% {
+      opacity: 0;
+      transform: scale3d(0.6, 0.6, 1);
+    }
+    100% {
+      opacity: 1;
+      transform: scale3d(1, 1, 1);
+    }
+  }
+
+  .tv-streak-badge-pop-badge {
+    will-change: transform, opacity;
+    animation: tv-streak-badge-pop 520ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+  }
+
+  .tv-streak-badge-pop-label {
+    will-change: opacity;
+    animation: tv-streak-badge-label 420ms ease-out 180ms forwards;
+    opacity: 0;
+  }
+
+  @keyframes tv-streak-badge-pop {
+    0% {
+      opacity: 0;
+      transform: scale3d(0, 0, 1);
+    }
+    70% {
+      opacity: 1;
+      transform: scale3d(1.15, 1.15, 1);
+    }
+    100% {
+      opacity: 1;
+      transform: scale3d(1, 1, 1);
+    }
+  }
+
+  @keyframes tv-streak-badge-label {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 4px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
   .tv-tour-hint-banner {
     animation: tv-fade-in var(--transition-base) ease-out;
   }
@@ -978,7 +1053,13 @@
     .tv-loading-pulse,
     .tv-modal-overlay,
     .tv-modal-panel,
-    .tv-sheet-panel {
+    .tv-sheet-panel,
+    .tv-celebration-overlay,
+    .tv-celebration-fallback-icon,
+    .tv-save-tick-btn--success,
+    .tv-save-tick-icon,
+    .tv-streak-badge-pop-badge,
+    .tv-streak-badge-pop-label {
       animation: none;
     }
 

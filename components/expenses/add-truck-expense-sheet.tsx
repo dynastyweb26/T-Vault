@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Camera, FileText, Image as ImageIcon } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { TvButton } from "@/components/tv/tv-button";
+import { SaveTickButton } from "@/components/celebration/save-tick";
 import { TvInput } from "@/components/tv/tv-input";
 import { TvDateInput } from "@/components/tv/tv-date-input";
 import { TvTextarea } from "@/components/tv/tv-textarea";
@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { TEXT_LIMITS } from "@/lib/constants";
 import { triggerHaptic } from "@/lib/haptics";
+import { motionDelayMs, prefersReducedMotion } from "@/lib/motion";
 import {
   getTextCounter,
   sanitizeText,
@@ -57,6 +58,7 @@ export function AddTruckExpenseSheet({
   const [noReceiptError, setNoReceiptError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -72,6 +74,7 @@ export function AddTruckExpenseSheet({
     setDescriptionError(null);
     setNoReceiptError(null);
     setFormError(null);
+    setSaveSuccess(false);
   }, [open, initialAmount, initialCategory, initialDescription]);
 
   const saveExpense = async () => {
@@ -156,8 +159,20 @@ export function AddTruckExpenseSheet({
 
     triggerHaptic("medium");
     setLoading(false);
-    onSaved?.(inserted.id);
-    onClose();
+
+    const finishSave = () => {
+      setSaveSuccess(false);
+      onSaved?.(inserted.id);
+      onClose();
+    };
+
+    if (prefersReducedMotion()) {
+      finishSave();
+      return;
+    }
+
+    setSaveSuccess(true);
+    window.setTimeout(finishSave, motionDelayMs(0, 700));
   };
 
   return (
@@ -303,9 +318,7 @@ export function AddTruckExpenseSheet({
           <p className="text-[14px] text-[var(--color-danger-text)]">{formError}</p>
         ) : null}
 
-        <TvButton loading={loading} onClick={saveExpense}>
-          Save Expense
-        </TvButton>
+        <SaveTickButton loading={loading} success={saveSuccess} onClick={saveExpense} />
       </div>
     </BottomSheet>
   );
