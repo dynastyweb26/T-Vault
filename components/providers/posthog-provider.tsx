@@ -46,19 +46,39 @@ function PostHogIdentify() {
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
+  console.error(
+    "[TEMP DEBUG posthog] raw key value:",
+    process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    "type:",
+    typeof process.env.NEXT_PUBLIC_POSTHOG_KEY,
+  );
+
   const enabled = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY);
+
+  console.error("[TEMP DEBUG posthog] enabled:", enabled);
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    console.error(
+      "[TEMP DEBUG posthog] useEffect key before guard:",
+      key,
+      "type:",
+      typeof key,
+    );
     if (!key) return;
 
-    posthog.init(key, {
-      api_host: POSTHOG_PROXY_PATH,
-      ui_host: "https://us.posthog.com",
-      capture_pageview: false,
-      capture_pageleave: true,
-      person_profiles: "identified_only",
-    });
+    try {
+      posthog.init(key, {
+        api_host: POSTHOG_PROXY_PATH,
+        ui_host: "https://us.posthog.com",
+        capture_pageview: false,
+        capture_pageleave: true,
+        person_profiles: "identified_only",
+      });
+      console.error("[TEMP DEBUG posthog] posthog.init() succeeded");
+    } catch (error) {
+      console.error("[TEMP DEBUG posthog] posthog.init() failed:", error);
+    }
   }, []);
 
   if (!enabled) {
