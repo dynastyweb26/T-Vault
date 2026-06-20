@@ -70,6 +70,7 @@ import {
 } from "@/lib/job-folder/cross-validation";
 import { AiParsingBanner } from "@/components/job-folder/ai-parsing-banner";
 import { AiReviewSheet } from "@/components/job-folder/ai-review-sheet";
+import { CelebrationOverlayLazy } from "@/components/celebration/celebration-overlay-lazy";
 import { CrossValidationBanner } from "@/components/job-folder/cross-validation-banner";
 import { DocumentManualEntrySheet } from "@/components/job-folder/document-manual-entry-sheet";
 import { DocumentPreviewModal } from "@/components/job-folder/document-preview-modal";
@@ -251,6 +252,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const [undoPaidConfirmOpen, setUndoPaidConfirmOpen] = useState(false);
   const [ratingPromptOpen, setRatingPromptOpen] = useState(false);
   const [ratingPromptJob, setRatingPromptJob] = useState<typeof job>(null);
+  const [celebrateTrigger, setCelebrateTrigger] = useState(false);
 
   const openEditField = (key: string, rawValue: unknown) => {
     setEditField(key);
@@ -422,6 +424,9 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         regenerate,
       });
       await refresh();
+      if (!regenerate) {
+        setCelebrateTrigger(true);
+      }
     } catch (err) {
       if (err instanceof Error && err.message === "ai_review_required") {
         setReviewOpen(true);
@@ -732,6 +737,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     }
     await updateStreak(supabase, user.id);
     await refreshProfile();
+    setCelebrateTrigger(true);
     setPaymentSheetOpen(true);
     await refresh();
   };
@@ -1443,6 +1449,11 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         <TvInput label="Payment due date" type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="mt-4" />
         <TvButton className="mt-4" onClick={finalizePayment}>Set Payment Due Date</TvButton>
       </BottomSheet>
+
+      <CelebrationOverlayLazy
+        trigger={celebrateTrigger}
+        onComplete={() => setCelebrateTrigger(false)}
+      />
 
       {milestone ? (
         <div className="fixed inset-0 z-[80] tv-modal-overlay">
