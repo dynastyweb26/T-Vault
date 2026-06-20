@@ -9,16 +9,40 @@ import { useAuth } from "@/components/providers/auth-provider";
 const POSTHOG_PROXY_PATH = "/ph-events";
 
 function PostHogPageView() {
+  console.error("[TEMP DEBUG posthog] PostHogPageView mount");
+
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (pathname) {
-      let url = window.origin + pathname;
-      if (searchParams?.toString()) {
-        url += `?${searchParams.toString()}`;
-      }
+    if (!pathname) {
+      console.error(
+        "[TEMP DEBUG posthog] PostHogPageView skipped capture — no pathname",
+      );
+      return;
+    }
+
+    let url = window.origin + pathname;
+    if (searchParams?.toString()) {
+      url += `?${searchParams.toString()}`;
+    }
+
+    console.error("[TEMP DEBUG posthog] capturing pageview for:", pathname, {
+      url,
+    });
+
+    try {
       posthog.capture("$pageview", { $current_url: url });
+      console.error(
+        "[TEMP DEBUG posthog] capture call completed for:",
+        pathname,
+      );
+    } catch (error) {
+      console.error(
+        "[TEMP DEBUG posthog] capture call failed for:",
+        pathname,
+        error,
+      );
     }
   }, [pathname, searchParams]);
 
