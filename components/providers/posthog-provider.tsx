@@ -18,20 +18,6 @@ if (typeof window !== "undefined" && POSTHOG_KEY && !posthog.__loaded) {
     capture_pageleave: true,
     person_profiles: "identified_only",
     capture_exceptions: true,
-    loaded: () => {
-      console.error("[TEMP DEBUG exception] loaded callback", {
-        capture_exceptions: posthog.config?.capture_exceptions,
-        hasExceptionObserver: Boolean(posthog.exceptionObserver),
-        exceptionObserverEnabled: posthog.exceptionObserver?.isEnabled,
-      });
-    },
-  });
-
-  console.error("[TEMP DEBUG exception] post-init sync", {
-    __loaded: posthog.__loaded,
-    capture_exceptions: posthog.config?.capture_exceptions,
-    hasExceptionObserver: Boolean(posthog.exceptionObserver),
-    exceptionObserverEnabled: posthog.exceptionObserver?.isEnabled,
   });
 }
 
