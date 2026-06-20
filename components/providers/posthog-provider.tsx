@@ -17,6 +17,7 @@ if (typeof window !== "undefined" && POSTHOG_KEY && !posthog.__loaded) {
     capture_pageview: false,
     capture_pageleave: true,
     person_profiles: "identified_only",
+    capture_exceptions: true,
   });
 }
 
