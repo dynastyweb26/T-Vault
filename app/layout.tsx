@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { Syne, DM_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { PostHogProvider } from "@/components/providers/posthog-provider";
 import "./globals.css";
 
 const syne = Syne({
@@ -67,7 +68,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full font-sans">
         <AuthProvider>
-          <ThemeProvider>{children}</ThemeProvider>
+          <PostHogProvider>
+            <ThemeProvider>{children}</ThemeProvider>
+          </PostHogProvider>
         </AuthProvider>
       </body>
     </html>

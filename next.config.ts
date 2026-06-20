@@ -34,6 +34,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  skipTrailingSlashRedirect: true,
   serverExternalPackages: [
     "sharp",
     "@img/sharp-linux-x64",
@@ -41,6 +42,22 @@ const nextConfig: NextConfig = {
   ],
   outputFileTracingIncludes: {
     "/api/**/*": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/ph-events/static/:path*",
+        destination: "https://us-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ph-events/array/:path*",
+        destination: "https://us-assets.i.posthog.com/array/:path*",
+      },
+      {
+        source: "/ph-events/:path*",
+        destination: "https://us.i.posthog.com/:path*",
+      },
+    ];
   },
   async headers() {
     return [
