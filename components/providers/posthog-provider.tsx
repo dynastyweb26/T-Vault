@@ -8,6 +8,15 @@ import { useAuth } from "@/components/providers/auth-provider";
 
 const POSTHOG_PROXY_PATH = "/ph-events";
 
+function logPostHogDebugState(label: string) {
+  console.error(`[TEMP DEBUG posthog] ${label}`, {
+    __loaded: posthog.__loaded,
+    api_host: posthog.config?.api_host,
+    has_opted_out_capturing: posthog.has_opted_out_capturing?.(),
+    distinct_id: posthog.get_distinct_id?.(),
+  });
+}
+
 function PostHogPageView() {
   console.error("[TEMP DEBUG posthog] PostHogPageView mount");
 
@@ -31,12 +40,27 @@ function PostHogPageView() {
       url,
     });
 
+    logPostHogDebugState("pre-capture");
+
     try {
       posthog.capture("$pageview", { $current_url: url });
       console.error(
         "[TEMP DEBUG posthog] capture call completed for:",
         pathname,
       );
+      logPostHogDebugState("post-capture");
+
+      try {
+        posthog.flush();
+        console.error(
+          "[TEMP DEBUG posthog] posthog.flush() called after pageview capture",
+        );
+      } catch (flushError) {
+        console.error(
+          "[TEMP DEBUG posthog] posthog.flush() failed after pageview capture:",
+          flushError,
+        );
+      }
     } catch (error) {
       console.error(
         "[TEMP DEBUG posthog] capture call failed for:",
@@ -98,8 +122,23 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         capture_pageview: false,
         capture_pageleave: true,
         person_profiles: "identified_only",
+        before_send: (event) => {
+          console.error("[TEMP DEBUG posthog] before_send:", event?.event, {
+            api_host: posthog.config?.api_host,
+            __loaded: posthog.__loaded,
+          });
+          return event;
+        },
+        loaded: (client) => {
+          console.error("[TEMP DEBUG posthog] loaded callback fired", {
+            __loaded: client.__loaded,
+            api_host: client.config?.api_host,
+            distinct_id: client.get_distinct_id?.(),
+          });
+        },
       });
       console.error("[TEMP DEBUG posthog] posthog.init() succeeded");
+      logPostHogDebugState("post-init sync");
     } catch (error) {
       console.error("[TEMP DEBUG posthog] posthog.init() failed:", error);
     }
