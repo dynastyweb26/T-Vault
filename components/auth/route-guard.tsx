@@ -26,6 +26,7 @@ function SplashTransitionHold() {
   );
 }
 
+// UX-only guard — middleware enforces auth, profile, and onboarding server-side.
 export function RouteGuard({ children, mode = "auth" }: RouteGuardProps) {
   const router = useRouter();
   const { user, profile, loading } = useAuth();

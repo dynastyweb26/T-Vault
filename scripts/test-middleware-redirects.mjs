@@ -20,6 +20,18 @@ const PROTECTED_PREFIXES = [
 ];
 const ONBOARDING_REQUIRED_PREFIXES = ["/dashboard", "/loads"];
 
+const API_ONBOARDING_EXEMPT_EXACT = [
+  "/api/auth/complete-signup",
+  "/api/auth/complete-onboarding",
+  "/api/auth/complete-profile-setup",
+  "/api/auth/change-password",
+  "/api/account/delete",
+  "/api/redeem-code",
+  "/api/pro-waitlist",
+];
+
+const API_PUBLIC_PREFIXES = ["/api/webhooks/"];
+
 function isAuthRoute(pathname) {
   return AUTH_ROUTES.some((route) => pathname === route);
 }
@@ -32,7 +44,78 @@ function requiresOnboarding(pathname) {
   return ONBOARDING_REQUIRED_PREFIXES.some((route) => pathname.startsWith(route));
 }
 
-function getSessionRedirect(pathname, hasUser, _profile) {
+function isPublicApiRoute(pathname) {
+  return API_PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function isApiOnboardingExempt(pathname) {
+  return API_ONBOARDING_EXEMPT_EXACT.some((route) => pathname === route);
+}
+
+function getProtectedRouteRedirect(pathname, profile) {
+  if (!profile) {
+    return {
+      redirectTo: APP_ROUTES.splash,
+      reason: "protected_route_missing_profile",
+    };
+  }
+
+  const isOnboardingRoute = pathname === APP_ROUTES.onboarding;
+  const isProfileSetupRoute = pathname === APP_ROUTES.profileSetup;
+  const needsOnboarding = requiresOnboarding(pathname);
+
+  if (!profile.onboarding_completed) {
+    if (needsOnboarding || isProfileSetupRoute) {
+      return {
+        redirectTo: APP_ROUTES.onboarding,
+        reason: "onboarding_incomplete",
+      };
+    }
+    return {
+      redirectTo: null,
+      reason: "allow_onboarding_flow_route",
+    };
+  }
+
+  if (isOnboardingRoute) {
+    const needsProfileSetup =
+      !profile.profile_setup_completed && !profile.profile_setup_skipped;
+    return {
+      redirectTo: needsProfileSetup ? APP_ROUTES.profileSetup : APP_ROUTES.dashboard,
+      reason: needsProfileSetup
+        ? "onboarding_complete_needs_profile_setup"
+        : "onboarding_complete_go_dashboard",
+    };
+  }
+
+  if (
+    !profile.profile_setup_completed &&
+    !profile.profile_setup_skipped &&
+    needsOnboarding
+  ) {
+    return {
+      redirectTo: APP_ROUTES.profileSetup,
+      reason: "profile_setup_required_for_app_route",
+    };
+  }
+
+  if (
+    (profile.profile_setup_completed || profile.profile_setup_skipped) &&
+    isProfileSetupRoute
+  ) {
+    return {
+      redirectTo: APP_ROUTES.dashboard,
+      reason: "profile_setup_already_complete",
+    };
+  }
+
+  return {
+    redirectTo: null,
+    reason: "allow_protected_route",
+  };
+}
+
+function getSessionRedirect(pathname, hasUser, profile) {
   if (!hasUser && isProtectedRoute(pathname)) {
     return { redirectTo: APP_ROUTES.signIn, reason: "unauthenticated_protected_route" };
   }
@@ -41,7 +124,50 @@ function getSessionRedirect(pathname, hasUser, _profile) {
     return { redirectTo: APP_ROUTES.splash, reason: "authenticated_auth_route" };
   }
 
+  if (hasUser && isProtectedRoute(pathname)) {
+    return getProtectedRouteRedirect(pathname, profile);
+  }
+
   return { redirectTo: null, reason: "allow_public_or_unrestricted_route" };
+}
+
+function getApiRouteDecision(pathname, hasUser, profile) {
+  if (isPublicApiRoute(pathname)) {
+    return { action: "allow", reason: "public_api_webhook" };
+  }
+
+  if (!hasUser) {
+    return {
+      action: "json",
+      status: 401,
+      error: "unauthorized",
+      reason: "api_unauthenticated",
+    };
+  }
+
+  if (isApiOnboardingExempt(pathname)) {
+    return { action: "allow", reason: "api_onboarding_exempt" };
+  }
+
+  if (!profile) {
+    return {
+      action: "json",
+      status: 403,
+      error: "profile_required",
+      reason: "api_missing_profile",
+    };
+  }
+
+  if (!profile.onboarding_completed) {
+    return {
+      action: "json",
+      status: 403,
+      error: "onboarding_required",
+      reason: "api_onboarding_incomplete",
+    };
+  }
+
+  return { action: "allow", reason: "api_allowed" };
 }
 
 function getClientRedirect(pathname, clientProfile, profileResynced) {
@@ -286,7 +412,7 @@ const flowChecks = [
     expected: null,
   },
   {
-    name: "onboarding allowed after onboarding complete (no middleware gating)",
+    name: "onboarding redirects to profile-setup when onboarding complete",
     path: APP_ROUTES.onboarding,
     hasUser: true,
     profile: {
@@ -294,7 +420,7 @@ const flowChecks = [
       profile_setup_completed: false,
       profile_setup_skipped: false,
     },
-    expected: null,
+    expected: APP_ROUTES.profileSetup,
   },
   {
     name: "profile-setup allowed after onboarding complete",
@@ -308,7 +434,7 @@ const flowChecks = [
     expected: null,
   },
   {
-    name: "dashboard allowed before profile setup (no middleware gating)",
+    name: "dashboard redirects to profile-setup before profile setup",
     path: APP_ROUTES.dashboard,
     hasUser: true,
     profile: {
@@ -316,7 +442,7 @@ const flowChecks = [
       profile_setup_completed: false,
       profile_setup_skipped: false,
     },
-    expected: null,
+    expected: APP_ROUTES.profileSetup,
   },
   {
     name: "dashboard allowed after full setup",
@@ -329,6 +455,42 @@ const flowChecks = [
     },
     expected: null,
   },
+  {
+    name: "no-profile on dashboard redirects to splash",
+    path: APP_ROUTES.dashboard,
+    hasUser: true,
+    profile: null,
+    expected: APP_ROUTES.splash,
+  },
+  {
+    name: "fully onboarded on onboarding redirects to dashboard",
+    path: APP_ROUTES.onboarding,
+    hasUser: true,
+    profile: {
+      onboarding_completed: true,
+      profile_setup_completed: true,
+      profile_setup_skipped: false,
+    },
+    expected: APP_ROUTES.dashboard,
+  },
+  {
+    name: "fully onboarded on profile-setup redirects to dashboard",
+    path: APP_ROUTES.profileSetup,
+    hasUser: true,
+    profile: {
+      onboarding_completed: true,
+      profile_setup_completed: true,
+      profile_setup_skipped: false,
+    },
+    expected: APP_ROUTES.dashboard,
+  },
+  {
+    name: "/invoice/* public with no session",
+    path: "/invoice/INV-12345",
+    hasUser: false,
+    profile: null,
+    expected: null,
+  },
 ];
 
 for (const check of flowChecks) {
@@ -337,6 +499,75 @@ for (const check of flowChecks) {
     failures += 1;
     console.error(
       `FLOW CHECK FAILED: ${check.name} (${check.path}) expected ${check.expected}, got ${actual}`
+    );
+  }
+}
+
+const apiChecks = [
+  {
+    name: "redeem-code allowed for authed user without onboarding",
+    path: "/api/redeem-code",
+    hasUser: true,
+    profile: {
+      onboarding_completed: false,
+      profile_setup_completed: false,
+      profile_setup_skipped: false,
+    },
+    expectedAction: "allow",
+  },
+  {
+    name: "pro-waitlist allowed for authed user without onboarding",
+    path: "/api/pro-waitlist",
+    hasUser: true,
+    profile: {
+      onboarding_completed: false,
+      profile_setup_completed: false,
+      profile_setup_skipped: false,
+    },
+    expectedAction: "allow",
+  },
+  {
+    name: "redeem-code allowed for authed user with no profile row",
+    path: "/api/redeem-code",
+    hasUser: true,
+    profile: null,
+    expectedAction: "allow",
+  },
+  {
+    name: "pro-waitlist allowed for authed user with no profile row",
+    path: "/api/pro-waitlist",
+    hasUser: true,
+    profile: null,
+    expectedAction: "allow",
+  },
+  {
+    name: "other API blocked before onboarding",
+    path: "/api/jobs",
+    hasUser: true,
+    profile: {
+      onboarding_completed: false,
+      profile_setup_completed: false,
+      profile_setup_skipped: false,
+    },
+    expectedAction: "json",
+    expectedStatus: 403,
+  },
+];
+
+for (const check of apiChecks) {
+  const decision = getApiRouteDecision(check.path, check.hasUser, check.profile);
+  if (decision.action !== check.expectedAction) {
+    failures += 1;
+    console.error(
+      `API CHECK FAILED: ${check.name} expected action=${check.expectedAction}, got ${decision.action} (${decision.reason})`
+    );
+  } else if (
+    check.expectedStatus &&
+    (decision.action !== "json" || decision.status !== check.expectedStatus)
+  ) {
+    failures += 1;
+    console.error(
+      `API CHECK FAILED: ${check.name} expected status=${check.expectedStatus}, got ${decision.status ?? "n/a"}`
     );
   }
 }

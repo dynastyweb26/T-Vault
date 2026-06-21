@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import {
-  getSessionRedirect,
   logRedirectDecision,
+  resolveMiddlewareDecision,
+  type ProfileFlowState,
 } from "@/lib/middleware-redirect";
 
 export async function updateSession(request: NextRequest) {
@@ -35,10 +36,32 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  const decision = getSessionRedirect(pathname, Boolean(user), null);
-  logRedirectDecision(pathname, Boolean(user), null, decision);
+  let profile: ProfileFlowState | null = null;
+  if (user) {
+    const { data } = await supabase
+      .from("users")
+      .select(
+        "onboarding_completed, profile_setup_completed, profile_setup_skipped"
+      )
+      .eq("id", user.id)
+      .maybeSingle();
+    profile = data ?? null;
+  }
 
-  if (decision.redirectTo) {
+  const decision = resolveMiddlewareDecision(pathname, Boolean(user), profile);
+  logRedirectDecision(pathname, Boolean(user), profile, {
+    redirectTo: decision.action === "redirect" ? decision.redirectTo : null,
+    reason: decision.reason,
+  });
+
+  if (decision.action === "json") {
+    return NextResponse.json(
+      { error: decision.error },
+      { status: decision.status }
+    );
+  }
+
+  if (decision.action === "redirect") {
     const url = request.nextUrl.clone();
     url.pathname = decision.redirectTo;
     console.info("[middleware] redirecting", {

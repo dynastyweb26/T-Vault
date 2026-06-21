@@ -1,6 +1,8 @@
 import {
   APP_ROUTES,
   AUTH_ROUTES,
+  API_ONBOARDING_EXEMPT_EXACT,
+  API_PUBLIC_PREFIXES,
   ONBOARDING_REQUIRED_PREFIXES,
   PROTECTED_PREFIXES,
 } from "@/lib/constants";
@@ -16,6 +18,11 @@ export type RedirectDecision = {
   reason: string;
 };
 
+export type MiddlewareDecision =
+  | { action: "allow"; reason: string }
+  | { action: "redirect"; redirectTo: string; reason: string }
+  | { action: "json"; status: number; error: string; reason: string };
+
 export function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some((route) => pathname === route);
 }
@@ -26,6 +33,57 @@ export function isProtectedRoute(pathname: string): boolean {
 
 export function requiresOnboarding(pathname: string): boolean {
   return ONBOARDING_REQUIRED_PREFIXES.some((route) => pathname.startsWith(route));
+}
+
+export function isPublicApiRoute(pathname: string): boolean {
+  return API_PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+export function isApiOnboardingExempt(pathname: string): boolean {
+  return API_ONBOARDING_EXEMPT_EXACT.some((route) => pathname === route);
+}
+
+export function getApiRouteDecision(
+  pathname: string,
+  hasUser: boolean,
+  profile: ProfileFlowState | null
+): MiddlewareDecision {
+  if (isPublicApiRoute(pathname)) {
+    return { action: "allow", reason: "public_api_webhook" };
+  }
+
+  if (!hasUser) {
+    return {
+      action: "json",
+      status: 401,
+      error: "unauthorized",
+      reason: "api_unauthenticated",
+    };
+  }
+
+  if (isApiOnboardingExempt(pathname)) {
+    return { action: "allow", reason: "api_onboarding_exempt" };
+  }
+
+  if (!profile) {
+    return {
+      action: "json",
+      status: 403,
+      error: "profile_required",
+      reason: "api_missing_profile",
+    };
+  }
+
+  if (!profile.onboarding_completed) {
+    return {
+      action: "json",
+      status: 403,
+      error: "onboarding_required",
+      reason: "api_onboarding_incomplete",
+    };
+  }
+
+  return { action: "allow", reason: "api_allowed" };
 }
 
 function summarizeProfile(profile: ProfileFlowState | null): string {
@@ -108,14 +166,11 @@ export function getProtectedRouteRedirect(
 
 /**
  * Returns the pathname to redirect to for session-aware routing, or null.
- *
- * Onboarding/profile-setup gating is temporarily disabled to avoid redirect loops.
- * Only authentication is enforced here.
  */
 export function getSessionRedirect(
   pathname: string,
   hasUser: boolean,
-  _profile: ProfileFlowState | null
+  profile: ProfileFlowState | null
 ): RedirectDecision {
   if (!hasUser && isProtectedRoute(pathname)) {
     return {
@@ -131,10 +186,35 @@ export function getSessionRedirect(
     };
   }
 
+  if (hasUser && isProtectedRoute(pathname)) {
+    return getProtectedRouteRedirect(pathname, profile);
+  }
+
   return {
     redirectTo: null,
     reason: "allow_public_or_unrestricted_route",
   };
+}
+
+export function resolveMiddlewareDecision(
+  pathname: string,
+  hasUser: boolean,
+  profile: ProfileFlowState | null
+): MiddlewareDecision {
+  if (pathname.startsWith("/api/")) {
+    return getApiRouteDecision(pathname, hasUser, profile);
+  }
+
+  const pageDecision = getSessionRedirect(pathname, hasUser, profile);
+  if (pageDecision.redirectTo) {
+    return {
+      action: "redirect",
+      redirectTo: pageDecision.redirectTo,
+      reason: pageDecision.reason,
+    };
+  }
+
+  return { action: "allow", reason: pageDecision.reason };
 }
 
 export function logRedirectDecision(

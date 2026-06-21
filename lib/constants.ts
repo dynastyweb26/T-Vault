@@ -79,3 +79,17 @@ export const AUTH_ROUTES = [
   "/sign-up",
   "/forgot-password",
 ] as const;
+
+/** Authenticated API routes allowed before onboarding_completed. */
+export const API_ONBOARDING_EXEMPT_EXACT = [
+  "/api/auth/complete-signup",
+  "/api/auth/complete-onboarding",
+  "/api/auth/complete-profile-setup",
+  "/api/auth/change-password",
+  "/api/account/delete",
+  "/api/redeem-code",
+  "/api/pro-waitlist",
+] as const;
+
+/** API prefixes that skip session checks entirely (webhooks). */
+export const API_PUBLIC_PREFIXES = ["/api/webhooks/"] as const;
