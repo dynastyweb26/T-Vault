@@ -4,6 +4,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createManualBroker, searchBrokers } from "@/lib/brokers/client";
+import { buildFmcsaCompanySnapshotUrl } from "@/lib/brokers/fmcsa-links";
+import { fetchBrokerDetails } from "@/lib/brokers/selection";
 import type { BrokerSearchResult, BrokerSearchSource } from "@/lib/brokers/types";
 import type { BrokerSelection } from "@/lib/brokers/selection";
 import { TEXT_LIMITS } from "@/lib/constants";
@@ -49,10 +51,30 @@ export function BrokerAutocomplete({
   const [results, setResults] = useState<BrokerSearchResult[]>([]);
   const [source, setSource] = useState<BrokerSearchSource | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [selectedDotNumber, setSelectedDotNumber] = useState<string | null>(null);
 
   useEffect(() => {
     setQuery(value);
   }, [value]);
+
+  useEffect(() => {
+    if (!brokerId || !verified) {
+      setSelectedDotNumber(null);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const details = await fetchBrokerDetails(brokerId);
+      if (!cancelled && details.verified && details.dotNumber) {
+        setSelectedDotNumber(details.dotNumber);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [brokerId, verified]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -115,6 +137,7 @@ export function BrokerAutocomplete({
   const handleInputChange = (next: string) => {
     setQuery(next);
     setOpen(true);
+    setSelectedDotNumber(null);
     onChange({
       brokerId: null,
       brokerName: next,
@@ -126,6 +149,7 @@ export function BrokerAutocomplete({
   const handleSelect = (broker: BrokerSearchResult) => {
     setQuery(broker.displayName);
     setOpen(false);
+    setSelectedDotNumber(broker.verified ? broker.dotNumber : null);
     onChange({
       brokerId: broker.id,
       brokerName: broker.displayName,
@@ -172,7 +196,7 @@ export function BrokerAutocomplete({
           autoComplete="off"
           maxLength={TEXT_LIMITS.broker}
           value={query}
-          placeholder="Search broker by company name"
+          placeholder="Search by broker name or MC/DOT number"
           className={cn(
             "tv-input-field tv-input-field-gold pr-11",
             error && "border-[var(--color-danger)]"
@@ -263,30 +287,42 @@ export function BrokerAutocomplete({
         ) : null}
       </div>
 
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
-          {error ? (
-            <p className="text-[14px] text-[var(--color-danger-text)]">{error}</p>
-          ) : searchError ? (
-            <p className="text-[14px] text-[var(--color-danger-text)]">
-              {searchError}
-            </p>
-          ) : brokerId && verified ? (
-            <p className="flex items-center gap-1.5 text-[14px] text-[var(--color-success-text)]">
-              <ShieldCheck className="size-4 shrink-0" strokeWidth={2} aria-hidden />
-              FMCSA verified broker
-            </p>
-          ) : brokerId ? (
-            <p className="text-[14px] text-[var(--color-text-secondary)]">
-              Manual broker entry
-            </p>
-          ) : (
-            <p className="text-[14px] text-[var(--color-text-secondary)]">
-              Search FMCSA records or add manually if not listed
-            </p>
-          )}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            {error ? (
+              <p className="text-[14px] text-[var(--color-danger-text)]">{error}</p>
+            ) : searchError ? (
+              <p className="text-[14px] text-[var(--color-danger-text)]">
+                {searchError}
+              </p>
+            ) : brokerId && verified ? (
+              <p className="flex items-center gap-1.5 text-[14px] text-[var(--color-success-text)]">
+                <ShieldCheck className="size-4 shrink-0" strokeWidth={2} aria-hidden />
+                FMCSA verified broker
+              </p>
+            ) : brokerId ? (
+              <p className="text-[14px] text-[var(--color-text-secondary)]">
+                Manual broker entry
+              </p>
+            ) : (
+              <p className="text-[14px] text-[var(--color-text-secondary)]">
+                Search by company name, MC number, or DOT number
+              </p>
+            )}
+          </div>
+          {counter ? <span className="tv-caption shrink-0">{counter}</span> : null}
         </div>
-        {counter ? <span className="tv-caption shrink-0">{counter}</span> : null}
+        {brokerId && verified && selectedDotNumber ? (
+          <a
+            href={buildFmcsaCompanySnapshotUrl(selectedDotNumber)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center text-[14px] text-[var(--color-accent)] underline-offset-2 hover:underline"
+          >
+            View FMCSA record
+          </a>
+        ) : null}
       </div>
     </div>
   );

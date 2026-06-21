@@ -52,6 +52,46 @@ export async function searchBrokersByName(
   return ((data ?? []) as BrokerRecord[]).map(toBrokerSearchResult);
 }
 
+export async function searchBrokerByDot(
+  supabase: SupabaseClient,
+  dotNumber: string
+): Promise<BrokerSearchResult | null> {
+  const { data, error } = await supabase
+    .from("brokers")
+    .select(BROKER_SELECT)
+    .eq("dot_number", dotNumber)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) {
+      console.error("broker dot lookup failed:", error.message);
+    }
+    return null;
+  }
+
+  return toBrokerSearchResult(data as BrokerRecord);
+}
+
+export async function searchBrokerByMcNumber(
+  supabase: SupabaseClient,
+  mcNumber: string
+): Promise<BrokerSearchResult | null> {
+  const { data, error } = await supabase
+    .from("brokers")
+    .select(BROKER_SELECT)
+    .eq("mc_number", mcNumber)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) {
+      console.error("broker mc lookup failed:", error.message);
+    }
+    return null;
+  }
+
+  return toBrokerSearchResult(data as BrokerRecord);
+}
+
 function fmcsaRowFromCarrier(carrier: FmcsaCarrierPayload) {
   return {
     dot_number: carrier.dotNumber,

@@ -29,12 +29,22 @@ export function isBrokerSelectionDirty(
 }
 
 export async function fetchBrokerVerified(brokerId: string): Promise<boolean> {
+  const details = await fetchBrokerDetails(brokerId);
+  return details.verified;
+}
+
+export async function fetchBrokerDetails(
+  brokerId: string
+): Promise<{ verified: boolean; dotNumber: string | null }> {
   const supabase = createClient();
   const { data } = await supabase
     .from("brokers")
-    .select("verified")
+    .select("verified, dot_number")
     .eq("id", brokerId)
     .maybeSingle();
 
-  return data?.verified ?? false;
+  return {
+    verified: data?.verified ?? false,
+    dotNumber: data?.dot_number ?? null,
+  };
 }

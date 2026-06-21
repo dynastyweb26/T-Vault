@@ -1,29 +1,30 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { searchFmcsaCarriersByName } from "@/lib/brokers/fmcsa-client";
+import {
+  searchFmcsaCarrierByDot,
+  searchFmcsaCarrierByDocket,
+  searchFmcsaCarriersByName,
+} from "@/lib/brokers/fmcsa-client";
+import { parseBrokerSearchInput } from "@/lib/brokers/query-parser";
 import {
   mergeBrokerResults,
+  searchBrokerByDot,
+  searchBrokerByMcNumber,
   searchBrokersByName,
   upsertFmcsaBrokers,
 } from "@/lib/brokers/repository";
 import type { BrokerSearchResult } from "@/lib/brokers/types";
-import { TEXT_LIMITS } from "@/lib/constants";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { sanitizeText } from "@/lib/validation";
 
-const BROKER_SEARCH_MIN_LENGTH = 2;
 const BROKER_SEARCH_MAX_ATTEMPTS = 40;
 const BROKER_SEARCH_WINDOW_MS = 60 * 1000;
 
-const BROKER_NAME_PATTERN = /^[\p{L}\p{N}\s&.,'\-/()]+$/u;
-
-function validateBrokerSearchQuery(raw: string | null): string | null {
-  const query = sanitizeText(raw ?? "");
-  if (query.length < BROKER_SEARCH_MIN_LENGTH) return null;
-  if (query.length > TEXT_LIMITS.broker) return null;
-  if (!BROKER_NAME_PATTERN.test(query)) return null;
-  return query;
+async function lookupFmcsaBrokers(
+  carriers: Awaited<ReturnType<typeof searchFmcsaCarriersByName>>
+): Promise<BrokerSearchResult[]> {
+  const admin = createAdminClient();
+  return upsertFmcsaBrokers(admin, carriers);
 }
 
 export async function GET(request: Request) {
@@ -48,15 +49,89 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const query = validateBrokerSearchQuery(searchParams.get("query"));
+    const parsed = parseBrokerSearchInput(searchParams.get("query"));
 
-    if (!query) {
+    if (!parsed) {
       return NextResponse.json({ error: "invalid_query" }, { status: 400 });
+    }
+
+    if (parsed.kind === "dot") {
+      let cachedResult: BrokerSearchResult | null = null;
+      try {
+        cachedResult = await searchBrokerByDot(supabase, parsed.dotNumber);
+      } catch (err) {
+        console.error("broker local dot search failed:", err);
+      }
+
+      if (cachedResult) {
+        return NextResponse.json({
+          results: [cachedResult],
+          source: "cache",
+        });
+      }
+
+      try {
+        const carriers = await searchFmcsaCarrierByDot(parsed.dotNumber);
+        const fmcsaResults = await lookupFmcsaBrokers(carriers);
+
+        return NextResponse.json({
+          results: fmcsaResults,
+          source: "fmcsa",
+        });
+      } catch (err) {
+        const reason =
+          err instanceof Error && err.name === "TimeoutError"
+            ? "timeout"
+            : "lookup_failed";
+        console.error("broker FMCSA dot lookup unavailable:", { reason, err });
+
+        return NextResponse.json({
+          results: [],
+          source: "fmcsa_unavailable",
+        });
+      }
+    }
+
+    if (parsed.kind === "docket") {
+      let cachedResult: BrokerSearchResult | null = null;
+      try {
+        cachedResult = await searchBrokerByMcNumber(supabase, parsed.docketNumber);
+      } catch (err) {
+        console.error("broker local mc search failed:", err);
+      }
+
+      if (cachedResult) {
+        return NextResponse.json({
+          results: [cachedResult],
+          source: "cache",
+        });
+      }
+
+      try {
+        const carriers = await searchFmcsaCarrierByDocket(parsed.docketNumber);
+        const fmcsaResults = await lookupFmcsaBrokers(carriers);
+
+        return NextResponse.json({
+          results: fmcsaResults,
+          source: "fmcsa",
+        });
+      } catch (err) {
+        const reason =
+          err instanceof Error && err.name === "TimeoutError"
+            ? "timeout"
+            : "lookup_failed";
+        console.error("broker FMCSA docket lookup unavailable:", { reason, err });
+
+        return NextResponse.json({
+          results: [],
+          source: "fmcsa_unavailable",
+        });
+      }
     }
 
     let cachedResults: BrokerSearchResult[] = [];
     try {
-      cachedResults = await searchBrokersByName(supabase, query);
+      cachedResults = await searchBrokersByName(supabase, parsed.query);
     } catch (err) {
       console.error("broker local search failed:", err);
     }
@@ -69,9 +144,8 @@ export async function GET(request: Request) {
     }
 
     try {
-      const carriers = await searchFmcsaCarriersByName(query);
-      const admin = createAdminClient();
-      const fmcsaResults = await upsertFmcsaBrokers(admin, carriers);
+      const carriers = await searchFmcsaCarriersByName(parsed.query);
+      const fmcsaResults = await lookupFmcsaBrokers(carriers);
 
       return NextResponse.json({
         results: mergeBrokerResults(cachedResults, fmcsaResults),
