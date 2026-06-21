@@ -21,6 +21,8 @@ import { AwaitingPaymentCard } from "@/components/loads/awaiting-payment-card";
 import { CompletedLoadCard } from "@/components/loads/completed-load-card";
 
 import { BrokerRatingPrompt } from "@/components/broker-history/broker-rating-prompt";
+import { BrokerRatingModal } from "@/components/brokers/broker-rating-modal";
+import { ensureJobHasBrokerId } from "@/lib/brokers/link-job-broker";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -95,6 +97,13 @@ export default function LoadsPage() {
   const [ratingJob, setRatingJob] = useState<Job | null>(null);
 
   const [ratingOpen, setRatingOpen] = useState(false);
+
+  const [brokerRatingModalOpen, setBrokerRatingModalOpen] = useState(false);
+
+  const [brokerRatingTarget, setBrokerRatingTarget] = useState<{
+    brokerId: string;
+    brokerName: string;
+  } | null>(null);
 
   const isSearchActive = search.trim().length > 0;
 
@@ -392,16 +401,16 @@ export default function LoadsPage() {
     setCompletedLoaded(false);
     await reloadAllTabs();
 
-
-
-    if (updated.broker_name?.trim() && !updated.broker_rating) {
-
-      setRatingJob(updated);
-
-      setRatingOpen(true);
-
+    const linked = await ensureJobHasBrokerId(supabase, user.id, updated);
+    if (!linked?.broker_id || !linked.broker_name?.trim()) {
+      return;
     }
 
+    setBrokerRatingTarget({
+      brokerId: linked.broker_id,
+      brokerName: linked.broker_name.trim(),
+    });
+    setBrokerRatingModalOpen(true);
   };
 
 
@@ -625,6 +634,19 @@ export default function LoadsPage() {
         onSaved={reloadAllTabs}
 
       />
+
+      {brokerRatingTarget ? (
+        <BrokerRatingModal
+          open={brokerRatingModalOpen}
+          brokerId={brokerRatingTarget.brokerId}
+          brokerName={brokerRatingTarget.brokerName}
+          onSubmitted={() => {
+            setBrokerRatingModalOpen(false);
+            setBrokerRatingTarget(null);
+            void reloadAllTabs();
+          }}
+        />
+      ) : null}
 
     </>
 

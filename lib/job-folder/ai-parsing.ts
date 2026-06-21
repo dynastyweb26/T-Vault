@@ -11,6 +11,7 @@ import {
   type ParsedDocumentData,
 } from "@/lib/job-folder/ai-types";
 import { detectCrossValidationConflicts } from "@/lib/job-folder/cross-validation";
+import { ensureJobBrokerLink, normalizeBrokerName } from "@/lib/brokers/link-job-broker";
 import { updateJobProfitability } from "@/lib/job-folder/profitability";
 
 export type ParseResult =
@@ -293,6 +294,20 @@ export async function confirmAiFields(
     updated_at: new Date().toISOString(),
     ...params.fieldValues,
   };
+
+  const mergedBrokerName = normalizeBrokerName(
+    updates.broker_name ?? params.job.broker_name
+  );
+  const mergedBrokerId = updates.broker_id ?? params.job.broker_id ?? null;
+
+  if (mergedBrokerName) {
+    const linked = await ensureJobBrokerLink(mergedBrokerName, mergedBrokerId);
+    updates.broker_name = linked.brokerName;
+    updates.broker_id = linked.brokerId;
+  } else if (updates.broker_name !== undefined) {
+    updates.broker_name = null;
+    updates.broker_id = null;
+  }
 
   await supabase.from("jobs").update(updates).eq("id", params.jobId).eq("user_id", params.userId);
 

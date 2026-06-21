@@ -84,6 +84,8 @@ import { CrossValidationBanner } from "@/components/job-folder/cross-validation-
 import { DocumentManualEntrySheet } from "@/components/job-folder/document-manual-entry-sheet";
 import { DocumentPreviewModal } from "@/components/job-folder/document-preview-modal";
 import { BrokerRatingPrompt } from "@/components/broker-history/broker-rating-prompt";
+import { BrokerRatingModal } from "@/components/brokers/broker-rating-modal";
+import { ensureJobHasBrokerId } from "@/lib/brokers/link-job-broker";
 import { markJobAsPaid as markJobPaidInDb } from "@/lib/loads/mark-paid";
 import { JobFolderFieldInput } from "@/components/job-folder/job-folder-field-input";
 import { BrokerAutocomplete } from "@/components/brokers/broker-autocomplete";
@@ -93,6 +95,7 @@ import {
   isBrokerSelectionDirty,
   type BrokerSelection,
 } from "@/lib/brokers/selection";
+import { ensureJobBrokerLink } from "@/lib/brokers/link-job-broker";
 import { saveManualDocumentEntryAndVerify } from "@/lib/job-folder/manual-document-save";
 import {
   fieldKeyToLabel,
@@ -232,6 +235,11 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const [undoPaidConfirmOpen, setUndoPaidConfirmOpen] = useState(false);
   const [ratingPromptOpen, setRatingPromptOpen] = useState(false);
   const [ratingPromptJob, setRatingPromptJob] = useState<typeof job>(null);
+  const [brokerRatingModalOpen, setBrokerRatingModalOpen] = useState(false);
+  const [brokerRatingTarget, setBrokerRatingTarget] = useState<{
+    brokerId: string;
+    brokerName: string;
+  } | null>(null);
   const [celebrateTrigger, setCelebrateTrigger] = useState(false);
   const prevChecklistCompleteRef = useRef<boolean | null>(null);
   const checklistInitializedRef = useRef(false);
@@ -529,10 +537,16 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     setPaymentStatusSheetOpen(false);
     await refresh();
 
-    if (updated && updated.broker_name?.trim() && !updated.broker_rating) {
-      setRatingPromptJob(updated);
-      setRatingPromptOpen(true);
+    const linked = await ensureJobHasBrokerId(supabase, user.id, updated);
+    if (!linked?.broker_id || !linked.broker_name?.trim()) {
+      return;
     }
+
+    setBrokerRatingTarget({
+      brokerId: linked.broker_id,
+      brokerName: linked.broker_name.trim(),
+    });
+    setBrokerRatingModalOpen(true);
   };
 
   const markJobAsUnpaid = async () => {
@@ -1874,9 +1888,26 @@ export function JobFolderView({ jobId }: { jobId: string }) {
               editBrokerInitial &&
               isBrokerSelectionDirty(editBrokerInitial, editBrokerSelection)
             ) {
+              let brokerName =
+                sanitizeText(editBrokerSelection.brokerName) || null;
+              let brokerId = editBrokerSelection.brokerId;
+
+              if (brokerName) {
+                try {
+                  const linked = await ensureJobBrokerLink(brokerName, brokerId);
+                  brokerName = linked.brokerName;
+                  brokerId = linked.brokerId;
+                } catch {
+                  window.alert("Could not save broker. Try again.");
+                  return;
+                }
+              } else {
+                brokerId = null;
+              }
+
               await updateJob({
-                broker_name: sanitizeText(editBrokerSelection.brokerName) || null,
-                broker_id: editBrokerSelection.brokerId,
+                broker_name: brokerName,
+                broker_id: brokerId,
               });
             }
             closeEditField();
@@ -1953,6 +1984,19 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         }}
         onSaved={refresh}
       />
+
+      {brokerRatingTarget ? (
+        <BrokerRatingModal
+          open={brokerRatingModalOpen}
+          brokerId={brokerRatingTarget.brokerId}
+          brokerName={brokerRatingTarget.brokerName}
+          onSubmitted={() => {
+            setBrokerRatingModalOpen(false);
+            setBrokerRatingTarget(null);
+            void refresh();
+          }}
+        />
+      ) : null}
       </div>
     </>
   );

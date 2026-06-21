@@ -13,6 +13,7 @@ import { useNewJobSheet } from "@/components/providers/new-job-provider";
 import { useProPaywall } from "@/components/pro/pro-paywall-provider";
 import { FieldTrustBadge } from "@/components/job-folder/field-trust-badge";
 import { BrokerAutocomplete } from "@/components/brokers/broker-autocomplete";
+import { ensureJobBrokerLink } from "@/lib/brokers/link-job-broker";
 import { triggerHaptic } from "@/lib/haptics";
 import { estimateMiles } from "@/lib/job-folder/mileage";
 import { formatCurrencyDetailed } from "@/lib/dashboard/format";
@@ -280,10 +281,20 @@ export function NewJobSheet() {
       return;
     }
 
+    let scannedBrokerId: string | null = null;
+    if (applied.formValues.brokerName?.trim()) {
+      try {
+        const linked = await ensureJobBrokerLink(applied.formValues.brokerName, null);
+        scannedBrokerId = linked.brokerId;
+      } catch {
+        scannedBrokerId = null;
+      }
+    }
+
     setForm((current) => ({
       ...current,
       ...applied.formValues,
-      brokerId: null,
+      brokerId: scannedBrokerId,
       brokerVerified: false,
     }));
     setFieldConfidences(applied.fieldConfidences);
@@ -338,12 +349,27 @@ export function NewJobSheet() {
     const milesNum = estimatedMiles ? Number(estimatedMiles) : null;
     const profitabilityScore = profitabilityEstimate?.net ?? null;
 
+    let brokerName = sanitizeText(form.brokerName) || null;
+    let brokerId = form.brokerId;
+
+    if (brokerName) {
+      try {
+        const linked = await ensureJobBrokerLink(brokerName, brokerId);
+        brokerName = linked.brokerName;
+        brokerId = linked.brokerId;
+      } catch {
+        setErrors({ jobName: "Could not save broker. Try again." });
+        setLoading(false);
+        return;
+      }
+    }
+
     const jobPayload = {
       user_id: user.id,
       job_name: sanitizeText(form.jobName),
       status: "active" as const,
-      broker_name: sanitizeText(form.brokerName) || null,
-      broker_id: form.brokerId,
+      broker_name: brokerName,
+      broker_id: brokerId,
       load_value: loadValue,
       rate_con_number: sanitizeText(form.rateConNumber) || null,
       bol_number: sanitizeText(form.bolNumber) || null,
