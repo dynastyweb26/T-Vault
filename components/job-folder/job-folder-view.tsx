@@ -33,6 +33,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
 import { TvTextarea } from "@/components/tv/tv-textarea";
+import { ProPaywall } from "@/components/pro/pro-paywall";
 import { triggerHaptic } from "@/lib/haptics";
 import { saveLoadsScrollPosition } from "@/lib/job-folder/scroll";
 import {
@@ -1502,46 +1503,28 @@ export function JobFolderView({ jobId }: { jobId: string }) {
       ) : null}
 
       {showUpgrade ? (
-        <div className="fixed inset-0 z-[80] overflow-y-auto bg-[var(--color-bg)] px-5 py-8">
-          <h2 className="tv-section-header">Your first load is in the books.</h2>
-          <div className="mt-4 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] p-5">
-            <p className="tv-tabular text-[var(--color-accent)]">Total earned: {formatCurrency(job.load_value ?? 0)}</p>
-            <p className="mt-2 text-[var(--color-text-secondary)]">1 load documented</p>
-            <p className="text-[var(--color-text-secondary)]">1 invoice generated</p>
-            <p className="text-[var(--color-text-secondary)]">Estimated time saved: ~35 minutes of paperwork</p>
-          </div>
-          <h3 className="tv-section-header mt-6">Keep building with T-Vault Pro</h3>
-          <p className="tv-tabular mt-2 text-[36px] font-bold text-[var(--color-accent)]">$9.99/month · Cancel anytime</p>
-          <TvButton
-            className="mt-4"
-            onClick={async () => {
-              await fetch("/api/pro-waitlist", { method: "POST" });
-              setShowUpgrade(false);
-              setShowEarnedBanner(true);
-              triggerHaptic("strong");
-            }}
-          >
-            Start Pro — $9.99/month
-          </TvButton>
-          <button
-            type="button"
-            className="mt-4 w-full text-center text-[14px] text-[var(--color-text-muted)]"
-            onClick={async () => {
-              const supabase = createClient();
-              if (user) {
-                await supabase
-                  .from("users")
-                  .update({ upgrade_dismissed_at: new Date().toISOString() })
-                  .eq("id", user.id);
-              }
-              setShowUpgrade(false);
-              setShowEarnedBanner(true);
-              triggerHaptic("strong");
-            }}
-          >
-            Maybe later — keep 1 load
-          </button>
-        </div>
+        <ProPaywall
+          open={showUpgrade}
+          onClose={() => setShowUpgrade(false)}
+          variant="post-first-load"
+          stats={{
+            totalEarned: job.load_value ?? 0,
+            loadsDocumented: 1,
+            invoicesGenerated: 1,
+            timeSavedMinutes: 35,
+          }}
+          onDismiss={async () => {
+            const supabase = createClient();
+            if (user) {
+              await supabase
+                .from("users")
+                .update({ upgrade_dismissed_at: new Date().toISOString() })
+                .eq("id", user.id);
+            }
+            setShowEarnedBanner(true);
+            triggerHaptic("strong");
+          }}
+        />
       ) : null}
 
       {detentionResult ? (

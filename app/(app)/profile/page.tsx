@@ -13,6 +13,7 @@ import {
   Mic,
   Moon,
   Shield,
+  Sparkles,
   Sun,
   TrendingUp,
   User,
@@ -22,12 +23,14 @@ import {
 import { AppHeader } from "@/components/shell/app-header";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { TvButton } from "@/components/tv/tv-button";
+import { TvInput } from "@/components/tv/tv-input";
 import { DataProtectionBanner } from "@/components/shell/session-banner";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useAppTour } from "@/components/providers/app-tour-provider";
 import { APP_ROUTES } from "@/lib/constants";
 import { VOICE_NOTES_ENABLED } from "@/lib/features";
+import { redeemCodeErrorMessage } from "@/lib/pro-access";
 import type { ThemePreference } from "@/types/database";
 
 const THEME_LABELS: Record<ThemePreference, string> = {
@@ -87,12 +90,59 @@ function ProfileRow({
 }
 
 export default function ProfilePage() {
-  const { profile, signOut } = useAuth();
+  const { profile, hasProAccess, refreshProAccess, signOut } = useAuth();
   const { preference, setPreference, theme } = useTheme();
   const { startTour } = useAppTour();
   const [themeOpen, setThemeOpen] = useState(false);
+  const [redeemOpen, setRedeemOpen] = useState(false);
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
+  const [redeemLoading, setRedeemLoading] = useState(false);
 
   const themeIcon = theme === "dark" ? Moon : Sun;
+
+  const handleRedeemCode = async () => {
+    setRedeemLoading(true);
+    setRedeemError(null);
+    setRedeemSuccess(null);
+
+    try {
+      const response = await fetch("/api/redeem-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: redeemCode }),
+      });
+
+      const data = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+        alreadyRedeemed?: boolean;
+        hasProAccess?: boolean;
+      };
+
+      if (!response.ok || !data.ok) {
+        const errorKey = (data.error ?? "redeem_failed") as Parameters<
+          typeof redeemCodeErrorMessage
+        >[0];
+        setRedeemError(data.message ?? redeemCodeErrorMessage(errorKey));
+        return;
+      }
+
+      await refreshProAccess();
+      setRedeemSuccess(
+        data.alreadyRedeemed
+          ? "You already redeemed this code. Pro access is active."
+          : "Pro access unlocked. You're good to create more loads."
+      );
+      setRedeemCode("");
+    } catch {
+      setRedeemError("Could not redeem that code. Try again.");
+    } finally {
+      setRedeemLoading(false);
+    }
+  };
 
   return (
     <>
@@ -136,6 +186,31 @@ export default function ProfilePage() {
         <section>
           <p className="tv-label mb-2 px-1">Account</p>
           <div className="tv-glass-card rounded-2xl p-2">
+            {hasProAccess ? (
+              <div className="flex min-h-14 items-center gap-3 rounded-xl px-3 py-3">
+                <Sparkles
+                  className="size-5 shrink-0 text-[var(--color-success-text)]"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                <span className="tv-body flex-1 text-[16px] font-medium">
+                  T-Vault Pro
+                </span>
+                <span className="text-[15px] text-[var(--color-success-text)]">
+                  Active
+                </span>
+              </div>
+            ) : (
+              <ProfileRow
+                icon={Sparkles}
+                label="Redeem Pro Code"
+                onClick={() => {
+                  setRedeemError(null);
+                  setRedeemSuccess(null);
+                  setRedeemOpen(true);
+                }}
+              />
+            )}
             <ProfileRow
               href={APP_ROUTES.editProfile}
               icon={User}
@@ -241,6 +316,43 @@ export default function ProfilePage() {
           </Link>
         </section>
       </div>
+
+      <BottomSheet
+        open={redeemOpen}
+        onClose={() => setRedeemOpen(false)}
+        title="Redeem Pro Code"
+        ariaLabel="Redeem Pro code"
+        surface="solid"
+      >
+        <p className="text-[15px] text-[var(--color-text-secondary)]">
+          Enter the code you received to unlock Pro access.
+        </p>
+        <TvInput
+          label="Pro code"
+          borderVariant="gold"
+          labelVariant="readable"
+          placeholder="e.g. TVAULT-BETA-2026-XXXXXX"
+          value={redeemCode}
+          onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+          error={redeemError}
+          className="mt-4"
+        />
+        {redeemSuccess ? (
+          <p className="mt-3 text-[14px] text-[var(--color-success-text)]">
+            {redeemSuccess}
+          </p>
+        ) : null}
+        <TvButton
+          className="mt-4"
+          loading={redeemLoading}
+          disabled={!redeemCode.trim()}
+          onClick={() => {
+            void handleRedeemCode();
+          }}
+        >
+          Redeem Code
+        </TvButton>
+      </BottomSheet>
 
       <BottomSheet
         open={themeOpen}

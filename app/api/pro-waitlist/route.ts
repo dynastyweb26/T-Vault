@@ -23,11 +23,6 @@ export async function POST() {
       return NextResponse.json({ error: "waitlist_failed" }, { status: 500 });
     }
 
-    await supabase
-      .from("users")
-      .update({ pro_tier: "waitlist" })
-      .eq("id", user.id);
-
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("pro waitlist error:", err);

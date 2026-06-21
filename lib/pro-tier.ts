@@ -1,23 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UserProfile } from "@/types/database";
+import { fetchUserHasProAccess } from "@/lib/pro-access";
 
-/** TEMP: disabled during beta (2025-06-19). Flip to true with DB trigger re-enabled. */
-export const FREE_TIER_LIMIT_ENABLED = false;
+export const FREE_TIER_LIMIT_ENABLED = true;
 
 export const FREE_LOAD_LIMIT = 1;
 
 export function canCreateJob(
   profile: UserProfile | null,
-  jobCount: number
+  jobCount: number,
+  hasProAccess: boolean
 ): boolean {
   if (!FREE_TIER_LIMIT_ENABLED) {
     return profile !== null;
   }
 
   if (!profile) return false;
-  if (profile.pro_tier === "pro" || profile.pro_tier === "waitlist") {
-    return true;
-  }
+  if (hasProAccess) return true;
   return jobCount < FREE_LOAD_LIMIT;
 }
 
@@ -35,11 +34,6 @@ export async function joinProWaitlist(
     console.error("pro_waitlist insert failed:", insertError.message);
     return { ok: false };
   }
-
-  await supabase
-    .from("users")
-    .update({ pro_tier: "waitlist" })
-    .eq("id", userId);
 
   return { ok: true };
 }
@@ -67,3 +61,5 @@ export async function countUserJobs(
 
   return count ?? 0;
 }
+
+export { fetchUserHasProAccess };

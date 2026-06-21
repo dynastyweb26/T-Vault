@@ -402,10 +402,15 @@ Deno.serve(async (req) => {
 
   try {
     const cronSecret = Deno.env.get("CRON_SECRET");
+    const cronSecretTrimmed = cronSecret?.trim() ?? "";
     const authHeader = req.headers.get("Authorization");
     const cronHeader = req.headers.get("x-cron-secret");
 
-    if (cronSecret && cronHeader !== cronSecret && !authHeader) {
+    if (!cronSecretTrimmed) {
+      return jsonResponse(req, { error: "server_misconfigured" }, 503);
+    }
+
+    if (cronHeader !== cronSecretTrimmed && !authHeader) {
       return jsonResponse(req, { error: "unauthorized" }, 401);
     }
 

@@ -5,6 +5,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { NewJobProvider } from "@/components/providers/new-job-provider";
 import { DeleteUndoProvider } from "@/components/providers/delete-undo-provider";
+import { ProPaywallProvider } from "@/components/pro/pro-paywall-provider";
 import { NewJobSheet } from "@/components/jobs/new-job-sheet";
 
 const AppTourProvider = dynamic(
@@ -24,10 +25,12 @@ export default function AppLayout({
     <RouteGuard mode="app">
       <NewJobProvider>
         <DeleteUndoProvider>
-          <AppTourProvider>
-            <AppShell>{children}</AppShell>
-            <NewJobSheet />
-          </AppTourProvider>
+          <ProPaywallProvider>
+            <AppTourProvider>
+              <AppShell>{children}</AppShell>
+              <NewJobSheet />
+            </AppTourProvider>
+          </ProPaywallProvider>
         </DeleteUndoProvider>
       </NewJobProvider>
     </RouteGuard>

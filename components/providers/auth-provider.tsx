@@ -14,16 +14,19 @@ import { createClient } from "@/lib/supabase/client";
 import { updateStreak } from "@/lib/streak";
 import { prefersReducedMotion } from "@/lib/motion";
 import type { UserProfile } from "@/types/database";
+import { fetchUserHasProAccess } from "@/lib/pro-access";
 
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
   profile: UserProfile | null;
+  hasProAccess: boolean;
   loading: boolean;
   sessionWarning: boolean;
   offline: boolean;
   streakMilestone: number | null;
   refreshProfile: () => Promise<UserProfile | null>;
+  refreshProAccess: () => Promise<boolean>;
   patchProfile: (updates: Partial<UserProfile>) => void;
   recordActivity: () => Promise<void>;
   notifyStreakMilestone: (days: number) => void;
@@ -44,15 +47,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [hasProAccess, setHasProAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sessionWarning, setSessionWarning] = useState(false);
   const [offline, setOffline] = useState(false);
   const [streakMilestone, setStreakMilestone] = useState<number | null>(null);
   const profileFetchGeneration = useRef(0);
 
+  const refreshProAccess = useCallback(async (): Promise<boolean> => {
+    if (!user || !supabase) {
+      setHasProAccess(false);
+      return false;
+    }
+
+    const next = await fetchUserHasProAccess(supabase, user.id);
+    setHasProAccess(next);
+    return next;
+  }, [supabase, user]);
+
   const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
     if (!user || !supabase) {
       setProfile(null);
+      setHasProAccess(false);
       return null;
     }
 
@@ -102,6 +118,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return nextProfile;
     });
+
+    const proAccess = await fetchUserHasProAccess(supabase, user.id);
+    if (fetchGeneration === profileFetchGeneration.current) {
+      setHasProAccess(proAccess);
+    }
+
     return appliedProfile;
   }, [supabase, user]);
 
@@ -207,6 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (event === "SIGNED_OUT") {
         setProfile(null);
+        setHasProAccess(false);
       }
     });
 
@@ -233,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) {
       setProfile(null);
+      setHasProAccess(false);
       return;
     }
     refreshProfile();
@@ -243,11 +267,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       user,
       profile,
+      hasProAccess,
       loading,
       sessionWarning,
       offline,
       streakMilestone,
       refreshProfile,
+      refreshProAccess,
       patchProfile,
       recordActivity,
       notifyStreakMilestone,
@@ -258,11 +284,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       user,
       profile,
+      hasProAccess,
       loading,
       sessionWarning,
       offline,
       streakMilestone,
       refreshProfile,
+      refreshProAccess,
       patchProfile,
       recordActivity,
       notifyStreakMilestone,

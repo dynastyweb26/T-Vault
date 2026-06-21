@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Loader2, Lock } from "lucide-react";
+import { Camera, Loader2 } from "lucide-react";
 import { TvButton } from "@/components/tv/tv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -10,6 +10,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { TvInput } from "@/components/tv/tv-input";
 import { TvDateInput } from "@/components/tv/tv-date-input";
 import { useNewJobSheet } from "@/components/providers/new-job-provider";
+import { useProPaywall } from "@/components/pro/pro-paywall-provider";
 import { FieldTrustBadge } from "@/components/job-folder/field-trust-badge";
 import { triggerHaptic } from "@/lib/haptics";
 import { estimateMiles } from "@/lib/job-folder/mileage";
@@ -94,7 +95,8 @@ function ScanFieldLabel({
 
 export function NewJobSheet() {
   const { open, closeSheet } = useNewJobSheet();
-  const { user, profile } = useAuth();
+  const { openPaywall } = useProPaywall();
+  const { user, profile, hasProAccess } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,7 +105,6 @@ export function NewJobSheet() {
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(false);
   const [jobCount, setJobCount] = useState(0);
-  const [showUpgradeLock, setShowUpgradeLock] = useState(false);
 
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
@@ -291,8 +292,8 @@ export function NewJobSheet() {
   const createLoad = async () => {
     if (!user) return;
 
-    if (!canCreateJob(profile, jobCount)) {
-      setShowUpgradeLock(true);
+    if (!canCreateJob(profile, jobCount, hasProAccess)) {
+      openPaywall({ variant: "generic" });
       return;
     }
 
@@ -359,7 +360,7 @@ export function NewJobSheet() {
 
     if (error || !job) {
       if (error?.message?.includes("free_tier_load_limit")) {
-        setShowUpgradeLock(true);
+        openPaywall({ variant: "generic" });
       } else {
         setErrors({ jobName: "Could not create load. Try again." });
       }
@@ -778,28 +779,6 @@ export function NewJobSheet() {
           </div>
         </div>
 
-        {showUpgradeLock ? (
-          <div className="mt-4 rounded-2xl border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/5 p-4 text-center">
-            <Lock
-              className="mx-auto size-8 text-[var(--color-accent)]"
-              strokeWidth={2}
-              aria-hidden
-            />
-            <p className="tv-card-title mt-3">Upgrade to create more loads</p>
-            <p className="mt-2 text-[16px] text-[var(--color-text-secondary)]">
-              Free tier includes 1 load. Join T-Vault Pro to keep building.
-            </p>
-            <TvButton
-              className="mt-4"
-              onClick={async () => {
-                await fetch("/api/pro-waitlist", { method: "POST" });
-                setShowUpgradeLock(false);
-              }}
-            >
-              Start Pro
-            </TvButton>
-          </div>
-        ) : null}
       </BottomSheet>
 
       <BottomSheet
