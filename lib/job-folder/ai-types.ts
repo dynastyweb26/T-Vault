@@ -274,6 +274,32 @@ export function suggestJobName(
   return parts.join(" · ") || "New Load";
 }
 
+/** Auto-generated new-load name: "Dallas → Memphis · Jun 12" */
+export function formatNewLoadJobName(
+  pickup: string | null,
+  delivery: string | null,
+  pickupDate: string | null
+): string {
+  const route =
+    pickup?.trim() && delivery?.trim()
+      ? `${pickup.trim()} → ${delivery.trim()}`
+      : pickup?.trim() || delivery?.trim() || "";
+
+  if (!route) return "";
+
+  if (!pickupDate?.trim()) return route;
+
+  const parsed = new Date(`${pickupDate.trim().slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return route;
+
+  const formatted = parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+
+  return `${route} · ${formatted}`;
+}
+
 function confidenceRank(confidence: AiConfidence): number {
   if (confidence === "high") return 3;
   if (confidence === "medium") return 2;

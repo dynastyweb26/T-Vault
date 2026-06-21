@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  Bot,
-  Check,
-  Pencil,
-} from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
@@ -22,36 +17,7 @@ import { confirmAiFields } from "@/lib/job-folder/ai-parsing";
 import { createClient } from "@/lib/supabase/client";
 import type { UserProfile } from "@/types/database";
 
-const badgeToneClasses = {
-  high: "bg-[var(--color-success-bg)] text-[var(--color-success-text)] border border-[var(--color-success)]/10",
-  medium: "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)] border border-[var(--color-warning)]/10",
-  low: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)] border border-[var(--color-danger)]/10",
-};
-
-function FieldTrustBadge({ confidence }: { confidence: AiConfidence }) {
-  if (confidence === "high") {
-    return (
-      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.high}`}>
-        <Bot className="size-3.5" strokeWidth={2} />
-        AI verified
-      </span>
-    );
-  }
-  if (confidence === "medium") {
-    return (
-      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.medium}`}>
-        <AlertTriangle className="size-3.5" strokeWidth={2} />
-        AI — please check
-      </span>
-    );
-  }
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.low}`}>
-      <AlertTriangle className="size-3.5" strokeWidth={2} />
-      Enter manually
-    </span>
-  );
-}
+import { FieldTrustBadge } from "@/components/job-folder/field-trust-badge";
 
 interface AiReviewSheetProps {
   open: boolean;

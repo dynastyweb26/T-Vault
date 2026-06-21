@@ -198,10 +198,8 @@ Deno.serve(async (req) => {
       return jsonResponse(req, { error: "unauthorized" }, 401);
     }
 
-    const { documentId } = await req.json();
-    if (!documentId) {
-      return jsonResponse(req, { error: "missing_document_id" }, 400);
-    }
+    const body = await req.json();
+    const preview = Boolean(body.preview);
 
     const windowStart = new Date(Date.now() - WINDOW_MS).toISOString();
     const { count, error: countError } = await admin
@@ -217,6 +215,55 @@ Deno.serve(async (req) => {
 
     if ((count ?? 0) >= RATE_LIMIT) {
       return jsonResponse(req, { rateLimited: true }, 429);
+    }
+
+    if (preview) {
+      const docType = String(body.documentType ?? "");
+      const mediaType = String(body.mediaType ?? "");
+      const base64 = String(body.base64 ?? "");
+
+      if (!isParseableDocType(docType) || docType !== "rate_confirmation") {
+        return jsonResponse(req, { error: "unsupported_document_type" }, 400);
+      }
+
+      if (
+        !base64 ||
+        !["image/jpeg", "image/png", "application/pdf"].includes(mediaType)
+      ) {
+        return jsonResponse(req, { error: "invalid_preview_payload" }, 400);
+      }
+
+      const prompt = promptForDocumentType(docType);
+      const rawParsed = await callClaude(
+        anthropicKey,
+        model,
+        prompt,
+        mediaType,
+        base64
+      );
+
+      const parsed = normalizeExtractedDocument(docType, rawParsed);
+
+      const { error: usageError } = await admin.from("ai_usage").insert({
+        user_id: user.id,
+        document_id: null,
+      });
+
+      if (usageError) {
+        console.error("ai_usage_insert_failed:", usageError.message);
+      }
+
+      return jsonResponse(req, {
+        parsed,
+        documentType: docType,
+        saved: false,
+        preview: true,
+      });
+    }
+
+    const documentId = body.documentId;
+    if (!documentId) {
+      return jsonResponse(req, { error: "missing_document_id" }, 400);
     }
 
     const { data: document, error: docError } = await supabase
