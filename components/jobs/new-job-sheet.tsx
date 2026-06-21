@@ -12,6 +12,7 @@ import { TvDateInput } from "@/components/tv/tv-date-input";
 import { useNewJobSheet } from "@/components/providers/new-job-provider";
 import { useProPaywall } from "@/components/pro/pro-paywall-provider";
 import { FieldTrustBadge } from "@/components/job-folder/field-trust-badge";
+import { BrokerAutocomplete } from "@/components/brokers/broker-autocomplete";
 import { triggerHaptic } from "@/lib/haptics";
 import { estimateMiles } from "@/lib/job-folder/mileage";
 import { formatCurrencyDetailed } from "@/lib/dashboard/format";
@@ -42,6 +43,8 @@ interface NewJobForm {
   bolNumber: string;
   loadValue: string;
   brokerName: string;
+  brokerId: string | null;
+  brokerVerified: boolean;
   pickupLocation: string;
   pickupFacility: string;
   deliveryLocation: string;
@@ -62,6 +65,8 @@ const emptyForm: NewJobForm = {
   bolNumber: "",
   loadValue: "",
   brokerName: "",
+  brokerId: null,
+  brokerVerified: false,
   pickupLocation: "",
   pickupFacility: "",
   deliveryLocation: "",
@@ -209,6 +214,8 @@ export function NewJobSheet() {
       bolNumber: template.bol_number ?? "",
       loadValue: template.load_value?.toString() ?? "",
       brokerName: template.broker_name ?? "",
+      brokerId: null,
+      brokerVerified: false,
       pickupLocation: template.pickup_location ?? "",
       pickupFacility: template.pickup_facility ?? "",
       deliveryLocation: template.delivery_location ?? "",
@@ -273,7 +280,12 @@ export function NewJobSheet() {
       return;
     }
 
-    setForm((current) => ({ ...current, ...applied.formValues }));
+    setForm((current) => ({
+      ...current,
+      ...applied.formValues,
+      brokerId: null,
+      brokerVerified: false,
+    }));
     setFieldConfidences(applied.fieldConfidences);
     setScannedFile(file);
     setScannedParsedData(applied.parsedData);
@@ -331,6 +343,7 @@ export function NewJobSheet() {
       job_name: sanitizeText(form.jobName),
       status: "active" as const,
       broker_name: sanitizeText(form.brokerName) || null,
+      broker_id: form.brokerId,
       load_value: loadValue,
       rate_con_number: sanitizeText(form.rateConNumber) || null,
       bol_number: sanitizeText(form.bolNumber) || null,
@@ -550,15 +563,19 @@ export function NewJobSheet() {
               label="Broker"
               confidence={fieldConfidences.brokerName}
             />
-            <TvInput
-              label=""
-              borderVariant="gold"
-              maxLength={TEXT_LIMITS.broker}
-              counter={getTextCounter(form.brokerName, TEXT_LIMITS.broker) ?? undefined}
+            <BrokerAutocomplete
               value={form.brokerName}
-              onChange={(e) =>
-                updateFormField("brokerName", e.target.value, "brokerName")
-              }
+              brokerId={form.brokerId}
+              verified={form.brokerVerified}
+              onChange={(selection) => {
+                setForm((current) => ({
+                  ...current,
+                  brokerName: selection.brokerName,
+                  brokerId: selection.brokerId,
+                  brokerVerified: selection.verified,
+                }));
+                clearFieldConfidence("brokerName");
+              }}
             />
           </div>
 

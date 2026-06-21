@@ -22,6 +22,7 @@ import {
   PenLine,
   Plus,
   Receipt,
+  ShieldCheck,
   Trophy,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -85,6 +86,13 @@ import { DocumentPreviewModal } from "@/components/job-folder/document-preview-m
 import { BrokerRatingPrompt } from "@/components/broker-history/broker-rating-prompt";
 import { markJobAsPaid as markJobPaidInDb } from "@/lib/loads/mark-paid";
 import { JobFolderFieldInput } from "@/components/job-folder/job-folder-field-input";
+import { BrokerAutocomplete } from "@/components/brokers/broker-autocomplete";
+import {
+  brokerSelectionFromJob,
+  fetchBrokerVerified,
+  isBrokerSelectionDirty,
+  type BrokerSelection,
+} from "@/lib/brokers/selection";
 import { saveManualDocumentEntryAndVerify } from "@/lib/job-folder/manual-document-save";
 import {
   fieldKeyToLabel,
@@ -167,6 +175,18 @@ export function JobFolderView({ jobId }: { jobId: string }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editBrokerInitial, setEditBrokerInitial] = useState<BrokerSelection | null>(
+    null
+  );
+  const [editBrokerSelection, setEditBrokerSelection] = useState<BrokerSelection>({
+    brokerId: null,
+    brokerName: "",
+    verified: false,
+  });
+  const [editBrokerLoading, setEditBrokerLoading] = useState(false);
+  const [linkedBrokerVerified, setLinkedBrokerVerified] = useState<boolean | null>(
+    null
+  );
   const [uploadType, setUploadType] = useState<string | null>(null);
   const [qualityIssue, setQualityIssue] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -222,10 +242,51 @@ export function JobFolderView({ jobId }: { jobId: string }) {
     setCelebrateTrigger(true);
   }, []);
 
-  const openEditField = (key: string, rawValue: unknown) => {
+  const openEditField = async (key: string, rawValue: unknown) => {
     setEditField(key);
     setEditValue(toEditFieldValue(key, rawValue));
+
+    if (key !== "broker_name" || !job) {
+      setEditBrokerInitial(null);
+      setEditBrokerLoading(false);
+      return;
+    }
+
+    setEditBrokerLoading(true);
+    setEditBrokerInitial(null);
+
+    const verified = job.broker_id
+      ? await fetchBrokerVerified(job.broker_id)
+      : false;
+    const initial = brokerSelectionFromJob(job, verified);
+
+    setEditBrokerInitial(initial);
+    setEditBrokerSelection(initial);
+    setEditBrokerLoading(false);
   };
+
+  const closeEditField = () => {
+    setEditField(null);
+    setEditBrokerInitial(null);
+    setEditBrokerLoading(false);
+  };
+
+  useEffect(() => {
+    if (!job?.broker_id) {
+      setLinkedBrokerVerified(null);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const verified = await fetchBrokerVerified(job.broker_id!);
+      if (!cancelled) setLinkedBrokerVerified(verified);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [job?.broker_id]);
 
   useEffect(() => {
     preloadCelebrationAssets();
@@ -999,6 +1060,13 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                 <p className="tv-label">Broker Name</p>
                 <div className="flex items-center gap-2">
                   <p className="text-[17px] font-bold">{job.broker_name || "Tap to add"}</p>
+                  {linkedBrokerVerified ? (
+                    <ShieldCheck
+                      className="size-5 shrink-0 text-[var(--color-success-text)]"
+                      strokeWidth={2}
+                      aria-label="FMCSA verified broker"
+                    />
+                  ) : null}
                   {brokerBadge ? (
                     <button
                       type="button"
@@ -1759,8 +1827,28 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         />
       </BottomSheet>
 
-      <BottomSheet open={Boolean(editField)} onClose={() => setEditField(null)} title="Edit Field" ariaLabel="Edit field">
-        {editField ? (
+      <BottomSheet open={Boolean(editField)} onClose={closeEditField} title="Edit Field" ariaLabel="Edit field">
+        {editField === "broker_name" ? (
+          editBrokerLoading ? (
+            <div className="flex min-h-11 items-center justify-center py-6">
+              <Loader2
+                className="size-6 animate-spin text-[var(--color-text-muted)]"
+                strokeWidth={2}
+                aria-hidden
+              />
+            </div>
+          ) : editBrokerInitial ? (
+            <>
+              <p className="tv-label mb-2">Broker Name</p>
+              <BrokerAutocomplete
+                value={editBrokerSelection.brokerName}
+                brokerId={editBrokerSelection.brokerId}
+                verified={editBrokerSelection.verified}
+                onChange={setEditBrokerSelection}
+              />
+            </>
+          ) : null
+        ) : editField ? (
           <JobFolderFieldInput
             fieldKey={editField}
             value={editValue}
@@ -1780,6 +1868,21 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         ) : null}
         <TvButton className="mt-4" onClick={async () => {
           if (!editField || !user) return;
+
+          if (editField === "broker_name") {
+            if (
+              editBrokerInitial &&
+              isBrokerSelectionDirty(editBrokerInitial, editBrokerSelection)
+            ) {
+              await updateJob({
+                broker_name: sanitizeText(editBrokerSelection.brokerName) || null,
+                broker_id: editBrokerSelection.brokerId,
+              });
+            }
+            closeEditField();
+            return;
+          }
+
           const updates = { [editField]: editValue } as Partial<typeof job>;
           if (editField === "miles" || editField === "load_value") {
             const num = Number(editValue.replace(/[^0-9.]/g, ""));
@@ -1797,7 +1900,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             }, user.id, profile);
             await refresh();
           }
-          setEditField(null);
+          closeEditField();
         }}>Save</TvButton>
       </BottomSheet>
 

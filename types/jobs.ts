@@ -17,6 +17,7 @@ export interface Job {
   job_name: string;
   load_value: number | null;
   broker_name: string | null;
+  broker_id: string | null;
   pickup_location: string | null;
   pickup_facility: string | null;
   delivery_location: string | null;
