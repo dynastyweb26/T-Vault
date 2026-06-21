@@ -6,6 +6,7 @@ import {
   extensionForUploadType,
   validateUploadBuffer,
 } from "@/lib/job-folder/file-validation";
+import { compressImageBuffer } from "@/lib/job-folder/server-image-compress";
 
 const STORAGE_BUCKET = "game1-documents";
 const SIGNED_URL_TTL = 60 * 60 * 24;
@@ -40,13 +41,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: GENERIC_UPLOAD_ERROR }, { status: 400 });
     }
 
-    const extension = extensionForUploadType(validation.contentType);
+    let uploadBuffer = buffer;
+    let contentType = validation.contentType;
+    let compressedImage = false;
+
+    if (
+      validation.contentType === "image/jpeg" ||
+      validation.contentType === "image/png"
+    ) {
+      uploadBuffer = Buffer.from(
+        await compressImageBuffer(buffer, validation.contentType)
+      );
+      contentType = "image/jpeg";
+      compressedImage = true;
+    }
+
+    const extension = extensionForUploadType(validation.contentType, compressedImage);
     const storagePath = buildWalletStoragePath(user.id, documentType, extension);
 
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(storagePath, buffer, {
-        contentType: validation.contentType,
+      .upload(storagePath, uploadBuffer, {
+        contentType,
         upsert: true,
       });
 

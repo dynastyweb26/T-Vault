@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { assertUserOwnedStoragePath } from "@/lib/job-folder/file-validation";
 import {
   GENERIC_UPLOAD_ERROR,
   processDocumentUpload,
@@ -27,6 +28,14 @@ export async function POST(request: Request) {
 
     if (!(file instanceof File) || !jobId || !documentType) {
       return NextResponse.json({ error: GENERIC_UPLOAD_ERROR }, { status: 400 });
+    }
+
+    if (typeof storagePath === "string" && storagePath.trim()) {
+      try {
+        assertUserOwnedStoragePath(storagePath, user.id);
+      } catch {
+        return NextResponse.json({ error: GENERIC_UPLOAD_ERROR }, { status: 400 });
+      }
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

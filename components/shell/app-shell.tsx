@@ -9,7 +9,7 @@ import { VaultHeader } from "@/components/shell/vault-header";
 import { OfflineBanner } from "@/components/offline/offline-banner";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { sessionWarning, offline, recordActivity, user } = useAuth();
+  const { sessionWarning, offline, revalidating, recordActivity, user } = useAuth();
 
   useEffect(() => {
     if (user) {
@@ -20,7 +20,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="tv-page-canvas flex min-h-dvh flex-col">
       <OfflineBanner />
-      {sessionWarning ? <SessionBanner offline={offline} /> : null}
+      {sessionWarning ? (
+        <SessionBanner offline={offline} revalidating={revalidating} />
+      ) : null}
       <VaultHeader />
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col px-0 pb-32">
         {children}

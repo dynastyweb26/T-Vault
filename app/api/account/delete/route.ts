@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const rateLimit = checkRateLimit(
+    const rateLimit = await checkRateLimit(
       `delete-account:${user.id}`,
       DELETE_MAX_ATTEMPTS,
       DELETE_WINDOW_MS
@@ -34,8 +34,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "confirmation_required" }, { status: 400 });
     }
 
-    const { data: session } = await supabase.auth.getSession();
-    if (!session.session) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.session.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ confirm: "DELETE" }),

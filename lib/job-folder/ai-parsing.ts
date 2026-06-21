@@ -19,6 +19,9 @@ export type ParseResult =
   | { status: "rate_limited" }
   | { status: "failed"; message: string; retryable: boolean };
 
+const GENERIC_PARSE_ERROR =
+  "AI parsing failed. You can enter details manually.";
+
 async function saveParsedDocument(
   supabase: SupabaseClient,
   documentId: string,
@@ -100,11 +103,11 @@ export async function invokeParseEdgeFunction(
   });
 
   if (error) {
-    const message = error.message ?? "parse_failed";
-    if (message.includes("429") || data?.rateLimited) {
+    console.error("parse-document invoke failed:", error.message);
+    if (error.message?.includes("429") || data?.rateLimited) {
       return { ok: false, rateLimited: true };
     }
-    return { ok: false, error: message };
+    return { ok: false, error: "parse_failed" };
   }
 
   if (data?.rateLimited) {
@@ -112,7 +115,8 @@ export async function invokeParseEdgeFunction(
   }
 
   if (data?.error) {
-    return { ok: false, error: String(data.error) };
+    console.error("parse-document returned error:", data.error);
+    return { ok: false, error: "parse_failed" };
   }
 
   return {
@@ -215,7 +219,7 @@ export async function triggerDocumentParsing(
 
     return {
       status: "failed",
-      message: result.error ?? "AI parsing failed. You can enter details manually.",
+      message: GENERIC_PARSE_ERROR,
       retryable: true,
     };
   }

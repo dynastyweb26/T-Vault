@@ -75,8 +75,16 @@ export async function processVoiceNote(
 ): Promise<VoiceNoteResult | { rateLimited: true } | null> {
   if (!VOICE_NOTES_ENABLED) return null;
 
-  const { data: session } = await supabase.auth.getSession();
-  if (!session.session) return null;
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) return null;
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) return null;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const response = await fetch(
@@ -84,7 +92,7 @@ export async function processVoiceNote(
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${session.session.access_token}`,
+        Authorization: `Bearer ${session.access_token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ voiceNoteId, storagePath }),

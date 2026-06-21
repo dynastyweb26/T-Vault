@@ -13,6 +13,7 @@ import {
 } from "@/lib/job-folder/document-fields";
 import { updateJobProfitability } from "@/lib/job-folder/profitability";
 import type { ManualDocumentSavePayload } from "@/lib/job-folder/manual-document-save";
+import { ManualDocumentSaveError } from "@/lib/job-folder/manual-document-save";
 import { createClient } from "@/lib/supabase/client";
 import type { UserProfile } from "@/types/database";
 import type { Job, JobDocument } from "@/types/jobs";
@@ -133,7 +134,7 @@ export function DocumentManualEntrySheet({
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error
+        err instanceof ManualDocumentSaveError
           ? err.message
           : "Could not save details. Try again."
       );

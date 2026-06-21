@@ -16,7 +16,7 @@ const SIGNUP_WINDOW_MS = 15 * 60 * 1000;
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    const rateLimit = checkRateLimit(
+    const rateLimit = await checkRateLimit(
       `signup:${ip}`,
       SIGNUP_MAX_ATTEMPTS,
       SIGNUP_WINDOW_MS

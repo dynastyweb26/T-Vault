@@ -15,6 +15,8 @@ export class ManualDocumentSaveError extends Error {
   }
 }
 
+const GENERIC_SAVE_ERROR = "Could not save details. Try again.";
+
 function manualPlaceholderUrl(documentType: string): string {
   return `manual://${documentType}`;
 }
@@ -42,7 +44,8 @@ export async function saveManualDocumentEntry(
       .eq("user_id", userId);
 
     if (jobError) {
-      throw new ManualDocumentSaveError(jobError.message);
+      console.error("manual document save job update failed:", jobError.message);
+      throw new ManualDocumentSaveError(GENERIC_SAVE_ERROR);
     }
   }
 
@@ -55,7 +58,8 @@ export async function saveManualDocumentEntry(
     .maybeSingle();
 
   if (existingError) {
-    throw new ManualDocumentSaveError(existingError.message);
+    console.error("manual document save lookup failed:", existingError.message);
+    throw new ManualDocumentSaveError(GENERIC_SAVE_ERROR);
   }
 
   const existing = existingRow as JobDocument | null;
@@ -109,7 +113,8 @@ export async function saveManualDocumentEntry(
         }
 
         if (error && !isMissingColumnError(error.message)) {
-          throw new ManualDocumentSaveError(error.message);
+          console.error("manual document save update failed:", error.message);
+          throw new ManualDocumentSaveError(GENERIC_SAVE_ERROR);
         }
       } else {
         const { data, error } = await supabase
@@ -127,16 +132,16 @@ export async function saveManualDocumentEntry(
         }
 
         if (error && !isMissingColumnError(error.message)) {
-          throw new ManualDocumentSaveError(error.message);
+          console.error("manual document save update failed:", error.message);
+          throw new ManualDocumentSaveError(GENERIC_SAVE_ERROR);
         }
       }
     }
   }
 
   if (!saved?.id) {
-    throw new ManualDocumentSaveError(
-      "Could not save document row. Run the latest Supabase migrations."
-    );
+    console.error("manual document save: no row persisted after variants");
+    throw new ManualDocumentSaveError(GENERIC_SAVE_ERROR);
   }
 
   return saved;
@@ -167,11 +172,13 @@ export async function fetchJobFolderDocuments(
   ]);
 
   if (jobRes.error || !jobRes.data) {
-    throw new ManualDocumentSaveError(jobRes.error?.message ?? "Job not found.");
+    console.error("manual document save job fetch failed:", jobRes.error?.message);
+    throw new ManualDocumentSaveError(GENERIC_SAVE_ERROR);
   }
 
   if (docsRes.error) {
-    throw new ManualDocumentSaveError(docsRes.error.message);
+    console.error("manual document save documents fetch failed:", docsRes.error.message);
+    throw new ManualDocumentSaveError(GENERIC_SAVE_ERROR);
   }
 
   return {
@@ -198,9 +205,7 @@ export async function saveManualDocumentEntryAndVerify(
 
   const document = getDocument(documents, params.payload.documentType);
   if (!document || !isManualDocumentEntry(document)) {
-    throw new ManualDocumentSaveError(
-      "Manual entry did not persist — check documents table permissions."
-    );
+    throw new ManualDocumentSaveError(GENERIC_SAVE_ERROR);
   }
 
   return { job, documents, document };

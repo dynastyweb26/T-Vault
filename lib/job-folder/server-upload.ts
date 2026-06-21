@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  assertUserOwnedStoragePath,
   buildServerDisplayName,
   buildServerStoragePath,
   extensionForUploadType,
@@ -161,9 +162,15 @@ export async function processDocumentUpload(
   }
 
   const extension = extensionForUploadType(validation.contentType, compressedImage);
-  const path =
-    storagePath?.trim() ||
-    buildServerStoragePath(userId, jobId, documentType, extension);
+  let path = buildServerStoragePath(userId, jobId, documentType, extension);
+  if (storagePath?.trim()) {
+    try {
+      assertUserOwnedStoragePath(storagePath, userId);
+    } catch {
+      throw new Error(GENERIC_UPLOAD_ERROR);
+    }
+    path = storagePath.trim();
+  }
   const fileName =
     displayFileName?.trim() ||
     buildServerDisplayName(documentType, extension);

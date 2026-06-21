@@ -12,6 +12,19 @@ export type AllowedUploadType = (typeof ALLOWED_UPLOAD_TYPES)[number];
 const SUSPICIOUS_FILENAME =
   /[<>:"/\\|?*\x00-\x1f]|\.(exe|bat|cmd|sh|js|mjs|cjs|html|htm|php|svg|zip|dmg|app)$/i;
 
+export function assertUserOwnedStoragePath(
+  storagePath: string,
+  userId: string
+): void {
+  const normalized = storagePath.trim().replace(/^\/+/, "");
+  if (!normalized || normalized.includes("..")) {
+    throw new Error("invalid_storage_path");
+  }
+  if (!normalized.startsWith(`${userId}/`)) {
+    throw new Error("invalid_storage_path");
+  }
+}
+
 export function isSuspiciousFilename(filename: string): boolean {
   const trimmed = filename.trim();
   if (!trimmed || trimmed.length > 255) return true;

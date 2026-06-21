@@ -24,6 +24,7 @@ interface AuthContextValue {
   loading: boolean;
   sessionWarning: boolean;
   offline: boolean;
+  revalidating: boolean;
   streakMilestone: number | null;
   refreshProfile: () => Promise<UserProfile | null>;
   refreshProAccess: () => Promise<boolean>;
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [sessionWarning, setSessionWarning] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [revalidating, setRevalidating] = useState(false);
   const [streakMilestone, setStreakMilestone] = useState<number | null>(null);
   const profileFetchGeneration = useRef(0);
 
@@ -176,6 +178,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     const loadSession = async () => {
+      setRevalidating(false);
+
       const {
         data: { user: currentUser },
         error,
@@ -184,17 +188,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (error && !navigator.onLine) {
-        const {
-          data: { session: cachedSession },
-        } = await supabase.auth.getSession();
-        if (cachedSession?.user) {
-          setSession(cachedSession);
-          setUser(cachedSession.user);
-          setOffline(true);
-          setSessionWarning(true);
-          setLoading(false);
-          return;
-        }
+        setSession(null);
+        setUser(null);
+        setOffline(true);
+        setRevalidating(true);
+        setSessionWarning(true);
+        setLoading(false);
+        return;
       }
 
       if (error && navigator.onLine) {
@@ -207,9 +207,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } = await supabase.auth.getSession();
         setSession(currentSession);
         setUser(currentUser);
+        setRevalidating(false);
       } else {
         setSession(null);
         setUser(null);
+        setRevalidating(false);
       }
 
       setLoading(false);
@@ -236,6 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleOnline = () => {
       setOffline(false);
       setSessionWarning(false);
+      void loadSession();
     };
     const handleOffline = () => {
       setOffline(true);
@@ -271,6 +274,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       sessionWarning,
       offline,
+      revalidating,
       streakMilestone,
       refreshProfile,
       refreshProAccess,
@@ -288,6 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       sessionWarning,
       offline,
+      revalidating,
       streakMilestone,
       refreshProfile,
       refreshProAccess,

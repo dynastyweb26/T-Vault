@@ -3,6 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validatePassword } from "@/lib/validation";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
+
+const CHANGE_PASSWORD_MAX_ATTEMPTS = 5;
+const CHANGE_PASSWORD_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
   try {
@@ -14,6 +21,15 @@ export async function POST(request: Request) {
 
     if (authError || !user?.email) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkRateLimit(
+      `change-password:${user.id}`,
+      CHANGE_PASSWORD_MAX_ATTEMPTS,
+      CHANGE_PASSWORD_WINDOW_MS
+    );
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.retryAfterMs);
     }
 
     const body = await request.json();
