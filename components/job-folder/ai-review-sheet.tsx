@@ -48,6 +48,7 @@ export function AiReviewSheet({
 }: AiReviewSheetProps) {
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [fields, setFields] = useState<ReviewField[]>([]);
   const [jobName, setJobName] = useState(job.job_name);
 
@@ -74,10 +75,12 @@ export function AiReviewSheet({
     setFields(reviewFields);
     setJobName(job.job_name?.trim() ? job.job_name : "");
     setEditMode(false);
+    setConfirmError(null);
   }, [open, documents, job]);
 
   const handleConfirm = async () => {
     setSaving(true);
+    setConfirmError(null);
     const supabase = createClient();
     const fieldValues: Partial<Job> = {};
 
@@ -98,17 +101,22 @@ export function AiReviewSheet({
       fieldValues.job_name = jobName.trim();
     }
 
-    await confirmAiFields(supabase, {
-      jobId: job.id,
-      userId,
-      job,
-      profile,
-      fieldValues,
-    });
+    try {
+      await confirmAiFields(supabase, {
+        jobId: job.id,
+        userId,
+        job,
+        profile,
+        fieldValues,
+      });
 
-    setSaving(false);
-    onConfirmed();
-    onClose();
+      onConfirmed();
+      onClose();
+    } catch {
+      setConfirmError("Could not save details. Try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -162,8 +170,12 @@ export function AiReviewSheet({
       </div>
 
       <div className="mt-6 flex flex-col gap-2">
+        {confirmError ? (
+          <p className="text-[14px] text-[var(--color-danger-text)]">{confirmError}</p>
+        ) : null}
         <TvButton
           disabled={saving}
+          loading={saving}
           onClick={handleConfirm}
           className="bg-[var(--color-success)] text-[var(--color-success-text)]"
         >

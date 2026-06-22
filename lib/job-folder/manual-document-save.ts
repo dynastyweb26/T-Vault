@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ensureJobBrokerLink, normalizeBrokerName } from "@/lib/brokers/link-job-broker";
 import { getDocument, isManualDocumentEntry } from "@/lib/job-folder/documents";
 import type { Job, JobDocument } from "@/types/jobs";
 
@@ -36,10 +37,25 @@ export async function saveManualDocumentEntry(
   const { jobId, userId, payload } = params;
   const { jobUpdates, documentType, documentData } = payload;
 
-  if (Object.keys(jobUpdates).length > 0) {
+  let resolvedJobUpdates = { ...jobUpdates };
+  const brokerName = normalizeBrokerName(jobUpdates.broker_name);
+
+  if (brokerName) {
+    const linked = await ensureJobBrokerLink(
+      brokerName,
+      jobUpdates.broker_id ?? null
+    );
+    resolvedJobUpdates = {
+      ...resolvedJobUpdates,
+      broker_name: linked.brokerName,
+      broker_id: linked.brokerId,
+    };
+  }
+
+  if (Object.keys(resolvedJobUpdates).length > 0) {
     const { error: jobError } = await supabase
       .from("jobs")
-      .update({ ...jobUpdates, updated_at: new Date().toISOString() })
+      .update({ ...resolvedJobUpdates, updated_at: new Date().toISOString() })
       .eq("id", jobId)
       .eq("user_id", userId);
 

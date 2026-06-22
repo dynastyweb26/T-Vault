@@ -128,7 +128,7 @@ import { updateStreak } from "@/lib/streak";
 import { APP_ROUTES, TEXT_LIMITS } from "@/lib/constants";
 import { sanitizeText, validateTextLength } from "@/lib/validation";
 import type { BrokerBadgeInfo, DetentionLocation, MilestoneCheck } from "@/types/job-folder";
-import type { AiConfidence, JobDocument } from "@/types/jobs";
+import type { AiConfidence, Job, JobDocument } from "@/types/jobs";
 import type { CrossValidationConflict } from "@/lib/job-folder/ai-types";
 import { FieldTrustBadge } from "@/components/job-folder/field-trust-badge";
 
@@ -139,10 +139,23 @@ function TrustBadge({
   confidence: AiConfidence | null;
   onManualEntry?: () => void;
 }) {
-  if (confidence === null) return null;
   return (
     <FieldTrustBadge confidence={confidence} onManualEntry={onManualEntry} />
   );
+}
+
+function documentHasAiParsedFields(doc: JobDocument | undefined): boolean {
+  if (!doc?.parsed_data || typeof doc.parsed_data !== "object") return false;
+  return Object.keys(doc.parsed_data).length > 0;
+}
+
+function showDocumentReviewAction(
+  job: Job,
+  doc: JobDocument | undefined
+): boolean {
+  if (!doc || job.ai_fields_confirmed) return false;
+  if (isManualDocumentEntry(doc)) return false;
+  return documentHasAiParsedFields(doc);
 }
 
 function fieldConfidence(
@@ -1202,6 +1215,7 @@ export function JobFolderView({ jobId }: { jobId: string }) {
             const checklistComplete = isDocumentChecklistComplete(documents, type);
             const hasFile = hasDocumentFile(documents, type);
             const parsing = isDocumentParsing(doc);
+            const showReview = showDocumentReviewAction(job, doc);
             return (
               <div key={type} className="flex min-h-16 items-center gap-3 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] px-4">
                 <span className={`size-3 shrink-0 rounded-full ${checklistComplete ? "bg-[var(--color-success)]" : "bg-[var(--color-danger)]"}`} />
@@ -1229,19 +1243,30 @@ export function JobFolderView({ jobId }: { jobId: string }) {
                   />
                 </div>
                 {checklistComplete ? (
-                  <button
-                    type="button"
-                    className="tv-outline-btn"
-                    onClick={() => {
-                      if (hasFile && doc) {
-                        setPreviewDocument(doc);
-                        return;
-                      }
-                      setManualEntryDocType(type);
-                    }}
-                  >
-                    View
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {showReview ? (
+                      <button
+                        type="button"
+                        className="tv-outline-btn"
+                        onClick={() => setManualEntryDocType(type)}
+                      >
+                        Review
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="tv-outline-btn"
+                      onClick={() => {
+                        if (hasFile && doc) {
+                          setPreviewDocument(doc);
+                          return;
+                        }
+                        setManualEntryDocType(type);
+                      }}
+                    >
+                      View
+                    </button>
+                  </div>
                 ) : (
                   <button type="button" aria-label="Upload document" className="tv-accent-outline-btn" onClick={() => setUploadType(type)}>Upload</button>
                 )}

@@ -16,11 +16,16 @@ function hintStorageKey(userId: string): string {
 
 export function TourFab() {
   const { user } = useAuth();
-  const { startTour, isRunning } = useAppTour();
+  const { startTour, tourPhase, fabSuppressedForSession } = useAppTour();
   const [showHint, setShowHint] = useState(false);
 
+  const fabVisible =
+    Boolean(user) &&
+    tourPhase === "idle" &&
+    !fabSuppressedForSession;
+
   useEffect(() => {
-    if (!user || isRunning) {
+    if (!fabVisible || !user) {
       setShowHint(false);
       return;
     }
@@ -35,7 +40,7 @@ export function TourFab() {
     }, HINT_DISMISS_MS);
 
     return () => window.clearTimeout(timer);
-  }, [isRunning, user]);
+  }, [fabVisible, user]);
 
   const dismissHint = useCallback(() => {
     if (!user) return;
@@ -49,7 +54,7 @@ export function TourFab() {
     void startTour();
   }, [dismissHint, startTour]);
 
-  if (!user || isRunning) return null;
+  if (!fabVisible) return null;
 
   return (
     <div

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { AlertTriangle, Bot, PenLine } from "lucide-react";
 import type { AiConfidence } from "@/types/jobs";
 
@@ -13,8 +14,47 @@ export const badgeToneClasses = {
 };
 
 interface FieldTrustBadgeProps {
-  confidence: AiConfidence;
+  confidence: AiConfidence | null;
   onManualEntry?: () => void;
+}
+
+function ManualEntryBadge({
+  toneClass,
+  label,
+  onManualEntry,
+  icon,
+}: {
+  toneClass: string;
+  label: string;
+  onManualEntry?: () => void;
+  icon: ReactNode;
+}) {
+  const content = (
+    <>
+      {icon}
+      {label}
+    </>
+  );
+
+  if (onManualEntry) {
+    return (
+      <button
+        type="button"
+        onClick={onManualEntry}
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] transition-opacity active:opacity-80 ${toneClass}`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${toneClass}`}
+    >
+      {content}
+    </span>
+  );
 }
 
 export function FieldTrustBadge({
@@ -30,50 +70,34 @@ export function FieldTrustBadge({
     );
   }
 
-  if (confidence === "low" || confidence === "unread") {
-    const badge = (
-      <>
-        <AlertTriangle className="size-3.5" strokeWidth={2} />
-        Enter manually
-      </>
-    );
-    if (onManualEntry) {
-      return (
-        <button
-          type="button"
-          onClick={onManualEntry}
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] transition-opacity active:opacity-80 ${badgeToneClasses.low}`}
-        >
-          {badge}
-        </button>
-      );
-    }
+  if (!confidence || confidence === "low" || confidence === "unread") {
     return (
-      <span
-        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.low}`}
-      >
-        {badge}
-      </span>
+      <ManualEntryBadge
+        toneClass={badgeToneClasses.low}
+        label="Enter manually"
+        onManualEntry={onManualEntry}
+        icon={<AlertTriangle className="size-3.5" strokeWidth={2} />}
+      />
     );
   }
 
   if (confidence === "medium") {
     return (
-      <span
-        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.medium}`}
-      >
-        <AlertTriangle className="size-3.5" strokeWidth={2} />
-        AI — please check
-      </span>
+      <ManualEntryBadge
+        toneClass={badgeToneClasses.medium}
+        label="AI — please check"
+        onManualEntry={onManualEntry}
+        icon={<AlertTriangle className="size-3.5" strokeWidth={2} />}
+      />
     );
   }
 
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${badgeToneClasses.high}`}
-    >
-      <Bot className="size-3.5" strokeWidth={2} />
-      AI verified
-    </span>
+    <ManualEntryBadge
+      toneClass={badgeToneClasses.high}
+      label="AI verified"
+      onManualEntry={onManualEntry}
+      icon={<Bot className="size-3.5" strokeWidth={2} />}
+    />
   );
 }

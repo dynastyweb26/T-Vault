@@ -1,4 +1,9 @@
 import { tourSelector, type TourTargetId } from "@/lib/tour/constants";
+import {
+  assertTourActive,
+  isTourAborted,
+  TourAbortedError,
+} from "@/lib/tour/abort";
 
 export function waitForElement(
   target: TourTargetId,
@@ -7,6 +12,8 @@ export function waitForElement(
   const selector = tourSelector(target);
 
   return new Promise((resolve, reject) => {
+    assertTourActive();
+
     const existing = document.querySelector(selector);
     if (existing) {
       resolve(existing);
@@ -15,6 +22,12 @@ export function waitForElement(
 
     const started = Date.now();
     const timer = window.setInterval(() => {
+      if (isTourAborted()) {
+        window.clearInterval(timer);
+        reject(new TourAbortedError());
+        return;
+      }
+
       const element = document.querySelector(selector);
       if (element) {
         window.clearInterval(timer);
@@ -31,11 +44,23 @@ export function waitForElement(
 }
 
 export async function scrollTargetIntoView(target: TourTargetId): Promise<void> {
+  assertTourActive();
   const element = await waitForElement(target);
+  assertTourActive();
   element.scrollIntoView({ behavior: "smooth", block: "center" });
-  await new Promise((resolve) => window.setTimeout(resolve, 350));
+  await wait(350);
 }
 
 export function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
+  return new Promise((resolve, reject) => {
+    assertTourActive();
+
+    window.setTimeout(() => {
+      if (isTourAborted()) {
+        reject(new TourAbortedError());
+        return;
+      }
+      resolve();
+    }, ms);
+  });
 }

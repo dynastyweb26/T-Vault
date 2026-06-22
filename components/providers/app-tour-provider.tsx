@@ -4,12 +4,21 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Joyride, EVENTS, STATUS, type EventData, type Step } from "react-joyride";
+import {
+  Joyride,
+  EVENTS,
+  STATUS,
+  ACTIONS,
+  type Controls,
+  type EventData,
+  type Step,
+} from "react-joyride";
 import { TourTooltip } from "@/components/tour/tour-tooltip";
 import { useNewJobSheet } from "@/components/providers/new-job-provider";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -21,13 +30,27 @@ import {
   type TourTargetId,
 } from "@/lib/tour/constants";
 import { scrollTargetIntoView, wait, waitForElement } from "@/lib/tour/navigation";
+import { setTourAborted, isTourAborted, TourAbortedError } from "@/lib/tour/abort";
+import {
+  isTourFabSuppressedForSession,
+  suppressTourFabForSession,
+  TOUR_FAB_COOLDOWN_MS,
+} from "@/lib/tour/fab-session";
+
+export type TourPhase = "idle" | "starting" | "running";
+
+interface StopTourOptions {
+  suppressFabForSession?: boolean;
+}
 
 interface AppTourContextValue {
   isRunning: boolean;
+  tourPhase: TourPhase;
+  fabSuppressedForSession: boolean;
   sampleJobId: string | null;
   expenseSheetOpen: boolean;
   startTour: () => Promise<void>;
-  stopTour: () => void;
+  stopTour: (options?: StopTourOptions) => void;
 }
 
 const AppTourContext = createContext<AppTourContextValue | undefined>(undefined);
@@ -52,9 +75,16 @@ function buildBeforeHook(
   target: TourTargetId
 ): () => Promise<void> {
   return async () => {
-    await prepare();
-    await waitForElement(target, 10000);
-    await scrollTargetIntoView(target);
+    try {
+      await prepare();
+      await waitForElement(target, 10000);
+      await scrollTargetIntoView(target);
+    } catch (error) {
+      if (error instanceof TourAbortedError) {
+        return;
+      }
+      throw error;
+    }
   };
 }
 
@@ -63,18 +93,66 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { openSheet, closeSheet } = useNewJobSheet();
   const [run, setRun] = useState(false);
+  const [joyrideKey, setJoyrideKey] = useState(0);
+  const [tourPhase, setTourPhase] = useState<TourPhase>("idle");
+  const [fabSuppressedForSession, setFabSuppressedForSession] = useState(false);
   const [sampleJobId, setSampleJobId] = useState<string | null>(null);
   const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
   const sampleJobIdRef = useRef<string | null>(null);
+  const fabCooldownRef = useRef<number | null>(null);
 
-  const stopTour = useCallback(() => {
-    setRun(false);
-    setExpenseSheetOpen(false);
-    closeSheet();
-  }, [closeSheet]);
+  useEffect(() => {
+    if (!user) {
+      setFabSuppressedForSession(false);
+      return;
+    }
+    setFabSuppressedForSession(isTourFabSuppressedForSession(user.id));
+  }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (fabCooldownRef.current) {
+        window.clearTimeout(fabCooldownRef.current);
+      }
+    };
+  }, []);
+
+  const beginFabCooldown = useCallback(() => {
+    setTourPhase("starting");
+
+    if (fabCooldownRef.current) {
+      window.clearTimeout(fabCooldownRef.current);
+    }
+
+    fabCooldownRef.current = window.setTimeout(() => {
+      fabCooldownRef.current = null;
+      setTourPhase("idle");
+    }, TOUR_FAB_COOLDOWN_MS);
+  }, []);
+
+  const stopTour = useCallback(
+    (options?: StopTourOptions) => {
+      setTourAborted(true);
+      setRun(false);
+      setExpenseSheetOpen(false);
+      closeSheet();
+      setJoyrideKey((current) => current + 1);
+
+      if (options?.suppressFabForSession && user?.id) {
+        suppressTourFabForSession(user.id);
+        setFabSuppressedForSession(true);
+      }
+
+      beginFabCooldown();
+    },
+    [beginFabCooldown, closeSheet, user?.id]
+  );
 
   const startTour = useCallback(async () => {
     if (!user) return;
+
+    setTourAborted(false);
+    setTourPhase("starting");
 
     const jobId = await fetchSampleJobId(user.id);
     sampleJobIdRef.current = jobId;
@@ -82,7 +160,23 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
     setExpenseSheetOpen(false);
     closeSheet();
     router.push(APP_ROUTES.dashboard);
-    await wait(300);
+
+    try {
+      await wait(300);
+    } catch (error) {
+      if (error instanceof TourAbortedError) {
+        setTourPhase("idle");
+        return;
+      }
+      throw error;
+    }
+
+    if (isTourAborted()) {
+      setTourPhase("idle");
+      return;
+    }
+
+    setTourPhase("running");
     setRun(true);
   }, [closeSheet, router, user]);
 
@@ -183,14 +277,22 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
   }, [closeSheet, openSheet, router]);
 
   const handleEvent = useCallback(
-    (data: EventData) => {
-      if (
+    (data: EventData, controls: Controls) => {
+      const shouldStop =
         data.type === EVENTS.TOUR_END ||
         data.status === STATUS.FINISHED ||
-        data.status === STATUS.SKIPPED
-      ) {
-        stopTour();
-      }
+        data.status === STATUS.SKIPPED ||
+        data.action === ACTIONS.SKIP ||
+        data.action === ACTIONS.CLOSE ||
+        data.action === ACTIONS.STOP;
+
+      if (!shouldStop) return;
+
+      const suppressFabForSession =
+        data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED;
+
+      controls.reset(false);
+      stopTour({ suppressFabForSession });
     },
     [stopTour]
   );
@@ -198,18 +300,29 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       isRunning: run,
+      tourPhase,
+      fabSuppressedForSession,
       sampleJobId,
       expenseSheetOpen,
       startTour,
       stopTour,
     }),
-    [expenseSheetOpen, run, sampleJobId, startTour, stopTour]
+    [
+      expenseSheetOpen,
+      fabSuppressedForSession,
+      run,
+      sampleJobId,
+      startTour,
+      stopTour,
+      tourPhase,
+    ]
   );
 
   return (
     <AppTourContext.Provider value={value}>
       {children}
       <Joyride
+        key={joyrideKey}
         steps={steps}
         run={run}
         continuous
