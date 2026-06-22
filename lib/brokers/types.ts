@@ -27,6 +27,12 @@ export type BrokerSearchResult = {
   displayName: string;
 };
 
+export type BrokerDirectoryResult = BrokerSearchResult & {
+  avgPaidOnTimeStars: number | null;
+  avgEaseOfWorkStars: number | null;
+  ratingCount: number;
+};
+
 export type FmcsaCarrierPayload = {
   dotNumber?: number | string | null;
   mcNumber?: number | string | null;

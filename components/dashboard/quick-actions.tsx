@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Plus, Truck } from "lucide-react";
+import { BarChart3, Plus, Search, Truck } from "lucide-react";
 import { APP_ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useNewJobSheet } from "@/components/providers/new-job-provider";
+import { useAuth } from "@/components/providers/auth-provider";
+import { useProPaywall } from "@/components/pro/pro-paywall-provider";
 
 const actions = [
   {
@@ -26,12 +27,19 @@ const actions = [
     icon: BarChart3,
     href: "#ledger-insight",
   },
+  {
+    id: "find-broker",
+    label: "Find Broker",
+    icon: Search,
+  },
 ] as const;
 
 export function QuickActions() {
   const router = useRouter();
   const pathname = usePathname();
   const { openSheet } = useNewJobSheet();
+  const { hasProAccess } = useAuth();
+  const { openPaywall } = useProPaywall();
 
   const handleLogLoad = () => {
     if (pathname === APP_ROUTES.newJob) {
@@ -39,6 +47,19 @@ export function QuickActions() {
     } else {
       router.push(APP_ROUTES.newJob);
     }
+  };
+
+  const handleFindBroker = () => {
+    if (hasProAccess) {
+      router.push(APP_ROUTES.findBroker);
+      return;
+    }
+
+    openPaywall({
+      variant: "generic",
+      headline: "Pro required",
+      subheadline: "Search brokers nationwide",
+    });
   };
 
   return (
@@ -71,6 +92,28 @@ export function QuickActions() {
           );
         }
 
+        if (action.id === "find-broker") {
+          return (
+            <button
+              key={action.id}
+              type="button"
+              onClick={handleFindBroker}
+              className="flex shrink-0 flex-col items-center gap-2"
+            >
+              <div className="rounded-full border-2 border-[var(--color-accent)]/20 p-1 opacity-50">
+                <div className="flex size-14 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
+                  <Icon
+                    className="size-6 text-[var(--color-text-secondary)]"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                </div>
+              </div>
+              <span className="tv-caption opacity-60">{action.label}</span>
+            </button>
+          );
+        }
+
         if (action.id === "metrics") {
           return (
             <a
@@ -93,7 +136,7 @@ export function QuickActions() {
         }
 
         return (
-          <Link
+          <a
             key={action.id}
             href={action.href!}
             className={cn(
@@ -111,7 +154,7 @@ export function QuickActions() {
               </div>
             </div>
             <span className="tv-caption opacity-60">{action.label}</span>
-          </Link>
+          </a>
         );
       })}
     </div>
