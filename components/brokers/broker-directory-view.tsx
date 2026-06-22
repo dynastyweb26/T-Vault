@@ -24,6 +24,12 @@ function formatStarAverage(value: number | null): string {
   return value.toFixed(1);
 }
 
+function hasDistinctDba(legalName: string, dbaName: string | null): boolean {
+  return Boolean(
+    dbaName && dbaName.toLowerCase() !== legalName.toLowerCase()
+  );
+}
+
 function RatingStat({
   label,
   value,
@@ -61,7 +67,7 @@ function BrokerDirectoryResultCard({ broker }: { broker: BrokerDirectoryResult }
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="truncate text-[17px] font-bold text-[var(--color-text-primary)]">
-              {broker.displayName}
+              {broker.legalName}
             </h3>
             {broker.verified ? (
               <ShieldCheck
@@ -71,6 +77,11 @@ function BrokerDirectoryResultCard({ broker }: { broker: BrokerDirectoryResult }
               />
             ) : null}
           </div>
+          {hasDistinctDba(broker.legalName, broker.dbaName) ? (
+            <p className="mt-0.5 truncate text-[14px] text-[var(--color-text-secondary)]">
+              {broker.dbaName}
+            </p>
+          ) : null}
           {meta ? (
             <p className="mt-1 text-[14px] text-[var(--color-text-muted)]">{meta}</p>
           ) : null}
