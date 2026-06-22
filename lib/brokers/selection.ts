@@ -35,16 +35,17 @@ export async function fetchBrokerVerified(brokerId: string): Promise<boolean> {
 
 export async function fetchBrokerDetails(
   brokerId: string
-): Promise<{ verified: boolean; dotNumber: string | null }> {
+): Promise<{ verified: boolean; dotNumber: string | null; phone: string | null }> {
   const supabase = createClient();
   const { data } = await supabase
     .from("brokers")
-    .select("verified, dot_number")
+    .select("verified, dot_number, phone")
     .eq("id", brokerId)
     .maybeSingle();
 
   return {
     verified: data?.verified ?? false,
     dotNumber: data?.dot_number ?? null,
+    phone: data?.phone ?? null,
   };
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Search, ShieldCheck, Star } from "lucide-react";
 import { AppHeader } from "@/components/shell/app-header";
+import { BrokerCallLink } from "@/components/brokers/broker-call-link";
 import { buildFmcsaCompanySnapshotUrl } from "@/lib/brokers/fmcsa-links";
 import { searchBrokerDirectory } from "@/lib/brokers/directory-client";
 import type { BrokerDirectoryResult } from "@/lib/brokers/types";
@@ -99,16 +100,19 @@ function BrokerDirectoryResultCard({ broker }: { broker: BrokerDirectoryResult }
           : `${broker.ratingCount} rating${broker.ratingCount === 1 ? "" : "s"}`}
       </p>
 
-      {snapshotUrl ? (
-        <a
-          href={snapshotUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex min-h-11 items-center text-[14px] text-[var(--color-accent)] underline-offset-2 hover:underline"
-        >
-          View FMCSA record
-        </a>
-      ) : null}
+      <div className="mt-3 flex flex-col gap-1">
+        {broker.phone ? <BrokerCallLink phone={broker.phone} /> : null}
+        {snapshotUrl ? (
+          <a
+            href={snapshotUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center text-[14px] text-[var(--color-accent)] underline-offset-2 hover:underline"
+          >
+            View FMCSA record
+          </a>
+        ) : null}
+      </div>
     </article>
   );
 }

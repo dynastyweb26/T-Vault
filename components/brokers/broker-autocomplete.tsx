@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrokerCallLink } from "@/components/brokers/broker-call-link";
 import { createManualBroker, searchBrokers } from "@/lib/brokers/client";
 import { buildFmcsaCompanySnapshotUrl } from "@/lib/brokers/fmcsa-links";
 import { fetchBrokerDetails } from "@/lib/brokers/selection";
@@ -52,22 +53,28 @@ export function BrokerAutocomplete({
   const [source, setSource] = useState<BrokerSearchSource | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedDotNumber, setSelectedDotNumber] = useState<string | null>(null);
+  const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
 
   useEffect(() => {
     setQuery(value);
   }, [value]);
 
   useEffect(() => {
-    if (!brokerId || !verified) {
+    if (!brokerId) {
       setSelectedDotNumber(null);
+      setSelectedPhone(null);
       return;
     }
 
     let cancelled = false;
     void (async () => {
       const details = await fetchBrokerDetails(brokerId);
-      if (!cancelled && details.verified && details.dotNumber) {
+      if (cancelled) return;
+      setSelectedPhone(details.phone);
+      if (details.verified && details.dotNumber) {
         setSelectedDotNumber(details.dotNumber);
+      } else {
+        setSelectedDotNumber(null);
       }
     })();
 
@@ -138,6 +145,7 @@ export function BrokerAutocomplete({
     setQuery(next);
     setOpen(true);
     setSelectedDotNumber(null);
+    setSelectedPhone(null);
     onChange({
       brokerId: null,
       brokerName: next,
@@ -150,6 +158,7 @@ export function BrokerAutocomplete({
     setQuery(broker.displayName);
     setOpen(false);
     setSelectedDotNumber(broker.verified ? broker.dotNumber : null);
+    setSelectedPhone(broker.phone);
     onChange({
       brokerId: broker.id,
       brokerName: broker.displayName,
@@ -228,30 +237,38 @@ export function BrokerAutocomplete({
               const meta = formatBrokerMeta(broker);
               return (
                 <li key={broker.id} role="option">
-                  <button
-                    type="button"
-                    className="flex min-h-11 w-full flex-col items-start gap-0.5 px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-elevated)]"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => handleSelect(broker)}
-                  >
-                    <span className="flex w-full items-center gap-2 text-[15px] font-medium text-[var(--color-text-primary)]">
-                      <span className="min-w-0 flex-1 truncate">
-                        {broker.displayName}
+                  <div className="flex flex-col">
+                    <button
+                      type="button"
+                      className="flex min-h-11 w-full flex-col items-start gap-0.5 px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-elevated)]"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => handleSelect(broker)}
+                    >
+                      <span className="flex w-full items-center gap-2 text-[15px] font-medium text-[var(--color-text-primary)]">
+                        <span className="min-w-0 flex-1 truncate">
+                          {broker.displayName}
+                        </span>
+                        {broker.verified ? (
+                          <ShieldCheck
+                            className="size-4 shrink-0 text-[var(--color-success-text)]"
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                        ) : null}
                       </span>
-                      {broker.verified ? (
-                        <ShieldCheck
-                          className="size-4 shrink-0 text-[var(--color-success-text)]"
-                          strokeWidth={2}
-                          aria-hidden
-                        />
+                      {meta ? (
+                        <span className="tv-caption normal-case tracking-normal text-[var(--color-text-muted)]">
+                          {meta}
+                        </span>
                       ) : null}
-                    </span>
-                    {meta ? (
-                      <span className="tv-caption normal-case tracking-normal text-[var(--color-text-muted)]">
-                        {meta}
-                      </span>
+                    </button>
+                    {broker.phone ? (
+                      <BrokerCallLink
+                        phone={broker.phone}
+                        className="px-4 pb-3"
+                      />
                     ) : null}
-                  </button>
+                  </div>
                 </li>
               );
             })}
@@ -313,6 +330,7 @@ export function BrokerAutocomplete({
           </div>
           {counter ? <span className="tv-caption shrink-0">{counter}</span> : null}
         </div>
+        {selectedPhone ? <BrokerCallLink phone={selectedPhone} /> : null}
         {brokerId && verified && selectedDotNumber ? (
           <a
             href={buildFmcsaCompanySnapshotUrl(selectedDotNumber)}

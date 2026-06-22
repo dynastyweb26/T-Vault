@@ -11,6 +11,7 @@ export type BrokerRecord = {
   mc_number: string | null;
   legal_name: string;
   dba_name: string | null;
+  phone: string | null;
   source: BrokerSource;
   verified: boolean;
   created_at: string;
@@ -22,6 +23,7 @@ export type BrokerSearchResult = {
   dbaName: string | null;
   dotNumber: string | null;
   mcNumber: string | null;
+  phone: string | null;
   verified: boolean;
   source: BrokerSource;
   displayName: string;
@@ -38,4 +40,5 @@ export type FmcsaCarrierPayload = {
   mcNumber?: number | string | null;
   legalName?: string | null;
   dbaName?: string | null;
+  phone?: string | null;
 };

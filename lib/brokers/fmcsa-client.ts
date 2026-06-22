@@ -18,6 +18,14 @@ function normalizeName(value: string | null | undefined): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeTelephone(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 10) return digits;
+  if (digits.length === 11 && digits.startsWith("1")) return digits.slice(1);
+  return null;
+}
+
 function extractCarrier(entry: unknown): FmcsaCarrierPayload | null {
   if (!entry || typeof entry !== "object") return null;
 
@@ -38,6 +46,9 @@ function extractCarrier(entry: unknown): FmcsaCarrierPayload | null {
     legalName,
     dbaName: normalizeName(
       typeof carrier.dbaName === "string" ? carrier.dbaName : null
+    ),
+    phone: normalizeTelephone(
+      typeof carrier.telephone === "string" ? carrier.telephone : null
     ),
   };
 }
@@ -64,6 +75,7 @@ export function parseFmcsaNameSearchResponse(payload: unknown): FmcsaCarrierPayl
       mcNumber: normalizeIdentifier(carrier.mcNumber),
       legalName: carrier.legalName,
       dbaName: carrier.dbaName,
+      phone: carrier.phone ?? null,
     });
   }
 
@@ -85,6 +97,7 @@ export function parseFmcsaSingleCarrierResponse(
       mcNumber: normalizeIdentifier(carrier.mcNumber),
       legalName: carrier.legalName,
       dbaName: carrier.dbaName,
+      phone: carrier.phone ?? null,
     },
   ];
 }

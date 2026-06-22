@@ -7,7 +7,7 @@ import type {
 } from "@/lib/brokers/types";
 
 const BROKER_SELECT =
-  "id, dot_number, mc_number, legal_name, dba_name, source, verified, created_at";
+  "id, dot_number, mc_number, legal_name, dba_name, phone, source, verified, created_at";
 
 function toDisplayName(legalName: string, dbaName: string | null): string {
   if (dbaName && dbaName.toLowerCase() !== legalName.toLowerCase()) {
@@ -23,6 +23,7 @@ export function toBrokerSearchResult(row: BrokerRecord): BrokerSearchResult {
     dbaName: row.dba_name,
     dotNumber: row.dot_number,
     mcNumber: row.mc_number,
+    phone: row.phone,
     verified: row.verified,
     source: row.source,
     displayName: toDisplayName(row.legal_name, row.dba_name),
@@ -98,6 +99,7 @@ function fmcsaRowFromCarrier(carrier: FmcsaCarrierPayload) {
     mc_number: carrier.mcNumber,
     legal_name: carrier.legalName!,
     dba_name: carrier.dbaName,
+    ...(carrier.phone ? { phone: carrier.phone } : {}),
     source: "fmcsa_lookup" as BrokerSource,
     verified: true,
   };
