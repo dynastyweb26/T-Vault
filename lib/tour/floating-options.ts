@@ -1,9 +1,12 @@
 import type { FloatingOptions } from "react-joyride";
-import { getTourEdgePadding, getTourMinTopPx } from "@/lib/tour/safe-area";
+import { getTourEdgePadding } from "@/lib/tour/safe-area";
 
+/**
+ * Safe-area padding for Floating UI shift/flip only.
+ * Tooltip position stays anchored to the target rect — no independent Y clamp.
+ */
 export function buildTourFloatingOptions(): Partial<FloatingOptions> {
   const edge = getTourEdgePadding();
-  const minTop = getTourMinTopPx();
 
   return {
     shiftOptions: { padding: edge },
@@ -15,20 +18,5 @@ export function buildTourFloatingOptions(): Partial<FloatingOptions> {
         right: 20,
       },
     },
-    middleware: [
-      {
-        name: "tourSafeAreaClamp",
-        fn({ y, rects }) {
-          const floatingHeight = rects.floating.height;
-          const maxY = Math.max(
-            minTop,
-            window.innerHeight - edge.bottom - floatingHeight
-          );
-          return {
-            y: Math.min(Math.max(y, minTop), maxY),
-          };
-        },
-      },
-    ],
   };
 }

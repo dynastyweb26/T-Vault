@@ -61,6 +61,3 @@ export function getTourEdgePadding(): {
   };
 }
 
-export function getTourMinTopPx(): number {
-  return readSafeAreaInsets().top + BASE_EDGE_PADDING_PX;
-}

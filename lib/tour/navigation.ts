@@ -43,14 +43,6 @@ export function waitForElement(
   });
 }
 
-export async function scrollTargetIntoView(target: TourTargetId): Promise<void> {
-  assertTourActive();
-  const element = await waitForElement(target);
-  assertTourActive();
-  element.scrollIntoView({ behavior: "smooth", block: "center" });
-  await wait(350);
-}
-
 export function wait(ms: number): Promise<void> {
   return new Promise((resolve, reject) => {
     assertTourActive();

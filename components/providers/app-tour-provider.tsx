@@ -30,7 +30,7 @@ import {
   tourSelector,
   type TourTargetId,
 } from "@/lib/tour/constants";
-import { scrollTargetIntoView, wait, waitForElement } from "@/lib/tour/navigation";
+import { wait, waitForElement } from "@/lib/tour/navigation";
 import { setTourAborted, isTourAborted, TourAbortedError } from "@/lib/tour/abort";
 import {
   isTourFabSuppressedForSession,
@@ -38,6 +38,7 @@ import {
   TOUR_FAB_COOLDOWN_MS,
 } from "@/lib/tour/fab-session";
 import { buildTourFloatingOptions } from "@/lib/tour/floating-options";
+import { warnIfTourStepNotCoVisible } from "@/lib/tour/co-visibility";
 
 export type TourPhase = "idle" | "starting" | "running";
 
@@ -79,8 +80,8 @@ function buildBeforeHook(
   return async () => {
     try {
       await prepare();
+      // Mount/wait only — Joyride owns scroll-to-target before the tooltip shows.
       await waitForElement(target, 10000);
-      await scrollTargetIntoView(target);
     } catch (error) {
       if (error instanceof TourAbortedError) {
         return;
@@ -88,6 +89,19 @@ function buildBeforeHook(
       throw error;
     }
   };
+}
+
+function scheduleCoVisibilityCheck(stepIndex: number, targetSelector: string) {
+  if (process.env.NODE_ENV === "production") return;
+
+  const targetId =
+    TOUR_STEP_CONTENT[stepIndex]?.target ?? `unknown-step-${stepIndex}`;
+
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      warnIfTourStepNotCoVisible(stepIndex, targetSelector, targetId);
+    });
+  });
 }
 
 export function AppTourProvider({ children }: { children: React.ReactNode }) {
@@ -300,6 +314,10 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
 
   const handleEvent = useCallback(
     (data: EventData, controls: Controls) => {
+      if (data.type === EVENTS.TOOLTIP && typeof data.step.target === "string") {
+        scheduleCoVisibilityCheck(data.index, data.step.target);
+      }
+
       const shouldStop =
         data.type === EVENTS.TOUR_END ||
         data.status === STATUS.FINISHED ||
