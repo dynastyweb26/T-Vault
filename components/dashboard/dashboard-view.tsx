@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DataProtectionBanner } from "@/components/shell/session-banner";
 import { TourHintBanner } from "@/components/dashboard/tour-hint-banner";
+import { VaultIntroBanner } from "@/components/dashboard/vault-intro-banner";
 import { EarningsHero } from "@/components/dashboard/earnings-hero";
 import { MoneyOutRow } from "@/components/dashboard/money-out-row";
 import { ActiveLoadsList } from "@/components/dashboard/active-loads-list";
@@ -38,6 +39,7 @@ export function DashboardView() {
 
       <div className="px-5 pb-2">
         <TourHintBanner />
+        <VaultIntroBanner />
       </div>
 
       <div ref={containerRef} {...handlers} className="relative flex flex-col">

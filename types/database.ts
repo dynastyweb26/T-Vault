@@ -21,6 +21,7 @@ export interface UserProfile {
   profile_setup_completed: boolean | null;
   profile_setup_skipped: boolean | null;
   tour_banner_dismissed: boolean | null;
+  has_seen_vault_intro?: boolean | null;
   has_dismissed_tour_hint?: boolean | null;
   referral_code: string | null;
   referred_by: string | null;
