@@ -28,7 +28,6 @@ import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import {
   TOUR_STEP_CONTENT,
-  TOUR_BOTTOM_SHEET_STEP_INDEX,
   TOUR_FORCE_BOTTOM_FROM_INDEX,
   tourSelector,
   type TourTargetId,
@@ -43,7 +42,6 @@ import {
 import {
   buildTourFloatingOptions,
   buildTourForceBottomFloatingOptions,
-  buildTourBottomSheetFloatingOptions,
 } from "@/lib/tour/floating-options";
 import {
   TOUR_DEADLOCK_TIMEOUT_MS,
@@ -70,9 +68,6 @@ interface AppTourContextValue {
 }
 
 const AppTourContext = createContext<AppTourContextValue | undefined>(undefined);
-
-/** Temporary — remove after confirming step 7 reaches visible tooltip on device. */
-const TOUR_STEP7_VERIFY_LOGGING = true;
 
 interface DeadlockFallbackState {
   index: number;
@@ -129,7 +124,7 @@ function scheduleCoVisibilityCheck(stepIndex: number, targetSelector: string) {
 export function AppTourProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user } = useAuth();
-  const { openSheet, closeSheet } = useNewJobSheet();
+  const { closeSheet } = useNewJobSheet();
   const [run, setRun] = useState(false);
   const [joyrideKey, setJoyrideKey] = useState(0);
   const [tourPhase, setTourPhase] = useState<TourPhase>("idle");
@@ -291,13 +286,6 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       await wait(400);
     };
 
-    const goNewJob = async () => {
-      setExpenseSheetOpen(false);
-      router.push(APP_ROUTES.newJob);
-      openSheet();
-      await wait(450);
-    };
-
     const goJobFolder = async () => {
       setExpenseSheetOpen(false);
       closeSheet();
@@ -348,7 +336,6 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       "dashboard-needs-attention": goDashboard,
       "loads-search-tabs": goLoads,
       "loads-job-card": goLoads,
-      "new-load-form": goNewJob,
       "job-folder-details": goJobFolder,
       "job-folder-detention": goJobFolder,
       "expenses-summary": goExpenses,
@@ -359,51 +346,28 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       "profile-invite": goProfile,
     };
 
-    return TOUR_STEP_CONTENT.map((step, index) => {
-      const isBottomSheetStep = index === TOUR_BOTTOM_SHEET_STEP_INDEX;
-      const isForceBottomStep = index >= TOUR_FORCE_BOTTOM_FROM_INDEX;
-
-      return {
-        target: tourSelector(step.target),
-        content: step.content,
-        placement: isForceBottomStep
+    return TOUR_STEP_CONTENT.map((step, index) => ({
+      target: tourSelector(step.target),
+      content: step.content,
+      placement:
+        index >= TOUR_FORCE_BOTTOM_FROM_INDEX
           ? "bottom"
-          : isBottomSheetStep
-            ? "top"
-            : (step.placement ?? "auto"),
-        disableBeacon: true,
-        spotlightClicks: false,
-        ...(isForceBottomStep
-          ? { floatingOptions: buildTourForceBottomFloatingOptions() }
-          : isBottomSheetStep
-            ? { floatingOptions: buildTourBottomSheetFloatingOptions() }
-            : {}),
-        before: buildBeforeHook(
-          prepareByTarget[step.target] ?? goDashboard,
-          step.target
-        ),
-      };
-    });
-  }, [closeSheet, openSheet, router]);
+          : (step.placement ?? "auto"),
+      disableBeacon: true,
+      spotlightClicks: false,
+      ...(index >= TOUR_FORCE_BOTTOM_FROM_INDEX
+        ? { floatingOptions: buildTourForceBottomFloatingOptions() }
+        : {}),
+      before: buildBeforeHook(
+        prepareByTarget[step.target] ?? goDashboard,
+        step.target
+      ),
+    }));
+  }, [closeSheet, router]);
 
   const handleEvent = useCallback(
     (data: EventData, controls: Controls) => {
       joyrideControlsRef.current = controls;
-
-      if (
-        TOUR_STEP7_VERIFY_LOGGING &&
-        data.index === TOUR_BOTTOM_SHEET_STEP_INDEX
-      ) {
-        console.log("[tour] step 7 (new-load-form) state", {
-          type: data.type,
-          status: data.status,
-          action: data.action,
-          lifecycle: data.lifecycle,
-          scrolling: data.scrolling,
-          waiting: data.waiting,
-          tooltipVisible: isJoyrideTooltipVisible(data.index),
-        });
-      }
 
       if (data.type === EVENTS.STEP_BEFORE) {
         const targetId = TOUR_STEP_CONTENT[data.index]?.target;

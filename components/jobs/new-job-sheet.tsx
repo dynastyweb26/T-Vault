@@ -510,7 +510,7 @@ export function NewJobSheet() {
           <div className="h-px flex-1 bg-[var(--color-shell-border)]" />
         </div>
 
-        <div className="flex flex-col gap-4" data-tour="new-load-form">
+        <div className="flex flex-col gap-4">
           <div>
             <ScanFieldLabel
               label="Job Name"
