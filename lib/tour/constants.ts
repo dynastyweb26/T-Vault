@@ -21,8 +21,11 @@ export type TourTargetId = (typeof TOUR_TARGET)[keyof typeof TOUR_TARGET];
 
 export const TOUR_STEP_COUNT = 16;
 
-/** Steps 7–15 force bottom placement with flip disabled (see app-tour-provider). */
-export const TOUR_FORCE_BOTTOM_FROM_INDEX = 7;
+/** new-load-form inside BottomSheet — uses sheet placement, not forced-bottom. */
+export const TOUR_BOTTOM_SHEET_STEP_INDEX = 7;
+
+/** Page-level steps 8–15 force bottom placement with flip disabled (app-tour-provider). */
+export const TOUR_FORCE_BOTTOM_FROM_INDEX = 8;
 
 export interface TourStepContent {
   target: TourTargetId;
@@ -76,7 +79,7 @@ export const TOUR_STEP_CONTENT: TourStepContent[] = [
     target: TOUR_TARGET.newLoadForm,
     content:
       "Don't have all the details yet? No problem — create the load now and fill in the rest later. AI will pull missing info from your documents.",
-    placement: "bottom",
+    placement: "top",
   },
   {
     target: TOUR_TARGET.jobFolderDetails,

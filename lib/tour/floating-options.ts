@@ -21,7 +21,12 @@ export function buildTourFloatingOptions(): Partial<FloatingOptions> {
   };
 }
 
-/** Steps 7–15: bottom-only placement — flip disabled so Floating UI cannot flip to top. */
+/** BottomSheet step (index 7): viewport flip/shift — sheet panel sets its own boundary. */
+export function buildTourBottomSheetFloatingOptions(): Partial<FloatingOptions> {
+  return buildTourFloatingOptions();
+}
+
+/** Page-level steps 8–15: bottom-only — flip disabled so Floating UI cannot flip to top. */
 export function buildTourForceBottomFloatingOptions(): Partial<FloatingOptions> {
   const edge = getTourEdgePadding();
 

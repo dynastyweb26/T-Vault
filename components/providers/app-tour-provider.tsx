@@ -21,12 +21,14 @@ import {
   type Step,
 } from "react-joyride";
 import { TourTooltip } from "@/components/tour/tour-tooltip";
+import { TourDeadlockFallback } from "@/components/tour/tour-deadlock-fallback";
 import { useNewJobSheet } from "@/components/providers/new-job-provider";
 import { useAuth } from "@/components/providers/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import {
   TOUR_STEP_CONTENT,
+  TOUR_BOTTOM_SHEET_STEP_INDEX,
   TOUR_FORCE_BOTTOM_FROM_INDEX,
   tourSelector,
   type TourTargetId,
@@ -38,7 +40,17 @@ import {
   suppressTourFabForSession,
   TOUR_FAB_COOLDOWN_MS,
 } from "@/lib/tour/fab-session";
-import { buildTourFloatingOptions, buildTourForceBottomFloatingOptions } from "@/lib/tour/floating-options";
+import {
+  buildTourFloatingOptions,
+  buildTourForceBottomFloatingOptions,
+  buildTourBottomSheetFloatingOptions,
+} from "@/lib/tour/floating-options";
+import {
+  TOUR_DEADLOCK_TIMEOUT_MS,
+  computeTourFallbackPosition,
+  isJoyrideTooltipVisible,
+  logTourDeadlockError,
+} from "@/lib/tour/deadlock-escape";
 import { warnIfTourStepNotCoVisible } from "@/lib/tour/co-visibility";
 
 export type TourPhase = "idle" | "starting" | "running";
@@ -58,6 +70,15 @@ interface AppTourContextValue {
 }
 
 const AppTourContext = createContext<AppTourContextValue | undefined>(undefined);
+
+/** Temporary — remove after confirming step 7 reaches visible tooltip on device. */
+const TOUR_STEP7_VERIFY_LOGGING = true;
+
+interface DeadlockFallbackState {
+  index: number;
+  targetId: TourTargetId;
+  content: string;
+}
 
 async function fetchSampleJobId(userId: string): Promise<string | null> {
   const supabase = createClient();
@@ -120,6 +141,42 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
   const [floatingOptions, setFloatingOptions] = useState<
     Partial<FloatingOptions>
   >(() => buildTourFloatingOptions());
+  const joyrideControlsRef = useRef<Controls | null>(null);
+  const deadlockTimerRef = useRef<number | null>(null);
+  const [deadlockFallback, setDeadlockFallback] =
+    useState<DeadlockFallbackState | null>(null);
+
+  const clearDeadlockTimer = useCallback(() => {
+    if (deadlockTimerRef.current !== null) {
+      window.clearTimeout(deadlockTimerRef.current);
+      deadlockTimerRef.current = null;
+    }
+  }, []);
+
+  const clearDeadlockFallback = useCallback(() => {
+    clearDeadlockTimer();
+    setDeadlockFallback(null);
+  }, [clearDeadlockTimer]);
+
+  const scheduleDeadlockEscape = useCallback(
+    (stepIndex: number, targetId: TourTargetId) => {
+      clearDeadlockTimer();
+
+      deadlockTimerRef.current = window.setTimeout(() => {
+        deadlockTimerRef.current = null;
+        if (!run) return;
+        if (isJoyrideTooltipVisible(stepIndex)) return;
+
+        logTourDeadlockError(stepIndex, targetId);
+        setDeadlockFallback({
+          index: stepIndex,
+          targetId,
+          content: TOUR_STEP_CONTENT[stepIndex]?.content ?? "",
+        });
+      }, TOUR_DEADLOCK_TIMEOUT_MS);
+    },
+    [clearDeadlockTimer, run]
+  );
 
   useEffect(() => {
     const syncFloatingPadding = () => {
@@ -151,8 +208,9 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       if (fabCooldownRef.current) {
         window.clearTimeout(fabCooldownRef.current);
       }
+      clearDeadlockTimer();
     };
-  }, []);
+  }, [clearDeadlockTimer]);
 
   const beginFabCooldown = useCallback(() => {
     setTourPhase("starting");
@@ -172,6 +230,7 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       setTourAborted(true);
       setRun(false);
       setExpenseSheetOpen(false);
+      clearDeadlockFallback();
       closeSheet();
       setJoyrideKey((current) => current + 1);
 
@@ -182,7 +241,7 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
 
       beginFabCooldown();
     },
-    [beginFabCooldown, closeSheet, user?.id]
+    [beginFabCooldown, clearDeadlockFallback, closeSheet, user?.id]
   );
 
   const startTour = useCallback(async () => {
@@ -300,28 +359,61 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       "profile-invite": goProfile,
     };
 
-    return TOUR_STEP_CONTENT.map((step, index) => ({
-      target: tourSelector(step.target),
-      content: step.content,
-      placement:
-        index >= TOUR_FORCE_BOTTOM_FROM_INDEX
+    return TOUR_STEP_CONTENT.map((step, index) => {
+      const isBottomSheetStep = index === TOUR_BOTTOM_SHEET_STEP_INDEX;
+      const isForceBottomStep = index >= TOUR_FORCE_BOTTOM_FROM_INDEX;
+
+      return {
+        target: tourSelector(step.target),
+        content: step.content,
+        placement: isForceBottomStep
           ? "bottom"
-          : (step.placement ?? "auto"),
-      disableBeacon: true,
-      spotlightClicks: false,
-      ...(index >= TOUR_FORCE_BOTTOM_FROM_INDEX
-        ? { floatingOptions: buildTourForceBottomFloatingOptions() }
-        : {}),
-      before: buildBeforeHook(
-        prepareByTarget[step.target] ?? goDashboard,
-        step.target
-      ),
-    }));
+          : isBottomSheetStep
+            ? "top"
+            : (step.placement ?? "auto"),
+        disableBeacon: true,
+        spotlightClicks: false,
+        ...(isForceBottomStep
+          ? { floatingOptions: buildTourForceBottomFloatingOptions() }
+          : isBottomSheetStep
+            ? { floatingOptions: buildTourBottomSheetFloatingOptions() }
+            : {}),
+        before: buildBeforeHook(
+          prepareByTarget[step.target] ?? goDashboard,
+          step.target
+        ),
+      };
+    });
   }, [closeSheet, openSheet, router]);
 
   const handleEvent = useCallback(
     (data: EventData, controls: Controls) => {
+      joyrideControlsRef.current = controls;
+
+      if (
+        TOUR_STEP7_VERIFY_LOGGING &&
+        data.index === TOUR_BOTTOM_SHEET_STEP_INDEX
+      ) {
+        console.log("[tour] step 7 (new-load-form) state", {
+          type: data.type,
+          status: data.status,
+          action: data.action,
+          lifecycle: data.lifecycle,
+          scrolling: data.scrolling,
+          waiting: data.waiting,
+          tooltipVisible: isJoyrideTooltipVisible(data.index),
+        });
+      }
+
+      if (data.type === EVENTS.STEP_BEFORE) {
+        const targetId = TOUR_STEP_CONTENT[data.index]?.target;
+        if (targetId) {
+          scheduleDeadlockEscape(data.index, targetId);
+        }
+      }
+
       if (data.type === EVENTS.TOOLTIP && typeof data.step.target === "string") {
+        clearDeadlockFallback();
         scheduleCoVisibilityCheck(data.index, data.step.target);
       }
 
@@ -333,6 +425,10 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
         data.action === ACTIONS.CLOSE ||
         data.action === ACTIONS.STOP;
 
+      if (shouldStop) {
+        clearDeadlockFallback();
+      }
+
       if (!shouldStop) return;
 
       const suppressFabForSession =
@@ -341,7 +437,7 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       controls.reset(false);
       stopTour({ suppressFabForSession });
     },
-    [stopTour]
+    [clearDeadlockFallback, scheduleDeadlockEscape, stopTour]
   );
 
   const value = useMemo(
@@ -394,6 +490,17 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
           buttons: ["close", "primary"],
         }}
       />
+      {deadlockFallback && joyrideControlsRef.current ? (
+        <TourDeadlockFallback
+          index={deadlockFallback.index}
+          targetId={deadlockFallback.targetId}
+          content={deadlockFallback.content}
+          position={computeTourFallbackPosition(deadlockFallback.targetId)}
+          isLastStep={deadlockFallback.index + 1 === TOUR_STEP_CONTENT.length}
+          controls={joyrideControlsRef.current}
+          onDismiss={clearDeadlockFallback}
+        />
+      ) : null}
     </AppTourContext.Provider>
   );
 }
