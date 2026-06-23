@@ -1052,9 +1052,11 @@ export function JobFolderView({ jobId }: { jobId: string }) {
         </div>
       ) : null}
 
-      <div data-tour="job-folder-details">
-      {/* Job Details */}
-      <section className="mt-4 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] p-5">
+      {/* Job Details — tour anchor is this card only (not the full documents stack). */}
+      <section
+        data-tour="job-folder-details"
+        className="mt-4 rounded-2xl tv-glass-card border border-[var(--color-shell-border)] p-5"
+      >
         <div className="space-y-4">
           <div>
             <div className="flex items-start justify-between gap-2">
@@ -1345,7 +1347,6 @@ export function JobFolderView({ jobId }: { jobId: string }) {
           ) : null}
         </div>
       </section>
-      </div>
 
       {/* Detention */}
       <section className="mt-6" data-tour="job-folder-detention">

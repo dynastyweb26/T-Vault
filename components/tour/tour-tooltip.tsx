@@ -17,7 +17,7 @@ export function TourTooltip({
   return (
     <div
       {...tooltipProps}
-      className="tv-tour-tooltip w-[min(calc(100vw-2.5rem),22rem)] rounded-2xl border border-[var(--color-accent)]/25 bg-[var(--color-surface)] p-5 shadow-[var(--shadow-gold-strong)]"
+      className="tv-tour-tooltip w-[min(calc(100vw-2.5rem),22rem)] rounded-2xl border border-[var(--color-accent)]/25 bg-[var(--color-surface)] px-5 pb-5 pt-[max(1.25rem,calc(env(safe-area-inset-top)+0.625rem))] shadow-[var(--shadow-gold-strong)]"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <p className="tv-caption text-[var(--color-accent)]">
@@ -26,7 +26,7 @@ export function TourTooltip({
         <button
           {...closeProps}
           type="button"
-          className="tv-icon-btn -mr-1 -mt-1 shrink-0 rounded-full text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+          className="tv-icon-btn -mr-1 shrink-0 rounded-full text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] min-h-14 min-w-14"
           aria-label="Close tour"
         >
           <X className="size-5" strokeWidth={2} aria-hidden />
@@ -41,7 +41,7 @@ export function TourTooltip({
         <button
           {...skipProps}
           type="button"
-          className="tv-body min-h-11 px-1 text-[14px] font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
+          className="tv-body flex min-h-14 min-w-14 items-center px-2 text-[14px] font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
         >
           Skip tour
         </button>
@@ -50,7 +50,7 @@ export function TourTooltip({
           <button
             {...primaryProps}
             type="button"
-            className="tv-brushed-gold-btn h-11 min-w-[5.5rem] rounded-xl px-5 text-[15px] font-semibold text-[var(--color-on-accent)]"
+            className="tv-brushed-gold-btn flex min-h-14 min-w-14 items-center justify-center rounded-xl px-5 text-[15px] font-semibold text-[var(--color-on-accent)]"
           >
             {isLastStep ? "Done" : "Next"}
           </button>

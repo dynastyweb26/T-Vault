@@ -17,6 +17,7 @@ import {
   ACTIONS,
   type Controls,
   type EventData,
+  type FloatingOptions,
   type Step,
 } from "react-joyride";
 import { TourTooltip } from "@/components/tour/tour-tooltip";
@@ -36,6 +37,7 @@ import {
   suppressTourFabForSession,
   TOUR_FAB_COOLDOWN_MS,
 } from "@/lib/tour/fab-session";
+import { buildTourFloatingOptions } from "@/lib/tour/floating-options";
 
 export type TourPhase = "idle" | "starting" | "running";
 
@@ -100,6 +102,26 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
   const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
   const sampleJobIdRef = useRef<string | null>(null);
   const fabCooldownRef = useRef<number | null>(null);
+  const [floatingOptions, setFloatingOptions] = useState<
+    Partial<FloatingOptions>
+  >(() => buildTourFloatingOptions());
+
+  useEffect(() => {
+    const syncFloatingPadding = () => {
+      setFloatingOptions(buildTourFloatingOptions());
+    };
+
+    syncFloatingPadding();
+    window.addEventListener("resize", syncFloatingPadding);
+    window.addEventListener("orientationchange", syncFloatingPadding);
+    window.visualViewport?.addEventListener("resize", syncFloatingPadding);
+
+    return () => {
+      window.removeEventListener("resize", syncFloatingPadding);
+      window.removeEventListener("orientationchange", syncFloatingPadding);
+      window.visualViewport?.removeEventListener("resize", syncFloatingPadding);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -328,6 +350,7 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
         continuous
         scrollToFirstStep
         tooltipComponent={TourTooltip}
+        floatingOptions={floatingOptions}
         onEvent={handleEvent}
         styles={{
           overlay: {
