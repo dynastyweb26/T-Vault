@@ -21,6 +21,9 @@ export type TourTargetId = (typeof TOUR_TARGET)[keyof typeof TOUR_TARGET];
 
 export const TOUR_STEP_COUNT = 16;
 
+/** Steps 7–15 force bottom placement with flip disabled (see app-tour-provider). */
+export const TOUR_FORCE_BOTTOM_FROM_INDEX = 7;
+
 export interface TourStepContent {
   target: TourTargetId;
   content: string;
@@ -73,7 +76,7 @@ export const TOUR_STEP_CONTENT: TourStepContent[] = [
     target: TOUR_TARGET.newLoadForm,
     content:
       "Don't have all the details yet? No problem — create the load now and fill in the rest later. AI will pull missing info from your documents.",
-    placement: "top",
+    placement: "bottom",
   },
   {
     target: TOUR_TARGET.jobFolderDetails,
@@ -85,7 +88,7 @@ export const TOUR_STEP_CONTENT: TourStepContent[] = [
     target: TOUR_TARGET.jobFolderDetention,
     content:
       "Brokers owe you after 2 hours of waiting — log detention time here so you don't leave money on the table.",
-    placement: "top",
+    placement: "bottom",
   },
   {
     target: TOUR_TARGET.expensesSummary,
@@ -96,13 +99,13 @@ export const TOUR_STEP_CONTENT: TourStepContent[] = [
   {
     target: TOUR_TARGET.expensesRow,
     content: "Swipe left on any expense to delete it.",
-    placement: "top",
+    placement: "bottom",
   },
   {
     target: TOUR_TARGET.addExpenseForm,
     content:
       "Pick a category, snap or upload a receipt, and save — it's logged in seconds.",
-    placement: "top",
+    placement: "bottom",
   },
   {
     target: TOUR_TARGET.taxSummaryOverview,
@@ -119,7 +122,7 @@ export const TOUR_STEP_CONTENT: TourStepContent[] = [
   {
     target: TOUR_TARGET.profileInvite,
     content: "Invite other drivers and share your code right from here.",
-    placement: "top",
+    placement: "bottom",
   },
 ];
 

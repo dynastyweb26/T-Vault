@@ -27,6 +27,7 @@ import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import {
   TOUR_STEP_CONTENT,
+  TOUR_FORCE_BOTTOM_FROM_INDEX,
   tourSelector,
   type TourTargetId,
 } from "@/lib/tour/constants";
@@ -37,7 +38,7 @@ import {
   suppressTourFabForSession,
   TOUR_FAB_COOLDOWN_MS,
 } from "@/lib/tour/fab-session";
-import { buildTourFloatingOptions } from "@/lib/tour/floating-options";
+import { buildTourFloatingOptions, buildTourForceBottomFloatingOptions } from "@/lib/tour/floating-options";
 import { warnIfTourStepNotCoVisible } from "@/lib/tour/co-visibility";
 
 export type TourPhase = "idle" | "starting" | "running";
@@ -299,12 +300,18 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       "profile-invite": goProfile,
     };
 
-    return TOUR_STEP_CONTENT.map((step) => ({
+    return TOUR_STEP_CONTENT.map((step, index) => ({
       target: tourSelector(step.target),
       content: step.content,
-      placement: step.placement ?? "auto",
+      placement:
+        index >= TOUR_FORCE_BOTTOM_FROM_INDEX
+          ? "bottom"
+          : (step.placement ?? "auto"),
       disableBeacon: true,
       spotlightClicks: false,
+      ...(index >= TOUR_FORCE_BOTTOM_FROM_INDEX
+        ? { floatingOptions: buildTourForceBottomFloatingOptions() }
+        : {}),
       before: buildBeforeHook(
         prepareByTarget[step.target] ?? goDashboard,
         step.target
