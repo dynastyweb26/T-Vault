@@ -10,7 +10,6 @@ export const TOUR_TARGET = {
   jobFolderDetention: "job-folder-detention",
   expensesSummary: "expenses-summary",
   expensesRow: "expenses-row",
-  addExpenseForm: "add-expense-form",
   taxSummaryOverview: "tax-summary-overview",
   profileSettings: "profile-settings",
   profileInvite: "profile-invite",
@@ -18,9 +17,9 @@ export const TOUR_TARGET = {
 
 export type TourTargetId = (typeof TOUR_TARGET)[keyof typeof TOUR_TARGET];
 
-export const TOUR_STEP_COUNT = 15;
+export const TOUR_STEP_COUNT = 14;
 
-/** Page-level steps 7–14 force bottom placement with flip disabled (app-tour-provider). */
+/** Page-level steps 7–13 force bottom placement with flip disabled (app-tour-provider). */
 export const TOUR_FORCE_BOTTOM_FROM_INDEX = 7;
 
 export interface TourStepContent {
@@ -92,12 +91,6 @@ export const TOUR_STEP_CONTENT: TourStepContent[] = [
   {
     target: TOUR_TARGET.expensesRow,
     content: "Swipe left on any expense to delete it.",
-    placement: "bottom",
-  },
-  {
-    target: TOUR_TARGET.addExpenseForm,
-    content:
-      "Pick a category, snap or upload a receipt, and save — it's logged in seconds.",
     placement: "bottom",
   },
   {

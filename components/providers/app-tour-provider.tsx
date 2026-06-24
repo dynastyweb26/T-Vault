@@ -62,7 +62,6 @@ interface AppTourContextValue {
   tourPhase: TourPhase;
   fabSuppressedForSession: boolean;
   sampleJobId: string | null;
-  expenseSheetOpen: boolean;
   startTour: () => Promise<void>;
   stopTour: (options?: StopTourOptions) => void;
 }
@@ -130,7 +129,6 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
   const [tourPhase, setTourPhase] = useState<TourPhase>("idle");
   const [fabSuppressedForSession, setFabSuppressedForSession] = useState(false);
   const [sampleJobId, setSampleJobId] = useState<string | null>(null);
-  const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
   const sampleJobIdRef = useRef<string | null>(null);
   const fabCooldownRef = useRef<number | null>(null);
   const [floatingOptions, setFloatingOptions] = useState<
@@ -224,7 +222,6 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
     (options?: StopTourOptions) => {
       setTourAborted(true);
       setRun(false);
-      setExpenseSheetOpen(false);
       clearDeadlockFallback();
       closeSheet();
       setJoyrideKey((current) => current + 1);
@@ -248,7 +245,6 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
     const jobId = await fetchSampleJobId(user.id);
     sampleJobIdRef.current = jobId;
     setSampleJobId(jobId);
-    setExpenseSheetOpen(false);
     closeSheet();
     router.push(APP_ROUTES.dashboard);
 
@@ -273,21 +269,18 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
 
   const steps = useMemo<Step[]>(() => {
     const goDashboard = async () => {
-      setExpenseSheetOpen(false);
       closeSheet();
       router.push(APP_ROUTES.dashboard);
       await wait(400);
     };
 
     const goLoads = async () => {
-      setExpenseSheetOpen(false);
       closeSheet();
       router.push(APP_ROUTES.loads);
       await wait(400);
     };
 
     const goJobFolder = async () => {
-      setExpenseSheetOpen(false);
       closeSheet();
       const jobId = sampleJobIdRef.current;
       if (!jobId) {
@@ -301,28 +294,17 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
 
     const goExpenses = async () => {
       closeSheet();
-      setExpenseSheetOpen(false);
       router.push(APP_ROUTES.expenses);
       await wait(400);
     };
 
-    const goExpensesWithSheet = async () => {
-      closeSheet();
-      router.push(APP_ROUTES.expenses);
-      await wait(350);
-      setExpenseSheetOpen(true);
-      await wait(450);
-    };
-
     const goTaxSummary = async () => {
-      setExpenseSheetOpen(false);
       closeSheet();
       router.push(APP_ROUTES.taxSummary);
       await wait(400);
     };
 
     const goProfile = async () => {
-      setExpenseSheetOpen(false);
       closeSheet();
       router.push(APP_ROUTES.profile);
       await wait(400);
@@ -340,7 +322,6 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       "job-folder-detention": goJobFolder,
       "expenses-summary": goExpenses,
       "expenses-row": goExpenses,
-      "add-expense-form": goExpensesWithSheet,
       "tax-summary-overview": goTaxSummary,
       "profile-settings": goProfile,
       "profile-invite": goProfile,
@@ -410,12 +391,10 @@ export function AppTourProvider({ children }: { children: React.ReactNode }) {
       tourPhase,
       fabSuppressedForSession,
       sampleJobId,
-      expenseSheetOpen,
       startTour,
       stopTour,
     }),
     [
-      expenseSheetOpen,
       fabSuppressedForSession,
       run,
       sampleJobId,

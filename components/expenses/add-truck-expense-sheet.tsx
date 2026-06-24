@@ -183,7 +183,7 @@ export function AddTruckExpenseSheet({
       ariaLabel="Add truck expense"
       surface="solid"
     >
-      <div className="flex flex-col gap-4" data-tour="add-expense-form">
+      <div className="flex flex-col gap-4">
         <div>
           <p className="tv-label mb-2">Category</p>
           <div className="grid grid-cols-2 gap-2">

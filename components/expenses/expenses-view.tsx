@@ -11,7 +11,6 @@ import { AddTruckExpenseSheet } from "@/components/expenses/add-truck-expense-sh
 import { ExpenseReceiptPreview } from "@/components/expenses/expense-receipt-preview";
 import { useExpenses } from "@/hooks/use-expenses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { useAppTour } from "@/components/providers/app-tour-provider";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { deleteTruckExpense } from "@/lib/expenses/queries";
@@ -37,7 +36,6 @@ function ExpenseListSkeleton() {
 
 export function ExpensesView() {
   const { user } = useAuth();
-  const { expenseSheetOpen, isRunning } = useAppTour();
   const searchParams = useSearchParams();
   const { summary, truckExpenses, hasMore, loading, loadingMore, refreshing, error, refresh, loadMore } =
     useExpenses();
@@ -56,12 +54,6 @@ export function ExpensesView() {
       setSheetOpen(true);
     }
   }, [prefillAmount, prefillDescription]);
-
-  useEffect(() => {
-    if (isRunning) {
-      setSheetOpen(expenseSheetOpen);
-    }
-  }, [expenseSheetOpen, isRunning]);
 
   const {
     containerRef,
