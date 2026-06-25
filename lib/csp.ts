@@ -1,10 +1,19 @@
-export function buildContentSecurityPolicy(nonce: string, supabaseHost: string): string {
+export function buildContentSecurityPolicy(
+  nonce: string,
+  supabaseHost: string,
+  pathname?: string
+): string {
+  const isContactPage = pathname === "/contact";
   const imgSrc = supabaseHost
     ? `img-src 'self' data: blob: https://${supabaseHost}`
     : "img-src 'self' data: blob:";
   const connectSrc = supabaseHost
-    ? `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`
-    : "connect-src 'self'";
+    ? isContactPage
+      ? `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.emailjs.com`
+      : `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`
+    : isContactPage
+      ? "connect-src 'self' https://api.emailjs.com"
+      : "connect-src 'self'";
   const frameSrc = supabaseHost
     ? `frame-src 'self' blob: https://${supabaseHost}`
     : "frame-src 'self' blob:";
@@ -12,11 +21,12 @@ export function buildContentSecurityPolicy(nonce: string, supabaseHost: string):
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'`,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'" +
+      (isContactPage ? " https://fonts.googleapis.com" : ""),
     imgSrc,
     connectSrc,
     frameSrc,
-    "font-src 'self'",
+    isContactPage ? "font-src 'self' https://fonts.gstatic.com" : "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

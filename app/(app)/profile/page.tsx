@@ -269,7 +269,7 @@ export default function ProfilePage() {
               icon={TrendingUp}
               label="Cost Per Mile"
             />
-            <ProfileRow href={APP_ROUTES.help} icon={HelpCircle} label="Help" />
+            <ProfileRow href={APP_ROUTES.contact} icon={HelpCircle} label="Help & Support" />
             <ProfileRow href={APP_ROUTES.privacy} icon={Shield} label="Privacy" />
             <ProfileRow href={APP_ROUTES.terms} icon={FileSpreadsheet} label="Terms" />
           </div>
