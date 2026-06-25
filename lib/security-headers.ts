@@ -25,7 +25,7 @@ export function applySecurityHeaders(
   response: NextResponse,
   nonce: string
 ): NextResponse {
-  const csp = buildContentSecurityPolicy(nonce, getSupabaseHost(), request.nextUrl.pathname);
+  const csp = buildContentSecurityPolicy(nonce, getSupabaseHost());
   const permissionsPolicy = isVoiceNoteRoute(request.nextUrl.pathname)
     ? PERMISSIONS_POLICY_VOICE_NOTE
     : PERMISSIONS_POLICY_DEFAULT;
