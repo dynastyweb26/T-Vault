@@ -6,6 +6,7 @@ import { useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import { validateEmail } from "@/lib/validation";
@@ -131,6 +132,7 @@ export default function SignInPage() {
           </p>
         </div>
       </div>
+      <MarketingFooter />
     </div>
   );
 }

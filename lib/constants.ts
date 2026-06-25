@@ -36,8 +36,9 @@ export const APP_ROUTES = {
   notificationPrefs: "/profile/notifications",
   deleteAccount: "/profile/delete-account",
   help: "/profile/help",
-  privacy: "/profile/privacy",
-  terms: "/profile/terms",
+  contact: "/contact",
+  privacy: "/privacy-policy",
+  terms: "/terms-of-use",
   changePassword: "/profile/change-password",
 } as const;
 

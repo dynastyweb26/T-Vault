@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { TvButton } from "@/components/tv/tv-button";
 import { TvInput } from "@/components/tv/tv-input";
 import { AuthBrandHeader } from "@/components/shell/auth-brand-header";
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { createClient } from "@/lib/supabase/client";
 import { APP_ROUTES } from "@/lib/constants";
 import { FIELD_LIMITS } from "@/lib/validation";
@@ -148,6 +149,7 @@ export default function SignUpPage() {
         >
           Back to sign in
         </Link>
+        <MarketingFooter />
       </div>
     );
   }
@@ -233,6 +235,7 @@ export default function SignUpPage() {
           </Link>
         </p>
       </div>
+      <MarketingFooter />
     </div>
   );
 }
